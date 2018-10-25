@@ -1,0 +1,6 @@
+authors = ["Pierre Navaro <pierre.navaro@math.cnrs.fr>"]
+name = "SemiLagrangian"
+uuid = "abe12ce6-d865-11e8-314f-3f926d5bd47d"
+version = "0.1.0"
+
+[deps]

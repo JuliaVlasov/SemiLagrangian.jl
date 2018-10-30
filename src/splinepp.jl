@@ -1,4 +1,4 @@
-import Splittings: Geometry
+import VlasovBase: Geometry
 import LinearAlgebra
 import LinearAlgebra.LAPACK: pttrf!, pttrs!
 

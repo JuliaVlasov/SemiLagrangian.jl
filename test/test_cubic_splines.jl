@@ -1,4 +1,4 @@
-import Splittings:compute_interpolants, interpolate, CubicSpline
+import SemiLagrangian:compute_interpolants, interpolate, CubicSpline
 
 @testset "CubicSpline interpolation" begin
 
@@ -25,7 +25,8 @@ end
 
 
 import LinearAlgebra: transpose
-import Splittings: UniformMesh, advection!
+import SemiLagrangian: advection!
+import VlasovBase: UniformMesh
 
 @testset " BSL advections with cubic splines " begin
   

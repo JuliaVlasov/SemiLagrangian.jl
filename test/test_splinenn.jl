@@ -1,6 +1,6 @@
 import LinearAlgebra: transpose
-import Splittings: Geometry
-import Splittings: SplineNN, interpolate!
+import VlasovBase: Geometry
+import SemiLagrangian: SplineNN, interpolate!
 
 @testset "Natural Spline" begin
 

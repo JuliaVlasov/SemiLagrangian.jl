@@ -1,5 +1,5 @@
-import Splittings:UniformMesh
-import Splittings:@Strang
+import VlasovBase:UniformMesh
+import SplittingOperators:@Strang
 
 
 """

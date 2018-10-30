@@ -10,7 +10,7 @@ makedocs(modules=[SemiLagrangian],
          pages = ["Documentation" => "index.md",
                   "Advections"    => "advections.md",
                   "BSL"           => "bsl.md",
-                  "Contents"      => "contents.md"]
+                  "Contents"      => "contents.md"])
 
 deploydocs(
     deps   = Deps.pip("mkdocs", "python-markdown-math"),

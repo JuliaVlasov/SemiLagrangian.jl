@@ -1,4 +1,5 @@
-import Splittings: UniformMesh, advection!, BSpline
+import VlasovBase: UniformMesh
+import SemiLagrangian: advection!, BSpline
 
 @testset "BSL advections" begin
   

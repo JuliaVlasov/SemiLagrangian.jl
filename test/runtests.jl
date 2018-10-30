@@ -1,5 +1,7 @@
 using Test
 using LinearAlgebra
+using VlasovBase
+using SemiLagrangian
 
 include("test_splinepp.jl")
 include("test_splinenn.jl")

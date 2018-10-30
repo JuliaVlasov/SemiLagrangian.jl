@@ -1,14 +1,10 @@
 # Advection functions
 
 ```@meta
-CurrentModule = Splittings
+CurrentModule = SemiLagrangian
 ```
 
 ```@autodocs
-Modules = [Splittings]
-Order   = [:advection!]
-```
-
-```@docs
-Splittings.advection!
+Modules = [SemiLagrangian]
+Order   = [:type,:function]
 ```

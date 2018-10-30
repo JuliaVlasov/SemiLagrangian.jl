@@ -1,4 +1,5 @@
 using FFTW, LinearAlgebra
+import VlasovBase:UniformMesh
 
 export BSpline
 

@@ -1,6 +1,6 @@
 import LinearAlgebra: transpose
-import Splittings: Geometry
-import Splittings: SplinePP, interpolate!
+import VlasovBase: Geometry
+import SemiLagrangian: SplinePP, interpolate!
 
 @testset "Spline periodic periodic" begin
 

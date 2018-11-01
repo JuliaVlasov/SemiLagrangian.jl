@@ -8,8 +8,8 @@ before_install:
   - brew update
   - brew install ffmpeg
   - rm '/usr/local/include/c++' && brew install gcc@8
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
+  - julia -e 'using Pkg; Pkg.dev("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
+  - julia -e 'using Pkg; Pkg.dev("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
 
 notifications:
   email: false

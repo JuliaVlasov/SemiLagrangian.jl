@@ -2,17 +2,15 @@ language: julia
 
 os: osx
 julia: 1.0
-osx_image: xcode10
 
 before_install:
   - brew update
   - brew install ffmpeg
-  - rm '/usr/local/include/c++' && brew install gcc@8
   - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/VlasovBase.jl.git"))'
   - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/SplittingOperators.jl.git"))'
 
 notifications:
-  email: false
+  email: true
 
 after_success:
   - julia -e 'using Pkg; cd(Pkg.dir("SemiLagrangian")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'

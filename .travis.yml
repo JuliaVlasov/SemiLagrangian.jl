@@ -4,8 +4,8 @@ os: osx
 julia: 1.0
 
 before_install:
-  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
-  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
 
 notifications:
   email: true

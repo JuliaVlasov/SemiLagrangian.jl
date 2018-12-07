@@ -4,10 +4,8 @@ os: osx
 julia: 1.0
 
 before_install:
-  - brew update
-  - brew install ffmpeg
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
+  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
+  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
 
 notifications:
   email: true
@@ -15,4 +13,3 @@ notifications:
 after_success:
   - julia -e 'using Pkg; cd(Pkg.dir("SemiLagrangian")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
   - julia -e 'using Pkg; cd(Pkg.dir("SemiLagrangian")); Pkg.add("Documenter"); include(joinpath("docs", "make.jl"))';
-  - julia -e 'using Pkg; cd(Pkg.dir("SemiLagrangian")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder());'

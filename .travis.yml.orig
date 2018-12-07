@@ -6,8 +6,13 @@ julia: 1.0
 before_install:
   - brew update
   - brew install ffmpeg
+<<<<<<< HEAD
+  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/VlasovBase.jl.git"))'
+  - julia -e 'using Pkg; Pkg.add("https://github.com/JuliaVlasov/SplittingOperators.jl.git"))'
+=======
   - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
   - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/SplittingOperators.jl.git")'
+>>>>>>> 4fc01d8adeffc5c4c0fb6ba7bd41ae03e9384bf4
 
 notifications:
   email: true

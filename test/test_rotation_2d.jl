@@ -1,6 +1,4 @@
 import VlasovBase:UniformMesh
-import SplittingOperators:@Strang
-
 
 """
 
@@ -117,8 +115,9 @@ function rotation_2d_fft(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
     
     for n=1:nt
 
-        @Strang( advection_y!( f, fᵗ, f̂ᵗ, mesh1, tan(dt), fourier),
-		 advection_x!( f, f̂, mesh2, sin(dt), fourier))
+        advection_y!( f, fᵗ, f̂ᵗ, mesh1, tan(dt/2), fourier),
+	advection_x!( f, f̂, mesh2, sin(dt), fourier))
+        advection_y!( f, fᵗ, f̂ᵗ, mesh1, tan(dt/2), fourier),
 
     end
     real(f)

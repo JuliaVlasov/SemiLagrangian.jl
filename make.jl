@@ -1,6 +1,5 @@
 push!(LOAD_PATH,"../src/")
 
-using SplittingOperators
 using Documenter
 using Plots # to not capture precompilation output
 

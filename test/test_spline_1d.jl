@@ -90,9 +90,9 @@ mutable struct SplineInterpolator1d
 
         tau = zeros(ntau)
 
-        if ( bc_xmin == sll_p_periodic )
+        if ( bc_xmin == :periodic )
 
-            if bspl.degree & 1  
+            if bspl.degree & 1 > 0  
                 tau .= [xmin + (i-1.0)*dx for i=1:ntau]
             else
                 tau .= [xmin + (i-0.5)*dx for i=1:ntau]
@@ -114,34 +114,32 @@ mutable struct SplineInterpolator1d
             # Knots inside the domain
             r = -nbc_xmin+1
             s = -nbc_xmin+1+ncells
-            r = -nbc_xmin+1
-            s = -nbc_xmin+1+ncells
-            iknots(r:s) = [(i,i=0,ncells)]
+            iknots[r:s] = [i for i=0:ncells]
 
             # Additional knots near x=xmax
-            associate( r => -nbc_xmin+1+ncells+1, s => ntau )
-              select case (bc_xmax)
-                case (sll_p_greville); iknots(r:s) = ncells
-                case (sll_p_hermite ); iknots(r:s) = [(i,i=ncells+1,ncells+1+s-r)]
-              end select
-            end associate
+            r = -nbc_xmin+1+ncells+1
+            s = ntau
+            if bc_stop = :greville  
+                iknots[r:s] .= ncells 
+            end
+            if bc_stop = :hemite    
+                iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
+            end
 
             # Compute interpolation points using Greville-style averaging
-            associate( inv_deg => 1.0_wp / real( degree, wp ) )
-              do i = 1, ntau
+            for i = 1:ntau
                 isum = sum( iknots(i+1-degree:i) )
-                if (modulo( isum, degree ) == 0) then
-                  tau(i) = xmin + real(isum/degree,wp) * dx
+                if isum % degree == 0
+                    tau[i] = xmin + isum / degree * dx
                 else
-                  tau(i) = xmin + real(isum,wp) * inv_deg * dx
-                end if
-              end do
-            end associate
+                    tau[i] = xmin + isum / degree  * dx
+                end
+            end
 
-            if (  == 1 ) then
-              tau(1)    = xmin
-              tau(ntau) = xmax
-            end if
+            if degree & 1 > 0
+                tau[1]    = xmin
+                tau[ntau] = xmax
+            end
 
         end 
 

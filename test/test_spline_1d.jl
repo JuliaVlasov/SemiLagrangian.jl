@@ -41,9 +41,9 @@ function eval( self, x )
             temp      = values[r] / j
             values[r] = saved + xx * temp
             saved     = (j - 1 - xx) * temp
-         end do
+         end
          values[j] = saved
-      end do
+      end
 
     jmax = jmin + self.degree
 
@@ -74,74 +74,53 @@ mutable struct SplineInterpolator1d
                                    bc_start :: Symbol, 
                                    bc_stop  :: Symbol )
 
-        if bc_start == :hermite
-            nbc_start = degree÷2
-        else
-            nbc_start = 0
-        end
-
-        if bc_stop == :hermite
-            nbc_stop = degree÷2
-        else
-            nbc_stop = 0
-        end
+        nbc_start = degree÷2
+        nbc_stop  = degree÷2
 
         ntau = nbasis - nbc_start - nbc_stop
 
         tau = zeros(ntau)
 
-        if ( bc_xmin == :periodic )
+        # Non-periodic case: create array of temporary knots (integer shifts only)
+        # in order to compute interpolation points using Greville-style averaging:
+        # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
+        iknots = zeros(Float64, 2-degree:ntau)
 
-            if bspl.degree & 1 > 0  
-                tau .= [xmin + (i-1.0)*dx for i=1:ntau]
+        # Additional knots near x=xmin
+        r = 2-degree
+        s = -nbc_xmin
+        if (bc_start == :greville) iknots[r:s] = 0 end
+        if (bc_stop  == :hermite ) iknots[r:s] = [i for i=r-s-1:-1]
+
+        # Knots inside the domain
+        r = -nbc_xmin+1
+        s = -nbc_xmin+1+ncells
+        iknots[r:s] = [i for i=0:ncells]
+
+        # Additional knots near x=xmax
+        r = -nbc_xmin+1+ncells+1
+        s = ntau
+        if bc_stop = :greville  
+            iknots[r:s] .= ncells 
+        end
+        if bc_stop = :hemite    
+            iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
+        end
+
+        # Compute interpolation points using Greville-style averaging
+        for i = 1:ntau
+            isum = sum( iknots(i+1-degree:i) )
+            if isum % degree == 0
+                tau[i] = xmin + isum / degree * dx
             else
-                tau .= [xmin + (i-0.5)*dx for i=1:ntau]
+                tau[i] = xmin + isum / degree  * dx
             end
+        end
 
-        else
-
-            # Non-periodic case: create array of temporary knots (integer shifts only)
-            # in order to compute interpolation points using Greville-style averaging:
-            # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
-            iknots = zeros(Float64, 2-degree:ntau)
-
-            # Additional knots near x=xmin
-            r = 2-degree
-            s = -nbc_xmin
-            if (bc_start == :greville) iknots[r:s] = 0 end
-            if (bc_stop  == :hermite ) iknots[r:s] = [i for i=r-s-1:-1]
-
-            # Knots inside the domain
-            r = -nbc_xmin+1
-            s = -nbc_xmin+1+ncells
-            iknots[r:s] = [i for i=0:ncells]
-
-            # Additional knots near x=xmax
-            r = -nbc_xmin+1+ncells+1
-            s = ntau
-            if bc_stop = :greville  
-                iknots[r:s] .= ncells 
-            end
-            if bc_stop = :hemite    
-                iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
-            end
-
-            # Compute interpolation points using Greville-style averaging
-            for i = 1:ntau
-                isum = sum( iknots(i+1-degree:i) )
-                if isum % degree == 0
-                    tau[i] = xmin + isum / degree * dx
-                else
-                    tau[i] = xmin + isum / degree  * dx
-                end
-            end
-
-            if degree & 1 > 0
-                tau[1]    = xmin
-                tau[ntau] = xmax
-            end
-
-        end 
+        if degree & 1 > 0
+            tau[1]    = xmin
+            tau[ntau] = xmax
+        end
 
     end
 
@@ -151,26 +130,180 @@ function test_spline_1d()
     
     tol = 1e-14
 
-    bc_kinds = [:periodic, :hermite, :greville]
-
     ncells = 10 # number of cells in grid
 
     for degree = 1:9 # Cycle over spline degree
 
-        for bcs in Iterators.product(bc_kinds, bc_kinds)
-
-            bc_xmin, bc_xmax = bcs
-
-            if !(any( [bc_xmax,bc_xmin] .== :periodic ) & (bc_xmin != bc_xmax)) 
-                println( "degree : $degree,  $bc_xmin, $bc_xmax ")
-            end
-
-            bspline = Spline1d( ncells, degree, -2π, 2π  )
-
-
-        end 
+        bspline = Spline1d( ncells, degree, -2π, 2π  )
 
     end
+
+end 
+
+function compute_num_cells( degree , nipts )
+
+
+    nbc_xmin = degree / 2
+    nbc_xmax = degree / 2
+
+    nipts + nbc_xmin + nbc_xmax - degree
+
+end
+
+function init( self, bspl )
+
+    nbc_xmin = degree/2
+    nbc_xmax = degree/2
+    odd      = modulo( bspl%degree  , 2 )
+
+    call compute_interpolation_points_uniform( self, self.tau )
+    call compute_num_diags_uniform( self, kl, ku )
+
+    spline_matrix_new( self.matrix, nbasis, kl, ku )
+
+    build_system( self, self.matrix )
+
+    factorize!(self.matrix)
+
+end 
+
+function compute_interpolant( self, spline, gtau, derivs_xmin, derivs_xmax )
+
+      bcoef(1:nbc_xmin) = [(derivs_xmin(i)*self%dx**(i+self%odd-1), i=nbc_xmin,1,-1)]
+
+      # Interpolation points
+      bcoef(nbc_xmin+1+g:nbasis-nbc_xmax+g) = gtau(:)
+
+      bcoef(nbasis-nbc_xmax+1:nbasis) = [(derivs_xmax(i)*self%dx**(i+self%odd-1), i=1,nbc_xmax)]
+
+      # Solve linear system and compute coefficients
+      solve!( matrix, bcoef(1+g:nbasis+g) )
+
+end 
+
+function build_system( self, matrix )
+
+    derivs = zeros(Float64, (0:degree/2, 1:degree+1))
+
+    x = self.bspl.xmin
+    eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
+
+    h = [(self%dx**i, i=1, ubound(derivs,1))]
+    for j = lbound(derivs,2):ubound(derivs,2)
+        derivs(1:,j) = derivs(1:,j) * h(1:)
+    end
+
+    for i = 1:nbc_xmin
+        order = nbc_xmin-i+self%odd
+        do j = 1, degree
+           call matrix % set_element( i, j, derivs(order,j) )
+        end
+    end
+
+    do i = nbc_xmin+1, nbasis-nbc_xmax
+       x = self%tau(i-nbc_xmin)
+       bspl.eval_basis( x, values, jmin )
+       do s = 1, degree+1
+         j = modulo( jmin-self%offset+s-2, nbasis ) + 1
+         call matrix % set_element( i, j, values(s) )
+       end
+    end
+
+    x = self%bspl%xmax
+    bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
+
+    h = [(self%dx**i, i=1, ubound(derivs,1))]
+    do j = lbound(derivs,2), ubound(derivs,2)
+       derivs(1:,j) = derivs(1:,j) * h(1:)
+    end
+
+    do i = nbasis-nbc_xmax+1, nbasis
+       order = i-(nbasis-nbc_xmax+1)+self%odd
+       j0 = nbasis-degree
+       d0 = 1
+       do s = 1, degree
+          j = j0 + s
+          d = d0 + s
+          matrix.set_element( i, j, derivs(order,d) )
+       end
+    end
+
+      end
+
+  end 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!
+  !!                       PRIVATE SUBROUTINES, UNIFORM
+  !!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  !-----------------------------------------------------------------------------
+  subroutine s_compute_interpolation_points_uniform( self, tau )
+    class(sll_t_spline_interpolator_1d), intent(in   ) :: self
+    real(wp),               allocatable, intent(  out) :: tau(:)
+
+    integer :: i, ntau, isum
+    integer, allocatable :: iknots(:)
+
+    associate( nbasis   => self % bspl % nbasis, &
+               ncells   => self % bspl % ncells, &
+               degree   => self % bspl % degree, &
+               xmin     => self % bspl % xmin  , &
+               xmax     => self % bspl % xmax  , &
+               dx       => self % dx           , &
+               bc_xmin  => self %  bc_xmin     , &
+               bc_xmax  => self %  bc_xmax     , &
+               nbc_xmin => self % nbc_xmin     , &
+               nbc_xmax => self % nbc_xmax )
+
+      ! Determine size of tau and allocate tau
+      ntau = nbasis - nbc_xmin - nbc_xmax
+      allocate( tau(1:ntau) )
+
+      # Non-periodic case: create array of temporary knots (integer shifts only)
+      # in order to compute interpolation points using Greville-style averaging:
+      # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
+      allocate( iknots (2-degree:ntau) )
+
+      # Additional knots near x=xmin
+      r = 2-degree, s = -nbc_xmin
+      iknots(r:s) = [(i,i=r-s-1,-1)]
+
+      # Knots inside the domain
+      r = -nbc_xmin+1, s = -nbc_xmin+1+ncells
+      iknots(r:s) = [(i,i=0,ncells)]
+
+      # Additional knots near x=xmax
+      r = -nbc_xmin+1+ncells+1, s = ntau 
+      iknots(r:s) = [(i,i=ncells+1,ncells+1+s-r)]
+
+      # Compute interpolation points using Greville-style averaging
+      inv_deg => 1.0_wp / real( degree, wp )
+      do i = 1, ntau
+         isum = sum( iknots(i+1-degree:i) )
+         if (modulo( isum, degree ) == 0) then
+             tau(i) = xmin + real(isum/degree,wp) * dx
+         else
+             tau(i) = xmin + real(isum,wp) * inv_deg * dx
+         end
+      end
+
+      # Non-periodic case, odd degree: fix round-off issues
+      if ( self%odd == 1 ) then
+        tau(1)    = xmin
+        tau(ntau) = xmax
+      end
+
+  end 
+
+  function compute_num_diags_uniform( self, kl, ku )
+
+      ku = max( (degree+1)/2, degree-1 )
+      kl = max( (degree+1)/2, degree-1 )
+
+  end 
+
 
 end 
 

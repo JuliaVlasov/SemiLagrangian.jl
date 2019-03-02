@@ -169,12 +169,12 @@ end
 
 function compute_interpolant( self, spline, gtau, derivs_xmin, derivs_xmax )
 
-      bcoef(1:nbc_xmin) = [(derivs_xmin(i)*self%dx**(i+self%odd-1), i=nbc_xmin,1,-1)]
+      bcoef[1:nbc_xmin] = [derivs_xmin[i]*self.dx^(i+self.odd-1) for i=nbc_xmin:-1:1]
 
       # Interpolation points
-      bcoef(nbc_xmin+1+g:nbasis-nbc_xmax+g) = gtau(:)
+      bcoef[nbc_xmin+1+g:nbasis-nbc_xmax+g] .= gtau
 
-      bcoef(nbasis-nbc_xmax+1:nbasis) = [(derivs_xmax(i)*self%dx**(i+self%odd-1), i=1,nbc_xmax)]
+      bcoef[nbasis-nbc_xmax+1:nbasis] .= [derivs_xmax(i)*self%dx^(i+self%odd-1) for i=1:nbc_xmax]
 
       # Solve linear system and compute coefficients
       solve!( matrix, bcoef(1+g:nbasis+g) )
@@ -204,7 +204,7 @@ function build_system( self, matrix )
        x = self%tau(i-nbc_xmin)
        bspl.eval_basis( x, values, jmin )
        for s = 1:degree+1
-         j = mod( jmin-self%offset+s-2, nbasis ) + 1
+         j = mod( jmin-self.offset+s-2, nbasis ) + 1
          set_element( matrix, i, j, values[s] )
        end
     end
@@ -232,43 +232,45 @@ function build_system( self, matrix )
 
   end 
 
-  function s_compute_interpolation_points_uniform( self, tau )
+  function compute_interpolation_points_uniform( self, tau )
 
 
-      ! Determine size of tau and allocate tau
+      # Determine size of tau and allocate tau
       ntau = nbasis - nbc_xmin - nbc_xmax
-      allocate( tau(1:ntau) )
+      tau = zeros(Float64, ntau )
 
       # Non-periodic case: create array of temporary knots (integer shifts only)
       # in order to compute interpolation points using Greville-style averaging:
       # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
-      iknots = zeros(2-degree:ntau) 
+      iknots = zeros(2-degree:ntau)
 
       # Additional knots near x=xmin
-      r = 2-degree, s = -nbc_xmin
-      iknots(r:s) = [(i,i=r-s-1,-1)]
+      r = 2-degree
+      s = -nbc_xmin
+      iknots[r:s] = [i for i=r-s-1:-1]
 
       # Knots inside the domain
-      r = -nbc_xmin+1, s = -nbc_xmin+1+ncells
-      iknots(r:s) = [(i,i=0,ncells)]
+      r = -nbc_xmin+1
+      s = -nbc_xmin+1+ncells
+      iknots[r:s] = [i for i=0:ncells]
 
       # Additional knots near x=xmax
       r = -nbc_xmin+1+ncells+1, s = ntau 
-      iknots(r:s) = [(i,i=ncells+1,ncells+1+s-r)]
+      iknots(r:s) = [i for i=ncells+1:ncells+1+s-r]
 
       # Compute interpolation points using Greville-style averaging
-      inv_deg => 1.0_wp / real( degree, wp )
+      inv_deg = 1.0 / degree
       for i = 1:ntau
-         isum = sum( iknots(i+1-degree:i) )
-         if (mod( isum, degree ) == 0) then
-             tau[i] = xmin + real(isum/degree,wp) * dx
+         isum = sum( iknots[i+1-degree:i] )
+         if (mod( isum, degree ) == 0)
+             tau[i] = xmin + isum ÷ degree * dx
          else
-             tau[i] = xmin + real(isum,wp) * inv_deg * dx
+             tau[i] = xmin + isum * inv_deg * dx
          end
       end
 
       # Non-periodic case, odd degree: fix round-off issues
-      if ( self%odd == 1 ) then
+      if ( self%odd == 1 )
         tau(1)    = xmin
         tau(ntau) = xmax
       end

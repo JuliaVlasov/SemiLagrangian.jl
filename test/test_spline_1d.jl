@@ -188,40 +188,40 @@ function build_system( self, matrix )
     x = self.bspl.xmin
     eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
 
-    h = [(self%dx**i, i=1, ubound(derivs,1))]
+    h = [self.dx^i for i=1:derivs[end]]
     for j = lbound(derivs,2):ubound(derivs,2)
-        derivs(1:,j) = derivs(1:,j) * h(1:)
+        derivs[1:,j] = derivs[1:,j] * h[1:]
     end
 
     for i = 1:nbc_xmin
-        order = nbc_xmin-i+self%odd
-        do j = 1, degree
-           call matrix % set_element( i, j, derivs(order,j) )
+        order = nbc_xmin-i+self.odd
+        for j = 1, degree
+           set_element( matrix, i, j, derivs(order,j) )
         end
     end
 
-    do i = nbc_xmin+1, nbasis-nbc_xmax
+    for i = nbc_xmin+1, nbasis-nbc_xmax
        x = self%tau(i-nbc_xmin)
        bspl.eval_basis( x, values, jmin )
-       do s = 1, degree+1
-         j = modulo( jmin-self%offset+s-2, nbasis ) + 1
-         call matrix % set_element( i, j, values(s) )
+       for s = 1:degree+1
+         j = mod( jmin-self%offset+s-2, nbasis ) + 1
+         set_element( matrix, i, j, values[s] )
        end
     end
 
-    x = self%bspl%xmax
+    x = self.bspl.xmax
     bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
 
     h = [(self%dx**i, i=1, ubound(derivs,1))]
-    do j = lbound(derivs,2), ubound(derivs,2)
+    for j = lbound(derivs,2), ubound(derivs,2)
        derivs(1:,j) = derivs(1:,j) * h(1:)
     end
 
-    do i = nbasis-nbc_xmax+1, nbasis
+    for i = nbasis-nbc_xmax+1, nbasis
        order = i-(nbasis-nbc_xmax+1)+self%odd
        j0 = nbasis-degree
        d0 = 1
-       do s = 1, degree
+       for s = 1:degree
           j = j0 + s
           d = d0 + s
           matrix.set_element( i, j, derivs(order,d) )
@@ -232,30 +232,8 @@ function build_system( self, matrix )
 
   end 
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!
-  !!                       PRIVATE SUBROUTINES, UNIFORM
-  !!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  function s_compute_interpolation_points_uniform( self, tau )
 
-  !-----------------------------------------------------------------------------
-  subroutine s_compute_interpolation_points_uniform( self, tau )
-    class(sll_t_spline_interpolator_1d), intent(in   ) :: self
-    real(wp),               allocatable, intent(  out) :: tau(:)
-
-    integer :: i, ntau, isum
-    integer, allocatable :: iknots(:)
-
-    associate( nbasis   => self % bspl % nbasis, &
-               ncells   => self % bspl % ncells, &
-               degree   => self % bspl % degree, &
-               xmin     => self % bspl % xmin  , &
-               xmax     => self % bspl % xmax  , &
-               dx       => self % dx           , &
-               bc_xmin  => self %  bc_xmin     , &
-               bc_xmax  => self %  bc_xmax     , &
-               nbc_xmin => self % nbc_xmin     , &
-               nbc_xmax => self % nbc_xmax )
 
       ! Determine size of tau and allocate tau
       ntau = nbasis - nbc_xmin - nbc_xmax
@@ -264,7 +242,7 @@ function build_system( self, matrix )
       # Non-periodic case: create array of temporary knots (integer shifts only)
       # in order to compute interpolation points using Greville-style averaging:
       # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
-      allocate( iknots (2-degree:ntau) )
+      iknots = zeros(2-degree:ntau) 
 
       # Additional knots near x=xmin
       r = 2-degree, s = -nbc_xmin
@@ -280,12 +258,12 @@ function build_system( self, matrix )
 
       # Compute interpolation points using Greville-style averaging
       inv_deg => 1.0_wp / real( degree, wp )
-      do i = 1, ntau
+      for i = 1:ntau
          isum = sum( iknots(i+1-degree:i) )
-         if (modulo( isum, degree ) == 0) then
-             tau(i) = xmin + real(isum/degree,wp) * dx
+         if (mod( isum, degree ) == 0) then
+             tau[i] = xmin + real(isum/degree,wp) * dx
          else
-             tau(i) = xmin + real(isum,wp) * inv_deg * dx
+             tau[i] = xmin + real(isum,wp) * inv_deg * dx
          end
       end
 

@@ -3,6 +3,7 @@ using LinearAlgebra
 using VlasovBase
 using SemiLagrangian
 
+include("test_spline_1d.jl")
 include("test_splinepp.jl")
 include("test_splinenn.jl")
 include("test_cubic_splines.jl")

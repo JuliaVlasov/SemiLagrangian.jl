@@ -1,6 +1,46 @@
 using IterTools
+using OffsetArrays
+using LinearAlgebra.LAPACK
 
-mutable struct Spline1d
+struct :: BandedMatrix
+
+    n    :: Int64
+    kl   :: Int64
+    ku   :: Int64
+    ipiv :: Vector{Int64}
+    q    :: Array{Float64,2}
+
+    function BandedMatrix( n, kl, ku )
+
+        ipiv = zeros(Int64,n)
+        q = zeros(Float64, (2*kl+ku+1,n))
+
+        new( n, kl, ku, ipiv, q)
+
+    end
+
+end 
+
+function set_element!( self, i, j, a_ij )
+
+    self.q[self.kl+self.ku+1+i-j,j] = a_ij
+
+end
+
+function factorize!( self )
+
+     m = 2*kl+ku+1
+     self.q, self.ipiv = gbtrf!( self.kl, self.ku, m, self.q )
+
+end
+
+function solve!( self, b )
+
+    gbtrs!( "N", self.kl, self.ku, 2*self.kl+self.ku+1, self.q, self.ipiv, b )
+
+end 
+
+mutable struct Spline1D
 
     degree :: Int64
     ncells :: Int64
@@ -8,9 +48,9 @@ mutable struct Spline1d
     start  :: Float64
     stop   :: Float64
     step   :: Float64
-    bcoef  :: Vector{Float64}
+    bcoef  :: OffsetArray{Float64,1,Array{Float64,1}}
 
-    function Spline1d( n :: Int64, p :: Int64, xmin, xmax  )
+    function Spline1D( n :: Int64, p :: Int64, xmin, xmax  )
       
         degree   = p
         ncells   = n
@@ -18,7 +58,7 @@ mutable struct Spline1d
         start    = xmin
         stop     = xmax
         step     = (xmax-xmin) / ncells
-        bcoef    = zeros( 1:n+p )
+        bcoef    = OffsetArray{Float64}(undef, 1:n+p)
 
     end
 
@@ -26,9 +66,12 @@ end
 
 function eval( self, x )
 
-    values = zeros(self.degree+1)
+    values = zeros(Float64, self.degree+1)
 
-    cell, offset = get_cell_and_offset( self, x )
+    offset = (x - self.start) / self.step  
+    cell   = trunc( Int64, x_offset )
+    offset = offset - cell
+    cell   = min( cell+1, self.stop)
 
     jmin = icell
 
@@ -51,65 +94,39 @@ function eval( self, x )
 
 end 
 
-function get_cell_and_offset( self, x )
+mutable struct SplineInterpolator1D
 
-    offset = (x - self.start) / self.step  
-    cell   = trunc( Int64, x_offset )
-    offset = offset - cell
-    cell   = min( cell+1, self.stop)
-
-    cell, offset
-
-end 
-
-mutable struct SplineInterpolator1d
-
-    bspl     :: Spline1d
+    bspl     :: Spline1D
     tau      :: Vector{Float64}
     matrix   :: Array{Float64, 2}
-    bc_start :: Symbol
-    bc_stop  :: Symbol
 
-    function SplineInterpolator1d( bspl     :: Spline1D, 
-                                   bc_start :: Symbol, 
-                                   bc_stop  :: Symbol )
+    function SplineInterpolator1d( bspl :: Spline1D )
 
-        nbc_start = degree÷2
-        nbc_stop  = degree÷2
+        nbc_xmin = bspl.degree/2
+        nbc_xmax = bspl.degree/2
+        odd      = bspl.degree & 1
 
-        ntau = nbasis - nbc_start - nbc_stop
+        ntau = nbasis - degree
 
-        tau = zeros(ntau)
+        tau = zeros(Float64, ntau)
 
-        # Non-periodic case: create array of temporary knots (integer shifts only)
-        # in order to compute interpolation points using Greville-style averaging:
-        # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
-        iknots = zeros(Float64, 2-degree:ntau)
+        iknots = OffsetArray{Float64}(undef, 2-degree:ntau)
 
-        # Additional knots near x=xmin
         r = 2-degree
         s = -nbc_xmin
-        if (bc_start == :greville) iknots[r:s] = 0 end
-        if (bc_stop  == :hermite ) iknots[r:s] = [i for i=r-s-1:-1]
+        iknots[r:s] .= [i for i=r-s-1:-1]
 
-        # Knots inside the domain
         r = -nbc_xmin+1
         s = -nbc_xmin+1+ncells
-        iknots[r:s] = [i for i=0:ncells]
+        iknots[r:s] .= [i for i=0:ncells]
 
-        # Additional knots near x=xmax
         r = -nbc_xmin+1+ncells+1
         s = ntau
-        if bc_stop = :greville  
-            iknots[r:s] .= ncells 
-        end
-        if bc_stop = :hemite    
-            iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
-        end
+        iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
 
         # Compute interpolation points using Greville-style averaging
         for i = 1:ntau
-            isum = sum( iknots(i+1-degree:i) )
+            isum = sum( iknots[i+1-degree:i] )
             if isum % degree == 0
                 tau[i] = xmin + isum / degree * dx
             else
@@ -122,23 +139,19 @@ mutable struct SplineInterpolator1d
             tau[ntau] = xmax
         end
 
+        ku = max( (degree+1)/2, degree-1 )
+        kl = max( (degree+1)/2, degree-1 )
+
+        spline_matrix_new( self.matrix, nbasis, kl, ku )
+
+        build_system( self, self.matrix )
+
+        factorize!(self.matrix)
+
     end
 
 end
 
-function test_spline_1d()
-    
-    tol = 1e-14
-
-    ncells = 10 # number of cells in grid
-
-    for degree = 1:9 # Cycle over spline degree
-
-        bspline = Spline1d( ncells, degree, -2π, 2π  )
-
-    end
-
-end 
 
 function compute_num_cells( degree , nipts )
 
@@ -152,18 +165,8 @@ end
 
 function init( self, bspl )
 
-    nbc_xmin = degree/2
-    nbc_xmax = degree/2
-    odd      = modulo( bspl%degree  , 2 )
 
-    call compute_interpolation_points_uniform( self, self.tau )
-    call compute_num_diags_uniform( self, kl, ku )
-
-    spline_matrix_new( self.matrix, nbasis, kl, ku )
-
-    build_system( self, self.matrix )
-
-    factorize!(self.matrix)
+    
 
 end 
 
@@ -181,9 +184,13 @@ function compute_interpolant( self, spline, gtau, derivs_xmin, derivs_xmax )
 
 end 
 
+lbound( array :: OffsetArray, dim ) = axes(array)[dim].indices[1]
+
+ubound( array :: OffsetArray, dim ) = axes(array)[dim].indices[end]
+
 function build_system( self, matrix )
 
-    derivs = zeros(Float64, (0:degree/2, 1:degree+1))
+    derivs = OffsetArry{Float64}(undef, 0:degree/2, 1:degree+1)
 
     x = self.bspl.xmin
     eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
@@ -201,7 +208,7 @@ function build_system( self, matrix )
     end
 
     for i = nbc_xmin+1, nbasis-nbc_xmax
-       x = self%tau(i-nbc_xmin)
+       x = self.tau[i-nbc_xmin]
        bspl.eval_basis( x, values, jmin )
        for s = 1:degree+1
          j = mod( jmin-self.offset+s-2, nbasis ) + 1
@@ -228,62 +235,17 @@ function build_system( self, matrix )
        end
     end
 
-      end
+end 
 
-  end 
+function test_spline_1d()
+    
+    ncells = 10 # number of cells in grid
 
-  function compute_interpolation_points_uniform( self, tau )
+    for degree = 1:9 # Cycle over spline degree
 
+        bspline = Spline1D( ncells, degree, -2π, 2π  )
 
-      # Determine size of tau and allocate tau
-      ntau = nbasis - nbc_xmin - nbc_xmax
-      tau = zeros(Float64, ntau )
-
-      # Non-periodic case: create array of temporary knots (integer shifts only)
-      # in order to compute interpolation points using Greville-style averaging:
-      # tau(i) = xmin + average(knots(i+1-degree:i)) * dx
-      iknots = zeros(2-degree:ntau)
-
-      # Additional knots near x=xmin
-      r = 2-degree
-      s = -nbc_xmin
-      iknots[r:s] = [i for i=r-s-1:-1]
-
-      # Knots inside the domain
-      r = -nbc_xmin+1
-      s = -nbc_xmin+1+ncells
-      iknots[r:s] = [i for i=0:ncells]
-
-      # Additional knots near x=xmax
-      r = -nbc_xmin+1+ncells+1, s = ntau 
-      iknots(r:s) = [i for i=ncells+1:ncells+1+s-r]
-
-      # Compute interpolation points using Greville-style averaging
-      inv_deg = 1.0 / degree
-      for i = 1:ntau
-         isum = sum( iknots[i+1-degree:i] )
-         if (mod( isum, degree ) == 0)
-             tau[i] = xmin + isum ÷ degree * dx
-         else
-             tau[i] = xmin + isum * inv_deg * dx
-         end
-      end
-
-      # Non-periodic case, odd degree: fix round-off issues
-      if ( self%odd == 1 )
-        tau(1)    = xmin
-        tau(ntau) = xmax
-      end
-
-  end 
-
-  function compute_num_diags_uniform( self, kl, ku )
-
-      ku = max( (degree+1)/2, degree-1 )
-      kl = max( (degree+1)/2, degree-1 )
-
-  end 
-
+    end
 
 end 
 

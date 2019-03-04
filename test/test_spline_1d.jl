@@ -2,7 +2,7 @@ using IterTools
 using OffsetArrays
 using LinearAlgebra.LAPACK
 
-struct :: BandedMatrix
+struct BandedMatrix
 
     n    :: Int64
     kl   :: Int64
@@ -60,23 +60,25 @@ mutable struct Spline1D
         step     = (xmax-xmin) / ncells
         bcoef    = OffsetArray{Float64}(undef, 1:n+p)
 
+        new( degree, ncells, nbasis, start, stop, step, bcoef)
+
     end
 
 end
 
-function eval( self, x )
+function eval( spline, x )
 
-    values = zeros(Float64, self.degree+1)
+    values = zeros(Float64, spline.degree+1)
 
-    offset = (x - self.start) / self.step  
-    cell   = trunc( Int64, x_offset )
+    offset = (x - spline.start) / spline.step  
+    cell   = trunc( Int64, offset )
     offset = offset - cell
-    cell   = min( cell+1, self.stop)
+    cell   = min( cell+1, spline.stop)
 
     jmin = icell
 
     values[1] = 1.0
-    for j = 1:self.degree
+    for j = 1:spline.degree
         xx     = -offset
         saved  = 0.0
         for r = 1:j
@@ -88,65 +90,67 @@ function eval( self, x )
          values[j] = saved
       end
 
-    jmax = jmin + self.degree
+    jmax = jmin + spline.degree
 
-    self.bcoef[jmin:jmax] * values
+    self.bcoef[jmin:jmax] .* values
 
 end 
 
-mutable struct SplineInterpolator1D
+mutable struct InterpolatorSpline1D
 
     bspl     :: Spline1D
     tau      :: Vector{Float64}
     matrix   :: Array{Float64, 2}
 
-    function SplineInterpolator1d( bspl :: Spline1D )
+    function InterpolatorSpline1D( bspl :: Spline1D )
 
-        nbc_xmin = bspl.degree/2
-        nbc_xmax = bspl.degree/2
+        nbc_xmin = bspl.degree ÷ 2
+        nbc_xmax = bspl.degree ÷ 2
         odd      = bspl.degree & 1
 
-        ntau = nbasis - degree
+        ntau = bspl.nbasis - bspl.degree
 
         tau = zeros(Float64, ntau)
 
-        iknots = OffsetArray{Float64}(undef, 2-degree:ntau)
+        iknots = OffsetArray{Float64}(undef, 2-bspl.degree:ntau)
 
-        r = 2-degree
-        s = -nbc_xmin
+        r = 2 - bspl.degree
+        s = - nbc_xmin
         iknots[r:s] .= [i for i=r-s-1:-1]
 
-        r = -nbc_xmin+1
-        s = -nbc_xmin+1+ncells
-        iknots[r:s] .= [i for i=0:ncells]
+        r = - nbc_xmin + 1
+        s = - nbc_xmin + 1 + bspl.ncells
+        iknots[r:s] .= [i for i=0:bspl.ncells]
 
-        r = -nbc_xmin+1+ncells+1
+        r = - nbc_xmin + 1 + bspl.ncells + 1
         s = ntau
-        iknots[r:s] .= [i for i=ncells+1:ncells+1+s-r]
+        iknots[r:s] .= [i for i=bspl.ncells+1:bspl.ncells+1+s-r]
 
         # Compute interpolation points using Greville-style averaging
         for i = 1:ntau
-            isum = sum( iknots[i+1-degree:i] )
+            isum = sum( iknots[i+1-bspl.degree:i] )
             if isum % degree == 0
-                tau[i] = xmin + isum / degree * dx
+                tau[i] = bspl.xmin + isum / bspl.degree * dx
             else
-                tau[i] = xmin + isum / degree  * dx
+                tau[i] = bspl.xmin + isum / bspl.degree  * dx
             end
         end
 
-        if degree & 1 > 0
-            tau[1]    = xmin
-            tau[ntau] = xmax
+        if Bool(odd)
+            tau[1]    = bspl.xmin
+            tau[ntau] = bspl.xmax
         end
 
-        ku = max( (degree+1)/2, degree-1 )
-        kl = max( (degree+1)/2, degree-1 )
+        ku = max( (degree+1)÷2, degree-1 )
+        kl = max( (degree+1)÷2, degree-1 )
 
         spline_matrix_new( self.matrix, nbasis, kl, ku )
 
         build_system( self, self.matrix )
 
         factorize!(self.matrix)
+
+        new( bspl, tau, matrix )
 
     end
 
@@ -162,13 +166,6 @@ function compute_num_cells( degree , nipts )
     nipts + nbc_xmin + nbc_xmax - degree
 
 end
-
-function init( self, bspl )
-
-
-    
-
-end 
 
 function compute_interpolant( self, spline, gtau, derivs_xmin, derivs_xmax )
 
@@ -190,49 +187,49 @@ ubound( array :: OffsetArray, dim ) = axes(array)[dim].indices[end]
 
 function build_system( self, matrix )
 
-    derivs = OffsetArry{Float64}(undef, 0:degree/2, 1:degree+1)
+    derivs = OffsetArray{Float64}(undef, 0:degree/2, 1:degree+1)
 
     x = self.bspl.xmin
     eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
 
     h = [self.dx^i for i=1:derivs[end]]
     for j = lbound(derivs,2):ubound(derivs,2)
-        derivs[1:,j] = derivs[1:,j] * h[1:]
+        derivs[1:end,j] = derivs[1:end,j] * h[1:end]
     end
 
     for i = 1:nbc_xmin
         order = nbc_xmin-i+self.odd
-        for j = 1, degree
-           set_element( matrix, i, j, derivs(order,j) )
+        for j = 1:self.degree
+           set_element( matrix, i, j, derivs[order,j] )
         end
     end
 
-    for i = nbc_xmin+1, nbasis-nbc_xmax
-       x = self.tau[i-nbc_xmin]
-       bspl.eval_basis( x, values, jmin )
-       for s = 1:degree+1
-         j = mod( jmin-self.offset+s-2, nbasis ) + 1
-         set_element( matrix, i, j, values[s] )
-       end
+    for i = nbc_xmin+1:nbasis-nbc_xmax
+        x = self.tau[i-nbc_xmin]
+        bspl.eval_basis( x, values, jmin )
+        for s = 1:degree+1
+          j = mod( jmin-self.offset+s-2, nbasis ) + 1
+          set_element( matrix, i, j, values[s] )
+        end
     end
 
     x = self.bspl.xmax
     bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
 
-    h = [(self%dx**i, i=1, ubound(derivs,1))]
-    for j = lbound(derivs,2), ubound(derivs,2)
-       derivs(1:,j) = derivs(1:,j) * h(1:)
+    h = [self.dx^i for i=1:ubound(derivs,1)]
+    for j = lbound(derivs,2):ubound(derivs,2)
+        derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
     end
 
-    for i = nbasis-nbc_xmax+1, nbasis
-       order = i-(nbasis-nbc_xmax+1)+self%odd
-       j0 = nbasis-degree
-       d0 = 1
-       for s = 1:degree
-          j = j0 + s
-          d = d0 + s
-          matrix.set_element( i, j, derivs(order,d) )
-       end
+    for i = nbasis-nbc_xmax+1:nbasis
+        order = i-(nbasis-nbc_xmax+1)+self%odd
+        j0 = nbasis-degree
+        d0 = 1
+        for s = 1:degree
+           j = j0 + s
+           d = d0 + s
+           matrix.set_element( i, j, derivs[order,d] )
+        end
     end
 
 end 
@@ -244,6 +241,7 @@ function test_spline_1d()
     for degree = 1:9 # Cycle over spline degree
 
         bspline = Spline1D( ncells, degree, -2π, 2π  )
+        interpolator = InterpolatorSpline1D( bspline )
 
     end
 

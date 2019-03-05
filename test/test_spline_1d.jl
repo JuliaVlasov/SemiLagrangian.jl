@@ -31,16 +31,16 @@ function get_icell_and_offset( self, x, icell, x_offset )
  
     if (x == self.xmin) 
         icell = 1          
-        x_offset = 0.0_wp
+        x_offset = 0.0
     elseif (x == self.xmax) 
         icell = self.ncells
         x_offset = 1.0
     else
-        x_offset = (x-self.xmin) * self%inv_dx  ! 0 <= x_offset <= num_cells
-        icell    = int( x_offset )
-        x_offset = x_offset - real( icell, wp ) ! 0 <= x_offset < 1
+        x_offset = (x-self.xmin) * self.inv_dx  
+        icell    = trunc( Int64, x_offset )
+        x_offset = x_offset - icell
         icell    = icell + 1
-    end if
+    end
 
     if (icell == self.ncells+1 && x_offset == 0.0)
        icell    = self.ncells
@@ -119,54 +119,6 @@ function eval_basis_and_n_derivs( self, x, n, derivs, jmin )
 
 end 
 
-function build_system( self, matrix )
-
-    derivs = OffsetArray{Float64}(undef, 0:self.degree÷2, 1:self.degree+1)
-
-    x = self.bspl.xmin
-    eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
-
-    h = [self.dx^i for i=1:derivs[end]]
-    for j = lbound(derivs,2):ubound(derivs,2)
-        derivs[1:end,j] = derivs[1:end,j] * h[1:end]
-    end
-
-    for i = 1:nbc_xmin
-        order = nbc_xmin-i+self.odd
-        for j = 1:self.degree
-           set_element( matrix, i, j, derivs[order,j] )
-        end
-    end
-
-    for i = nbc_xmin+1:nbasis-nbc_xmax
-        x = self.tau[i-nbc_xmin]
-        bspl.eval_basis( x, values, jmin )
-        for s = 1:degree+1
-          j = mod( jmin-self.offset+s-2, nbasis ) + 1
-          set_element( matrix, i, j, values[s] )
-        end
-    end
-
-    x = self.bspl.xmax
-    bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
-
-    h = [self.dx^i for i=1:ubound(derivs,1)]
-    for j = lbound(derivs,2):ubound(derivs,2)
-        derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
-    end
-
-    for i = nbasis-nbc_xmax+1:nbasis
-        order = i-(nbasis-nbc_xmax+1)+self.odd
-        j0 = nbasis-degree
-        d0 = 1
-        for s = 1:degree
-           j = j0 + s
-           d = d0 + s
-           set_element!( matrix, i, j, derivs[order,d] )
-        end
-    end
-
-end 
 
 function factorize!( self )
 
@@ -191,15 +143,11 @@ mutable struct Spline1D
     step   :: Float64
     bcoef  :: OffsetArray{Float64,1,Array{Float64,1}}
 
-    function Spline1D( n :: Int64, p :: Int64, xmin, xmax  )
+    function Spline1D( ncells :: Int64, degree :: Int64, start, stop  )
       
-        degree   = p
-        ncells   = n
         nbasis   = ncells+degree
-        start    = xmin
-        stop     = xmax
-        step     = (xmax-xmin) / ncells
-        bcoef    = OffsetArray{Float64}(undef, 1:n+p)
+        step     = (stop-start) / ncells
+        bcoef    = OffsetArray{Float64}(undef, 1:ncells+degree)
 
         new( degree, ncells, nbasis, start, stop, step, bcoef)
 
@@ -241,14 +189,14 @@ mutable struct InterpolatorSpline1D
 
     bspl     :: Spline1D
     tau      :: Vector{Float64}
-    matrix   :: Array{Float64, 2}
+    matrix   :: BandedMatrix
 
     function InterpolatorSpline1D( bspl :: Spline1D )
 
         nbc_xmin = bspl.degree ÷ 2
         nbc_xmax = bspl.degree ÷ 2
 
-        ntau = bspl.nbasis - bspl.degree
+        @show ntau = bspl.nbasis - nbc_xmin - nbc_xmax
 
         tau = zeros(Float64, ntau)
 
@@ -256,39 +204,77 @@ mutable struct InterpolatorSpline1D
 
         r = 2 - bspl.degree
         s = - nbc_xmin
-        iknots[r:s] .= [i for i=r-s-1:-1]
+        iknots[r:s] .= collect(r-s-1:-1)
 
         r = - nbc_xmin + 1
         s = - nbc_xmin + 1 + bspl.ncells
-        iknots[r:s] .= [i for i=0:bspl.ncells]
+        iknots[r:s] .= collect(0:bspl.ncells)
 
         r = - nbc_xmin + 1 + bspl.ncells + 1
         s = ntau
-        iknots[r:s] .= [i for i=bspl.ncells+1:bspl.ncells+1+s-r]
+        iknots[r:s] .= collect(bspl.ncells+1:bspl.ncells+1+s-r)
 
-        # Compute interpolation points using Greville-style averaging
         for i = 1:ntau
             isum = sum( iknots[i+1-bspl.degree:i] )
-            if isum % degree == 0
-                tau[i] = bspl.xmin + isum / bspl.degree * dx
-            else
-                tau[i] = bspl.xmin + isum / bspl.degree  * dx
-            end
+            tau[i] = bspl.start + isum / bspl.degree * bspl.step
         end
 
         if isodd(bspl.degree)
-            tau[1]    = bspl.xmin
-            tau[ntau] = bspl.xmax
+            tau[1]    = bspl.start
+            tau[ntau] = bspl.stop
         end
 
-        ku = max( (degree+1)÷2, degree-1 )
-        kl = max( (degree+1)÷2, degree-1 )
+        ku = max( (bspl.degree+1)÷2, bspl.degree-1 )
+        kl = max( (bspl.degree+1)÷2, bspl.degree-1 )
 
-        self.matrix = BandedMatrix( nbasis, kl, ku )
+        matrix = BandedMatrix( bspl.nbasis, kl, ku )
 
-        build_system( self, self.matrix )
+        derivs = OffsetArray{Float64}(undef, 0:bspl.degree÷2, 1:bspl.degree+1)
 
-        factorize!(self.matrix)
+        x = bspl.start
+        eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
+
+        h = [bspl.step^i for i=1:derivs[end]]
+        for j = lbound(derivs,2):ubound(derivs,2)
+            derivs[1:end,j] = derivs[1:end,j] * h[1:end]
+        end
+
+        for i = 1:nbc_xmin
+            order = nbc_xmin - i + (self.degree & 1)
+            for j = 1:bspl.degree
+               set_element( matrix, i, j, derivs[order,j] )
+            end
+        end
+
+        for i = nbc_xmin+1:nbasis-nbc_xmax
+            x = self.tau[i-nbc_xmin]
+            bspl.eval_basis( x, values, jmin )
+            for s = 1:degree+1
+              j = mod( jmin-self.offset+s-2, nbasis ) + 1
+              set_element( matrix, i, j, values[s] )
+            end
+        end
+
+        x = bspl.stop
+        eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
+
+        h = [self.step^i for i=1:ubound(derivs,1)]
+        for j = lbound(derivs,2):ubound(derivs,2)
+            derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
+        end
+
+        for i = nbasis-nbc_xmax+1:nbasis
+            order = i-(nbasis-nbc_xmax+1)+ (bspl.degree & 1)
+            j0 = nbasis-degree
+            d0 = 1
+            for s = 1:degree
+               j = j0 + s
+               d = d0 + s
+               set_element!( matrix, i, j, derivs[order,d] )
+            end
+        end
+
+        factorize!(matrix)
 
         new( bspl, tau, matrix )
 

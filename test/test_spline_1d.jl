@@ -27,6 +27,147 @@ function set_element!( self, i, j, a_ij )
 
 end
 
+function get_icell_and_offset( self, x, icell, x_offset )
+ 
+    if (x == self.xmin) 
+        icell = 1          
+        x_offset = 0.0_wp
+    elseif (x == self.xmax) 
+        icell = self.ncells
+        x_offset = 1.0
+    else
+        x_offset = (x-self.xmin) * self%inv_dx  ! 0 <= x_offset <= num_cells
+        icell    = int( x_offset )
+        x_offset = x_offset - real( icell, wp ) ! 0 <= x_offset < 1
+        icell    = icell + 1
+    end if
+
+    if (icell == self.ncells+1 && x_offset == 0.0)
+       icell    = self.ncells
+       x_offset = 1.0
+    end
+
+end 
+
+function eval_basis_and_n_derivs( self, x, n, derivs, jmin )
+
+    ndu = OffsetArray( undef, 0:self%degree, 0:self%degree)
+    a   = OffsetArray( undef, 0:1          , 0:self%degree)
+
+    get_icell_and_offset( self, x, icell, x_offset )
+
+    jmin = icell
+
+    ndu[0,0] = 1.0
+    for j = 1:self.degree
+       j_real = Float64(j)
+       xx     = -x_offset
+       saved  = 0.0
+       for r = 0:j-1
+          xx       = xx + 1.0
+          temp     = ndu[r,j-1] * inv[j]
+          ndu[r,j] = saved + xx * temp
+          saved    = (j_real - xx) * temp
+       end
+       ndu[j,j] = saved
+    end
+
+    derivs[0,:] = ndu[:,spline_degree]
+
+    for r = 0:deg
+       s1 = 0
+       s2 = 1
+       a[0,0] = 1.0
+       for k = 1:n
+          d  = 0.0
+          rk = r-k
+          pk = deg-k
+          if (r >= k)
+             a[s2,0] = a[s1,0] * inv[pk+1]
+             d = a[s2,0] * ndu[rk,pk]
+          end
+          if (rk > -1)
+             j1 = 1
+          else
+             j1 = -rk
+          end
+          if (r-1 <= pk)
+             j2 = k-1
+          else
+             j2 = deg-r
+          end
+          for j = j1:j2
+             a[s2,j] = (a[s1,j] - a[s1,j-1]) * inv[pk+1]
+             d = d + a[s2,j] * ndu[rk+j,pk]
+          end
+          if (r <= pk)
+             a[s2,k] = - a[s1,k-1] * inv[pk+1]
+             d = d + a[s2,k] * ndu[r,pk]
+          end
+          derivs[k,r] = d
+          j  = s1
+          s1 = s2
+          s2 = j
+       end
+    end
+
+    d = deg * self.inv_dx
+    for k = 1:n
+       derivs[k,:] = derivs[k,:] * d
+       d = d * (deg-k) * self.inv_dx
+    end
+
+end 
+
+function build_system( self, matrix )
+
+    derivs = OffsetArray{Float64}(undef, 0:self.degree÷2, 1:self.degree+1)
+
+    x = self.bspl.xmin
+    eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
+
+    h = [self.dx^i for i=1:derivs[end]]
+    for j = lbound(derivs,2):ubound(derivs,2)
+        derivs[1:end,j] = derivs[1:end,j] * h[1:end]
+    end
+
+    for i = 1:nbc_xmin
+        order = nbc_xmin-i+self.odd
+        for j = 1:self.degree
+           set_element( matrix, i, j, derivs[order,j] )
+        end
+    end
+
+    for i = nbc_xmin+1:nbasis-nbc_xmax
+        x = self.tau[i-nbc_xmin]
+        bspl.eval_basis( x, values, jmin )
+        for s = 1:degree+1
+          j = mod( jmin-self.offset+s-2, nbasis ) + 1
+          set_element( matrix, i, j, values[s] )
+        end
+    end
+
+    x = self.bspl.xmax
+    bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
+
+    h = [self.dx^i for i=1:ubound(derivs,1)]
+    for j = lbound(derivs,2):ubound(derivs,2)
+        derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
+    end
+
+    for i = nbasis-nbc_xmax+1:nbasis
+        order = i-(nbasis-nbc_xmax+1)+self.odd
+        j0 = nbasis-degree
+        d0 = 1
+        for s = 1:degree
+           j = j0 + s
+           d = d0 + s
+           set_element!( matrix, i, j, derivs[order,d] )
+        end
+    end
+
+end 
+
 function factorize!( self )
 
      m = 2*kl+ku+1
@@ -106,7 +247,6 @@ mutable struct InterpolatorSpline1D
 
         nbc_xmin = bspl.degree ÷ 2
         nbc_xmax = bspl.degree ÷ 2
-        odd      = bspl.degree & 1
 
         ntau = bspl.nbasis - bspl.degree
 
@@ -136,7 +276,7 @@ mutable struct InterpolatorSpline1D
             end
         end
 
-        if Bool(odd)
+        if isodd(bspl.degree)
             tau[1]    = bspl.xmin
             tau[ntau] = bspl.xmax
         end
@@ -144,7 +284,7 @@ mutable struct InterpolatorSpline1D
         ku = max( (degree+1)÷2, degree-1 )
         kl = max( (degree+1)÷2, degree-1 )
 
-        spline_matrix_new( self.matrix, nbasis, kl, ku )
+        self.matrix = BandedMatrix( nbasis, kl, ku )
 
         build_system( self, self.matrix )
 
@@ -185,54 +325,6 @@ lbound( array :: OffsetArray, dim ) = axes(array)[dim].indices[1]
 
 ubound( array :: OffsetArray, dim ) = axes(array)[dim].indices[end]
 
-function build_system( self, matrix )
-
-    derivs = OffsetArray{Float64}(undef, 0:degree/2, 1:degree+1)
-
-    x = self.bspl.xmin
-    eval_basis_and_n_derivs( x, nbc_xmin, derivs, jmin )
-
-    h = [self.dx^i for i=1:derivs[end]]
-    for j = lbound(derivs,2):ubound(derivs,2)
-        derivs[1:end,j] = derivs[1:end,j] * h[1:end]
-    end
-
-    for i = 1:nbc_xmin
-        order = nbc_xmin-i+self.odd
-        for j = 1:self.degree
-           set_element( matrix, i, j, derivs[order,j] )
-        end
-    end
-
-    for i = nbc_xmin+1:nbasis-nbc_xmax
-        x = self.tau[i-nbc_xmin]
-        bspl.eval_basis( x, values, jmin )
-        for s = 1:degree+1
-          j = mod( jmin-self.offset+s-2, nbasis ) + 1
-          set_element( matrix, i, j, values[s] )
-        end
-    end
-
-    x = self.bspl.xmax
-    bspl.eval_basis_and_n_derivs( x, nbc_xmax, derivs, jmin )
-
-    h = [self.dx^i for i=1:ubound(derivs,1)]
-    for j = lbound(derivs,2):ubound(derivs,2)
-        derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
-    end
-
-    for i = nbasis-nbc_xmax+1:nbasis
-        order = i-(nbasis-nbc_xmax+1)+self%odd
-        j0 = nbasis-degree
-        d0 = 1
-        for s = 1:degree
-           j = j0 + s
-           d = d0 + s
-           matrix.set_element( i, j, derivs[order,d] )
-        end
-    end
-
-end 
 
 function test_spline_1d()
     

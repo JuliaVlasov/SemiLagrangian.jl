@@ -29,19 +29,18 @@ end
 
 function factorize!( matrix )
 
-     m = 2*matrix.kl + matrix.ku + 1
-     matrix.ipiv = gbtrf!( matrix.kl, matrix.ku, m, matrix.q )
+     matrix.q, matrix.ipiv = gbtrf!( matrix.kl, matrix.ku, 
+         matrix.n, matrix.q )
 
 end
 
 function solve!( matrix, b )
 
-    m = 2 * matrix.kl + matrix.ku + 1
-    gbtrs!( 'N', matrix.kl, matrix.ku, m, matrix.q, matrix.ipiv, b )
+    gbtrs!( 'N', matrix.kl, matrix.ku, matrix.n, matrix.q, matrix.ipiv, b )
 
 end 
 
-@testset "BandedMatrix solver" begin
+@testset "Banded Matrix solver" begin
 
     n, kl, ku = 9, 2, 3
 
@@ -49,26 +48,35 @@ end
 
     for i in 1:n
 
+        set_element!(matrix, i, min(i+3,n), 4.)
+        set_element!(matrix, i, min(i+2,n), 3.)
+        set_element!(matrix, i, min(i+1,n), 2.)
         set_element!(matrix, i, max(i-2,1), 3.)
         set_element!(matrix, i, max(i-1,1), 2.)
         set_element!(matrix, i, i, 1.)
-        set_element!(matrix, i, min(i+1,n), 2.)
-        set_element!(matrix, i, min(i+2,n), 3.)
-        set_element!(matrix, i, min(i+3,n), 4.)
 
     end
     
-    m = 2 * matrix.kl + matrix.ku + 1
-    b = ones(Float64, (m,3))
-    b[1:end,2] .= [1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]
-    b[1:end,3] .= 1.0:1.0:8.0
-    println(b)
 
-    #solve!( matrix, b )
-    AB, ipiv = gbtrf!( matrix.kl, matrix.ku, m, matrix.q )
-    gbtrs!( 'N', matrix.kl, matrix.ku, m, AB, matrix.ipiv, b )
+    factorize!( matrix )
 
-    println(b)
+    b = ones(Float64, (n,3))
+    b[1:end,2] .= [1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0]
+    b[1:end,3] .= 1.0:1.0:9.0
+
+    solve!( matrix, b )
+
+    bexact = [ 0.629   1.149   4.713 ;  
+              -0.025   1.870  -0.726 ; 
+               0.523   0.615   2.946 ; 
+              -0.286  -1.434  -2.774 ; 
+              -0.104  -0.524  -1.067 ; 
+              -0.118  -0.591  -0.970 ; 
+               0.220  -0.896   2.027 ;  
+              -0.079   1.604  -0.340 ;  
+               0.496   0.480   3.599 ]
+
+    @test isapprox(sum(abs.(b.-bexact))/3n, 0.0, atol=1e-3)
 
 end
 
@@ -148,9 +156,7 @@ function eval_basis_and_n_derivs!( derivs, bs :: Spline1D,
        ndu[j,j] = saved
     end
 
-    for i in 0:bs.degree
-        derivs[0,i] = ndu[i,bs.degree]
-    end
+    derivs[0,1:bs.degree+1] .= ndu[0:bs.degree,bs.degree]
 
     for r = 0:bs.degree
        s1 = 0
@@ -182,7 +188,7 @@ function eval_basis_and_n_derivs!( derivs, bs :: Spline1D,
              a[s2,k] = - a[s1,k-1] / (pk+1)
              d = d + a[s2,k] * ndu[r,pk]
           end
-          derivs[k,r] = d
+          derivs[k,r+1] = d
           j  = s1
           s1 = s2
           s2 = j
@@ -191,42 +197,36 @@ function eval_basis_and_n_derivs!( derivs, bs :: Spline1D,
 
     d = bs.degree / bs.step
     for k = 1:n
-       derivs[k,:] = derivs[k,:] * d
-       d = d * (deg-k) / bs.step
+       derivs[k,:] .= derivs[k,:] .* d
+       d = d * (bs.degree-k) / bs.step
     end
 
 end 
 
 
+"""
+Evaluate value at x of all basis functions with support in local cell
+values[j] = B_j(x) for jmin <= j <= jmin+degree
 
+"""
+function eval_basis!( self, x, values )
 
-function eval( spline :: Spline1D, x :: Float64 )
-
-    values = zeros(Float64, spline.degree+1)
-
-    offset = (x - spline.start) / spline.step  
-    cell   = trunc( Int64, offset )
-    offset = offset - cell
-    cell   = min( cell+1, spline.stop)
-
-    jmin = icell
+    jmin, offset = get_cell_and_offset( self, x )
 
     values[1] = 1.0
-    for j = 1:spline.degree
+    for j = 1:self.degree
         xx     = -offset
         saved  = 0.0
-        for r = 1:j
-            xx        = xx + 1.0
-            temp      = values[r] / j
-            values[r] = saved + xx * temp
-            saved     = (j - 1 - xx) * temp
-         end
-         values[j] = saved
-      end
+        for r = 0:j-1
+            xx          = xx + 1.0
+            temp        = values[r+1] / j
+            values[r+1] = saved + xx * temp
+            saved       = (j - xx) * temp
+        end
+        values[j+1] = saved
+    end
 
-    jmax = jmin + spline.degree
-
-    spline.bcoef[jmin:jmax] .* values
+    jmin
 
 end 
 
@@ -240,7 +240,8 @@ mutable struct InterpolatorSpline1D
 
         ntau = bspl.nbasis - bspl.degree÷2 - bspl.degree÷2
 
-        tau = zeros(Float64, ntau)
+        tau    = zeros(Float64, ntau)
+        values = zeros(Float64, bspl.degree+1)
 
         iknots = OffsetArray{Float64}(undef, 2-bspl.degree:ntau)
 
@@ -271,45 +272,46 @@ mutable struct InterpolatorSpline1D
 
         matrix = BandedMatrix( bspl.nbasis, kl, ku )
 
-        derivs = OffsetArray{Float64}(undef, 0:bspl.degree÷2, 1:bspl.degree+1)
+        derivs = OffsetArray{Float64}(undef, 
+                                  0:bspl.degree÷2, 1:bspl.degree+1)
 
         x = bspl.start
         jmin = eval_basis_and_n_derivs!( derivs, bspl, x, bspl.degree÷2 )
 
-        h = [bspl.step^i for i=1:derivs[end]]
+        h = [bspl.step^i for i=1:ubound(derivs,1)]
         for j = lbound(derivs,2):ubound(derivs,2)
             derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
         end
 
         for i = 1:bspl.degree÷2
-            order = bspl.degree÷2 - i + (self.degree & 1)
+            order = bspl.degree÷2 - i + (bspl.degree & 1)
             for j = 1:bspl.degree
-               set_element( matrix, i, j, derivs[order,j] )
+               set_element!( matrix, i, j, derivs[order,j] )
             end
         end
 
-        for i = bspl.degree÷2+1:nbasis-bspl.degree÷2
-            x = self.tau[i-bspl.degree÷2]26
-            bspl.eval_basis( x, values, jmin )
-            for s = 1:degree+1
-              j = mod( jmin-self.offset+s-2, nbasis ) + 1
-              set_element( matrix, i, j, values[s] )
+        for i = bspl.degree÷2+1:bspl.nbasis-bspl.degree÷2
+            x = tau[i-bspl.degree÷2]
+            jmin  = eval_basis!( bspl, x, values )
+            for s = 1:bspl.degree+1
+              j = mod( jmin+s-2, bspl.nbasis ) + 1
+              set_element!( matrix, i, j, values[s] )
             end
         end
 
         x = bspl.stop
         jmin = eval_basis_and_n_derivs!( derivs, bspl, x, bspl.degree÷2 )
 
-        h = [self.step^i for i=1:ubound(derivs,1)]
+        h = [bspl.step^i for i=1:ubound(derivs,1)]
         for j = lbound(derivs,2):ubound(derivs,2)
             derivs[1:end,j] .= derivs[1:end,j] .* h[1:end]
         end
 
-        for i = nbasis-bspl.degree÷2+1:nbasis
-            order = i-(nbasis-bspl.degree÷2+1)+ (bspl.degree & 1)
-            j0 = nbasis-degree
+        for i = bspl.nbasis-bspl.degree÷2+1:bspl.nbasis
+            order = i-(bspl.nbasis-bspl.degree÷2+1) + (bspl.degree & 1)
+            j0 = bspl.nbasis-bspl.degree
             d0 = 1
-            for s = 1:degree
+            for s = 1:bspl.degree
                j = j0 + s
                d = d0 + s
                set_element!( matrix, i, j, derivs[order,d] )

@@ -102,18 +102,29 @@ mutable struct InterpolatorSpline1D
 
 end
 
-function compute_interpolant( self, gtau, derivs_xmin, derivs_xmax )
+function compute_interpolant!( self, gtau, derivs_xmin, derivs_xmax )
 
       degree = self.bspl.degree
       odd    = degree & 1
       dx     = self.bspl.step
-      bcoef[1:degree÷2] = [derivs_xmin[i]*dx^(i+odd-1) for i=degree÷2:-1:1]
 
-      bcoef[degree÷2+1:nbasis-degree÷2] .= gtau
+      for i = 1:degree÷2
+          j = degree÷2 + 1 - i
+          self.bspl.bcoef[i] = derivs_xmin[j]*dx^(j+odd-1) 
+          self.bspl.bcoef[end-i] = derivs_xmax[end-i]*dx^(i+odd-1)
+      end
 
-      bcoef[nbasis-degree÷2+1:nbasis] .= [derivs_xmax(i)*dx^(i+odd-1) for i=1:degree÷2]
+      bcoef(1:nbc_xmin) = [(derivs_xmin(i)*self%dx**(i+self%odd-1), i=nbc_xmin,1,-1)]
+      bcoef(nbasis-nbc_xmax+1:nbasis) = &
+                        [(derivs_xmax(i)*self%dx**(i+self%odd-1), i=1,nbc_xmax)]
 
-      solve!( matrix, bcoef(1:nbasis) )
+
+      for i in eachindex(gtau)
+          self.bspl.bcoef[i+degree÷2+1] = gtau[i]
+      end
+
+
+      solve!( matrix, bcoef)
 
 end 
 
@@ -139,6 +150,19 @@ end
         end
 
         gtau = map( f, obj.tau ) 
+
+        derivs_xmin = zeros(Float64, degree÷2)
+        s = Int64(iseven(degree))
+        for j = 1:degree÷2
+            derivs_xmin[j] = f( xmin; d=j-s )
+        end
+
+        derivs_xmax = zeros(Float64, degree÷2)
+        for j = 1:degree÷2
+            derivs_xmax[j] = f( xmax; d=j-s )
+        end
+
+        compute_interpolant!( obj, gtau, derivs_xmin, derivs_xmax )
 
     end 
 

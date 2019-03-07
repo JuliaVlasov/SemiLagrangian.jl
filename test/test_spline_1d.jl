@@ -56,14 +56,13 @@ end
 """
 Evaluate value at x of all basis functions with support in local cell
 values[j] = B_j(x) for jmin <= j <= jmin+degree
-
 """
-function eval_basis!( self, x, values )
+function eval_basis!( spl, x, values )
 
-    jmin, offset = get_cell_and_offset( self, x )
+    jmin, offset = get_cell_and_offset( spl, x )
 
     values[1] = 1.0
-    for j = 1:self.degree
+    for j = 1:spl.degree
         xx     = -offset
         saved  = 0.0
         for r = 0:j-1
@@ -78,6 +77,16 @@ function eval_basis!( self, x, values )
     jmin
 
 end 
+
+function eval_basis( spl, x)
+
+    values = zeros(Float64, spl.degree+1)
+
+    jmin = eval_basis!(spl, x , values)
+
+    jmin, values
+
+end
 
 """
 Evaluate derivative at x of all basis functions with support in local cell
@@ -196,7 +205,7 @@ function eval( spl, x )
 
     jmax = jmin + spl.degree
 
-    bcoef[jmin:jmax] * values
+    dot(spl.bcoef[jmin:jmax],values)
 
 end
 
@@ -211,18 +220,10 @@ function eval_deriv( spl, x )
 
     jmax = jmin + spl.degree
 
-    spl.bcoef[jmin:jmax] * derivs
+    dot(spl.bcoef[jmin:jmax],derivs)
 
 end 
 
-function f( x, d ) 
-
-    k = 2π
-    d = diff
-
-    k^d * cos( 0.5*π*d + k*x )
-
-end
 
 @testset " Spline 1D uniform " begin 
     
@@ -230,9 +231,20 @@ end
 
     for degree = 1:9 # Cycle over spline degree
 
-        bspline = Spline1D( ncells, degree, -2π, 2π  )
+        bspline = Spline1D( ncells, degree, 0.0, 1.0  )
 
-        @test true
+        @test bspline.degree == degree
+        @test bspline.ncells == ncells
+        @test bspline.nbasis == ncells + degree
+        @test eval(bspline, 0.0) == 0.0
+
+        #for x in range(0.0, stop=1.0, length=ncells+1)
+
+        #    println( eval(bspline, x) )
+
+        #end
+
+
 
     end
 

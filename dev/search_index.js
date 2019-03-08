@@ -89,6 +89,38 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "advections/#SemiLagrangian.eval_basis!-Tuple{Any,Any,Any}",
+    "page": "Advections",
+    "title": "SemiLagrangian.eval_basis!",
+    "category": "method",
+    "text": "Evaluate value at x of all basis functions with support in local cell values[j] = B_j(x) for jmin <= j <= jmin+degree\n\n\n\n\n\n"
+},
+
+{
+    "location": "advections/#SemiLagrangian.eval_deriv!-Tuple{Any,Any,Any}",
+    "page": "Advections",
+    "title": "SemiLagrangian.eval_deriv!",
+    "category": "method",
+    "text": "Evaluate derivative at x of all basis functions with support in local cell derivs[j] = B_j\'(x) for jmin <= j <= jmin+degree\n\n\n\n\n\n"
+},
+
+{
+    "location": "advections/#SemiLagrangian.eval_deriv-Tuple{Any,Any}",
+    "page": "Advections",
+    "title": "SemiLagrangian.eval_deriv",
+    "category": "method",
+    "text": "Evaluate derivative of 1D spline at location x: y=S\'(x)\n\n\n\n\n\n"
+},
+
+{
+    "location": "advections/#SemiLagrangian.eval_value-Tuple{Any,Any}",
+    "page": "Advections",
+    "title": "SemiLagrangian.eval_value",
+    "category": "method",
+    "text": "Evaluate value of 1D spline at location x: y=S(x)\n\n\n\n\n\n"
+},
+
+{
     "location": "advections/#SemiLagrangian.interpolate!-Tuple{SemiLagrangian.SplineNN,Array{Float64,2},Float64,Float64}",
     "page": "Advections",
     "title": "SemiLagrangian.interpolate!",

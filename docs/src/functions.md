@@ -1,10 +1,7 @@
-# Advection functions
-
-```@meta
-CurrentModule = SemiLagrangian
-```
+# Functions and types
 
 ```@autodocs
 Modules = [SemiLagrangian]
 Order   = [:type,:function]
 ```
+

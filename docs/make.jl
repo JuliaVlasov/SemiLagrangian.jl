@@ -8,8 +8,7 @@ makedocs(modules=[SemiLagrangian],
          format = :html,
          sitename = "SemiLagrangian.jl",
          pages = ["Documentation" => "index.md",
-                  "Advections"    => "advections.md",
-                  "BSL"           => "bsl.md",
+                  "Functions"     => "functions.md",
                   "Contents"      => "contents.md"])
 
 deploydocs(

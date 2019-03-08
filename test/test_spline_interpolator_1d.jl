@@ -80,8 +80,7 @@ end
         c
     end
 
-    xmin, xmax = -1.0, 1.0
-    ncells = 23
+    xmin, xmax, ncells = -1.0, 1.0, 23
 
     for degree = 1:9
 
@@ -145,7 +144,4 @@ end
     end 
 
 
-end
-
-@testset " Spline Interpolator 1D polynomial " begin
 end

@@ -23,7 +23,7 @@ Return the value at x in [0,1[ of the B-spline with
 integer nodes of degree p with support starting at j.
 Implemented recursively using the de Boor's recursion formula
 
-Derived from a Python program written by 
+Original python program was written by 
 Eric Sonnendrucker (Max-Planck-Institut fur Plasmaphysik - Garching))
 
 """
@@ -44,6 +44,34 @@ function bspline(p::Int, j::Int, x::Float64)
 end
 
 
+mutable struct BsplinePeriodic <: AbstractAdvection
+
+    p         :: Int
+    mesh1     :: UniformMesh
+    mesh2     :: UniformMesh
+    f̂         :: Array{ComplexF64, 2}
+    modes     :: Array{ComplexF64, 1}
+    eig_bspl  :: Array{ComplexF64, 1}
+    eig_alpha :: Array{ComplexF64, 1}
+
+    function BsplinePeriodic( p, mesh1, mesh2 )
+
+        n = size(f)[1]
+        modes = 2π * (0:n-1) / n
+        eig_bspl = zeros(Complex{Float64},n)
+        eig_bspl .= bspline(p, -div(p+1,2), 0.0)
+        for j in 1:div(p+1,2)-1
+           eig_bspl .+= (bspline(p, j-div(p+1,2), 0.0)
+              * 2 * cos.(j * modes))
+        end
+    
+        new( p, mesh1, mesh2, f̂, modes, eig_bspl, eig_alpha)
+
+    end
+
+end
+
+
 """
     interpolate( p, f, delta, alpha)
 
@@ -60,14 +88,6 @@ function interpolate(p     :: Int,
                      delta :: Float64, 
                      alpha :: Float64)
 
-   n = size(f)[1]
-   modes = 2π * (0:n-1) / n
-   eig_bspl = zeros(Complex{Float64},n)
-   eig_bspl .= bspline(p, -div(p+1,2), 0.0)
-   for j in 1:div(p+1,2)-1
-      eig_bspl .+= (bspline(p, j-div(p+1,2), 0.0)
-         * 2 * cos.(j * modes))
-   end
    ishift = floor(- alpha / delta)
    beta = - ishift - alpha / delta
    eigalpha = zeros(Complex{Float64},n)

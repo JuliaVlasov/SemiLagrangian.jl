@@ -4,3 +4,5 @@ Manifest.toml
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
+.idea
+SemiLagrangian.jl.iml

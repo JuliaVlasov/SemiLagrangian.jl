@@ -1,5 +1,7 @@
 module SemiLagrangian
 
+abstract type AbstractAdvection end
+
 include("bspline_periodic.jl")
 include("cubic_splines_periodic.jl")
 include("splinenn.jl")

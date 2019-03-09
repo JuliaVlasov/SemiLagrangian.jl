@@ -12,24 +12,32 @@ Domain is periodic and `p` is the spline degree
 mutable struct Advection{T} 
     
     p        :: Int64 
-    mesh     :: UniformMesh
+    adv      :: AbstractAdvection
     
-    function Advection{T}( p         :: Int, 
-                           mesh      :: UniformMesh,
-                           dimension :: Int, 
-                           LBC       :: Symbol,
-                           RBC       :: Symbol) where {T<: Union{Float64, ComplexF64}}
+    function Advection( p    :: Int, 
+                        mesh :: UniformMesh,
+                        LBC  :: Symbol,
+                        RBC  :: Symbol)
 
-        new(p, mesh, dimension, LBC, RBC)
+        if ( (LBC,RBC) == (:periodic, :periodic))
+
+            adv = BsplinePeriodic(p, mesh)
+
+        elseif ( (LBC, RBC) == (:Hermite, :Hermite))
+
+            adv = BsplineHermite(p, mesh)
+
+        else
+
+            throw( " This advection is not yet implemented ")
+
+        end 
+
+
+        new(adv, LBC, RBC)
 
     end
 
-    
-end
-
-function (adv :: Advection)(f    :: Array{ComplexF64,2}, 
-                            v    :: Vector{Float64}, 
-                            dt   :: Float64)
     
 end
 

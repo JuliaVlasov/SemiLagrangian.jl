@@ -3,7 +3,7 @@ import VlasovBase:UniformMesh
 
 export Bspline
 
-struct Bspline
+struct Bspline <: InterpolationType
 
     p :: Int
 
@@ -55,7 +55,6 @@ mutable struct BsplinePeriodic <: AbstractAdvection
     function BsplinePeriodic( bspl :: Bspline, 
                               mesh :: UniformMesh )
 
-
         n = mesh.length
         modes = 2π .* (0:n-1) ./ n
         eig_bspl = zeros(Complex{Float64},n)
@@ -94,7 +93,7 @@ function interpolate( f     :: Vector{Float64},
    fill!(bspl.eigalpha, 0.0)
    for j in -div(p-1,2):div(p+1,2)
       bspl.eigalpha .+= (bspline(p, j-div(p+1,2), beta)
-         .* exp.((ishift + j) * 1im .* bsp.modes))
+         .* exp.((ishift + j) * 1im .* bspl.modes))
    end
 
    real(ifft(fft(f) .* bspl.eigalpha ./ bspl.eig_bspl))

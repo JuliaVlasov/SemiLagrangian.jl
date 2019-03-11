@@ -16,11 +16,12 @@ import SemiLagrangian: BsplinePeriodic, interpolate!
   bspl1 = BsplinePeriodic( Bspline(p), mesh1 )
   bspl2 = BsplinePeriodic( Bspline(p), mesh2 )
 
-  f  = zeros(Complex{Float64},(n1,n2))
-  f .= exp.(-mesh1.points.^2) * transpose(exp.(-mesh2.points.^2))
-  fᵗ = zeros(Complex{Float64},(n2,n1))
+  f  = zeros(ComplexF64,(n1,n2))
+  f .= exp.(-mesh1.points.^2) .* transpose(exp.(-mesh2.points.^2))
+  f0 = copy(f)
+  fᵗ = zeros(ComplexF64,(n2,n1))
 
-  dt = 1.0
+  dt = 0.5
 
   v1 = ones(Float64, n1)
   v2 = ones(Float64, n2)
@@ -53,8 +54,7 @@ import SemiLagrangian: BsplinePeriodic, interpolate!
 
   transpose!(f,  fᵗ)
 
-  f0 =  exp.(-mesh1.points.^2) * transpose(exp.(-mesh2.points.^2))
-  println( maximum( abs.(real(f) -f0)))
+  @show maximum( abs.(real(f) .- f0))
 
   @test real(f) ≈ f0 atol=1e-6
 

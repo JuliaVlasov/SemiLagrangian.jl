@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Functions",
     "title": "SemiLagrangian.Advection",
     "category": "type",
-    "text": "Advection(interpolation_type, mesh, LBC, RBC)\n\nBackward semi-lagrangian advection using spline interpolation. Domain is periodic and p is the spline degree\n\n\n\n\n\n"
+    "text": "Advection(interpolation_type, mesh, LBC, RBC)\n\nCreates a 1d backward semi-lagrangian advection.\n\ninterp   : Interpolation type (Bspline(degree), Lagrange(degree))\nmesh     : UniformMesh along advection direction\nLBC, RBC : Boundary conditions type (:periodic, :Hermite)\n\n\n\n\n\n"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Functions",
     "title": "SemiLagrangian.Advection",
     "category": "method",
-    "text": "advection! = Advection(interpolation_type, mesh, LBC, RBC)\n\nAdvection of a 2d function f discretized on a 2d mesh along the input axis at velocity v\n\n\n\n\n\n"
+    "text": "advection!(f, v, dt)\n\nAdvection of a 2d function f discretized on a 2d mesh along the input axis at velocity v. This function is created from Advector callable type.\n\n```julia mesh = UniformMesh( -π, π, 64 ) advection! = Advection( Bspline(3), mesh, 1, :periodic, :periodic )\n\nf = exp.( - mesh.points .^ 2 )\n\ndt = 0.5 v  = ones( Float64, mesh.length)\n\nadvection!( f, v, dt )\n\n\n\n\n\n"
 },
 
 {

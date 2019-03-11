@@ -55,7 +55,7 @@ function rotation_2d(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
     for n=1:nt
 
         advection_x2!( f, v2, tan(dt/2))
-	    advection_x1!( f, v1, sin(dt))
+        advection_x1!( f, v1, sin(dt))
         advection_x2!( f, v2, tan(dt/2))
 
     end
@@ -66,15 +66,14 @@ end
 
 @testset "Rotation test with Bspline advections " begin
 
-    tf, nt = 200π, 1000
+    tf, nt = 2π, 100
     
     mesh1 = UniformMesh(-π, π, 128; endpoint=false)
     mesh2 = UniformMesh(-π, π, 256; endpoint=false)
     
-    fc = rotation_2d(tf, nt, mesh1, mesh2)
+    @time fc = rotation_2d(tf, nt, mesh1, mesh2)
     fe = exact(tf, mesh1, mesh2)
 
-    println(error1(fc, fe))
-    @test rotation_2d(tf, nt, mesh1, mesh2) ≈ fe atol = 1e-10
+    @test error1(fc, fe) <  1e-5
 
 end

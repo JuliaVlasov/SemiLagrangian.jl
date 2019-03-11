@@ -15,19 +15,19 @@ mutable struct Advection
     adv    :: AbstractAdvection
     dims   :: Int
     
-    function Advection( p    :: Int, 
-                        mesh :: UniformMesh,
-                        dims :: Int,
-                        LBC  :: Symbol,
-                        RBC  :: Symbol)
+    function Advection( interp :: InterpolationType, 
+                        mesh   :: UniformMesh,
+                        dims   :: Int,
+                        LBC    :: Symbol,
+                        RBC    :: Symbol)
 
         if ( (LBC,RBC) == (:periodic, :periodic))
 
-            adv = BsplinePeriodic(p, mesh)
+            adv = BsplinePeriodic(interp, mesh)
 
         elseif ( (LBC, RBC) == (:Hermite, :Hermite))
 
-            adv = BsplineHermite(p, mesh)
+            adv = BsplineHermite(interp, mesh)
 
         else
 
@@ -36,7 +36,7 @@ mutable struct Advection
         end 
 
 
-        new(adv, LBC, RBC)
+        new( interp, adv, dims )
 
     end
 
@@ -50,23 +50,22 @@ Advection of a 2d function `f` discretized on a 2d `mesh`
 along the input axis at velocity `v`
 
 """
-function (adv :: Advection)(f    :: Array{Float64,2}, 
-                            v    :: Vector{Float64}, 
-                            dt   :: Float64)
+function (self :: Advection)(f    :: Array{Float64,2}, 
+                             v    :: Vector{Float64}, 
+                             dt   :: Float64)
 
-
-    p    = adv.interp.p
-    dims = adv.dims
+    p    = self.interp.p
+    dims = self.dims
 
     if (dims == 1)
-        @inbounds for j in eachindex(v)
+        for j in eachindex(v)
             alpha = v[j] * dt
-            f[:,j] .= interpolate(f[:,j], adv.interp, alpha)
+            f[:,j] .= interpolate(f[:,j], self.adv, alpha)
         end
     else
-        @inbounds for i in eachindex(v)
+        for i in eachindex(v)
             alpha = v[i] * dt
-            f[i,:] .= interpolate(f[i,:], adv.interp, alpha)
+            f[i,:] .= interpolate(f[i,:], self.adv, alpha)
         end
     end
 

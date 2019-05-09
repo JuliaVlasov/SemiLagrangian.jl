@@ -5,3 +5,5 @@
 [![codecov](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl)
 
 Advection implementation using Semi-Lagrangian numerical method
+
+**NOTE: This package is still very much under development and is not fully tested.**

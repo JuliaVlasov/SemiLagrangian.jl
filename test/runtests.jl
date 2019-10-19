@@ -1,6 +1,5 @@
 using Test
 using LinearAlgebra
-using VlasovBase
 using SemiLagrangian
 
 include("test_bspline_periodic.jl")

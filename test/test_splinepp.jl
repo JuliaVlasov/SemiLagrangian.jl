@@ -1,5 +1,4 @@
 import LinearAlgebra: transpose
-import VlasovBase: Geometry
 import SemiLagrangian: SplinePP, interpolate!
 
 @testset "Spline periodic periodic" begin

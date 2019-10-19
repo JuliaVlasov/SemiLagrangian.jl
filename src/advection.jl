@@ -1,5 +1,3 @@
-import VlasovBase: UniformMesh
-
 export Advection
 
 """
@@ -88,7 +86,6 @@ function (self :: Advection)(f  :: Array{Float64,2},
     end
 
 end
-import VlasovBase: UniformMesh
 
 """
     PeriodicAdvection(p, mesh)

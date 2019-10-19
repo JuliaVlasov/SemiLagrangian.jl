@@ -3,6 +3,8 @@ module SemiLagrangian
 abstract type InterpolationType end
 abstract type AbstractAdvection end
 
+include("mesh.jl")
+include("geometry.jl")
 include("bspline_periodic.jl")
 include("splinenn.jl")
 include("splinepp.jl")

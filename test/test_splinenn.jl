@@ -1,5 +1,4 @@
 import LinearAlgebra: transpose
-import VlasovBase: Geometry
 import SemiLagrangian: SplineNN, interpolate!
 
 @testset "Natural Spline" begin

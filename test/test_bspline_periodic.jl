@@ -1,4 +1,3 @@
-import VlasovBase: UniformMesh
 import SemiLagrangian: BsplinePeriodic, interpolate!
 
 @testset "Bspline periodic advections" begin

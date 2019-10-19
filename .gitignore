@@ -1,9 +1,8 @@
+fortran/build
 docs/build
 *.swp
 Manifest.toml
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-.idea
-SemiLagrangian.jl.iml
-test/.ipynb_checkpoints/NonPeriodicAdvection-checkpoint.ipynb
+*/.ipynb_checkpoints/

@@ -1,26 +1,30 @@
-IF(DEFINED CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}
-    CACHE STRING "Choose the type of build, options are: Debug Release.")
-ELSE()
-  SET(CMAKE_BUILD_TYPE Debug
-    CACHE STRING "Choose the type of build, options are: Debug Release.")
-ENDIF()
+SET(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
+INCLUDE_DIRECTORIES(${MPI_Fortran_MOD_DIR})
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
-PROJECT(SeLaLib)
+INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/include)
 
-ENABLE_LANGUAGE(Fortran)
-INCLUDE(ExternalProject)
+ADD_LIBRARY(selalib_vlasov4d STATIC sll_vlasov4d_spectral.F90
+                                    sll_vlasov4d_spectral_charge.F90
+                                    sll_vlasov4d_maxwell.F90
+                                    sll_vlasov4d_poisson.F90
+                                    sll_vlasov4d_polar.F90
+                                    sll_vlasov4d_base.F90
+                                    init_functions.F90)
 
-EXTERNALPROJECT_ADD( selalib
-      PREFIX selalib
-      GIT_TAG develop
-      GIT_REPOSITORY git@gitlab.inria.fr:mingus/selalib.git
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DHDF5_PARALLEL_ENABLED=ON -DBUILD_TESTING=OFF)
+ADD_EXECUTABLE(vp4d_remapper        vp4d_remapper.F90)
+ADD_EXECUTABLE(vm4d_remapper        vm4d_remapper.F90)
+ADD_EXECUTABLE(vm4d_spectral        vm4d_spectral.F90)
+ADD_EXECUTABLE(vp4d_polar           vp4d_polar.F90)
+ADD_EXECUTABLE(vm4d_spectral_charge vm4d_spectral_charge.F90)
+ADD_EXECUTABLE(vm2d_spectral_charge vm2d_spectral_charge.F90)
+ADD_EXECUTABLE(vp4d_sequential      vp4d_sequential.F90)
 
-FIND_PACKAGE(MPI  REQUIRED Fortran)
-FIND_PACKAGE(HDF5 REQUIRED Fortran)
-
-INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/include/selalib)
-ADD_SUBDIRECTORY(src)
+TARGET_LINK_LIBRARIES(vp4d_remapper        selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vm4d_remapper        selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vm4d_spectral        selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vp4d_polar           selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vm4d_spectral_charge selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vm2d_spectral_charge selalib_vlasov4d)
+TARGET_LINK_LIBRARIES(vp4d_sequential      selalib_vlasov4d)
+   
+FILE(COPY ${CMAKE_SOURCE_DIR}/runs DESTINATION ${CMAKE_BINARY_DIR})

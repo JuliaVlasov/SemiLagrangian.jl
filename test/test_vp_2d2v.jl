@@ -22,9 +22,9 @@ end
 
 function advection_x1(interp_x1, f, dt)
 
-    for l=1,ncells[4], k=1,ncells[3]
+    for l=1:ncells[4], k=1:ncells[3]
         alpha = (xmin[3] +(k-1)*delta[3])*dt
-        for j=1,ncells[2]
+        for j=1:ncells[2]
             interpolate!(interp_x1, f[:,j,k,l], alpha)
         end
     end
@@ -33,9 +33,9 @@ end
 
 function advection_x2(interp_x2, f, dt)
 
-    for l=1,ncells[4]
+    for l=1:ncells[4]
         alpha = (xmin[4] +(l-1)*delta[4])*dt
-        for k=1,ncells[3], i=1,ncells[1]
+        for k=1:ncells[3], i=1:ncells[1]
             interpolate!(interp_x2, f[i,:,k,l], alpha)
         end
     end
@@ -44,7 +44,7 @@ end
 
 function advection_x3(interp_x3, ft, dt)
 
-  for l=1,ncells[4], j=1,ncells[2], i=1,ncells[1]
+  for l=1:ncells[4], j=1:ncells[2], i=1:ncells[1]
      alpha = ex[i,j] * dt
      interpolate!(interp_x3, ft[:,l,i,j], alpha)
   end

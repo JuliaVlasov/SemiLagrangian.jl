@@ -21,9 +21,21 @@ end
 Return the value at x in [0,1[ of the B-spline with
 integer nodes of degree p with support starting at j.
 Implemented recursively using the de Boor's recursion formula
+using the [De Boor's Algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
 
-Original python program written by 
-Eric Sonnendrucker (Max-Planck-Institut fur Plasmaphysik - Garching (Germany))
+```math
+B_{i,0}(x) := \\left\\{
+\\begin{matrix}
+1 & \\mathrm{if}  \\quad t_i ≤ x < t_{i+1} \\\\
+0 & \\mathrm{otherwise}
+\\end{matrix}
+\\right.
+```
+
+```math
+B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
++ \\frac{t_{i+p+1} - x}{t_{i+p+1} - t_{i+1}} B_{i+1,p-1}(x).
+```
 
 """
 function bspline(p::Int, j::Int, x::Float64)
@@ -40,9 +52,29 @@ function bspline(p::Int, j::Int, x::Float64)
    end
    ( w       * bspline(p - 1, j    , x) +
     (1 - w1) * bspline(p - 1, j + 1, x))
+
 end
 
+"""
+    BsplinePeriodic( bspl, mesh )
 
+Type to perform 1d advection on periodic domain. Bspline interpolation
+is used combined with fft transform to solve the system. Bspline degree
+must be odd.
+
+```@example
+
+p = 5
+nx = 128
+
+x1min, x1max = -10, 10
+
+mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
+
+bspl = BsplinePeriodic( Bspline(p), mesh1 )
+```
+
+"""
 mutable struct BsplinePeriodic <: AbstractAdvection
 
     p        :: Int
@@ -71,19 +103,16 @@ mutable struct BsplinePeriodic <: AbstractAdvection
 end
 
 """
-    interpolate( f, bspl, alpha)
+    interpolate!( f, bspl, alpha)
 
 Compute the interpolating spline of degree p of odd
 degree of a 1D function f on a periodic uniform mesh, at
 all points x-alpha. f type is Vector{Float64}.
 
-Derived from a Python program written by 
-Eric Sonnendrucker (Max-Planck-Institut fur Plasmaphysik - Garching)
-
 """
-function interpolate( f     :: Vector{Float64}, 
-                      bspl  :: BsplinePeriodic, 
-                      alpha :: Float64)
+function interpolate!( f     :: Vector{Float64}, 
+                       bspl  :: BsplinePeriodic, 
+                       alpha :: Float64)
 
    p     = bspl.p
    delta = bspl.mesh.step
@@ -95,7 +124,7 @@ function interpolate( f     :: Vector{Float64},
          .* exp.((ishift + j) * 1im .* bspl.modes))
    end
 
-   real(ifft(fft(f) .* bspl.eigalpha ./ bspl.eig_bspl))
+   f .= real(ifft(fft(f) .* bspl.eigalpha ./ bspl.eig_bspl))
 
 end
 

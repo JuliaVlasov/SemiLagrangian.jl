@@ -37,6 +37,8 @@ function get_cell_and_offset( bspl, x )
 end 
 
 """
+    eval_basis!( spl, x, values )
+
 Evaluate value at x of all basis functions with support in local cell
 values[j] = B_j(x) for jmin <= j <= jmin+degree
 """
@@ -72,6 +74,8 @@ function eval_basis( spl, x)
 end
 
 """
+    eval_deriv!( derivs, spl, x )
+
 Evaluate derivative at x of all basis functions with support in local cell
 derivs[j] = B_j'(x) for jmin <= j <= jmin+degree
 """
@@ -111,7 +115,7 @@ function eval_basis_and_n_derivs!( derivs, spl :: Spline1D,
                                    x :: Float64, n :: Int64 )
 
     ndu = OffsetArray{Float64}( undef, 0:spl.degree, 0:spl.degree)
-    a   = OffsetArray{Float64}( undef, 0:1        , 0:spl.degree)
+    a   = OffsetArray{Float64}( undef, 0:1         , 0:spl.degree)
 
     icell, offset = get_cell_and_offset( spl, x )
 
@@ -178,6 +182,8 @@ function eval_basis_and_n_derivs!( derivs, spl :: Spline1D,
 end 
 
 """
+    eval_value( spl, x )
+
 Evaluate value of 1D spline at location x: y=S(x)
 """
 function eval_value( spl, x )
@@ -193,6 +199,8 @@ function eval_value( spl, x )
 end
 
 """
+    eval_deriv( spl, x )
+
 Evaluate derivative of 1D spline at location x: y=S'(x)
 """
 function eval_deriv( spl, x )

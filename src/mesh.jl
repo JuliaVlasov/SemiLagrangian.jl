@@ -1,3 +1,5 @@
+import Statistics: mean
+
 export UniformMesh
 
 """
@@ -40,5 +42,53 @@ struct UniformMesh
        new( start, stop, length, step, points, width)
 
    end
+
+end
+
+export compute_charge!
+
+"""
+    compute_rho!( rho, mesh_v, fvx)
+ 
+ Compute charge density
+
+ ρ(x,t) = ∫ f(x,v,t) dv
+
+"""
+function compute_charge!(rho   :: Vector{Float64}, 
+                         meshv :: UniformMesh,
+                         fvx   :: Array{Float64,2})
+
+    dv   =  meshv.step
+    rho .=  dv .* vec(sum(fvx, dims=1))
+    rho .-= mean(rho)
+
+end
+ 
+
+export compute_e!
+
+"""
+
+    compute_e!( e, mesh, ρ)
+
+    ∇.e = - ρ
+
+Inplace computation of electric field. Fields e and rho are
+already allocated.
+
+"""
+function compute_e!(e     :: Vector{Float64},
+		    meshx :: UniformMesh,
+		    rho   :: Vector{Float64})
+
+   nx = meshx.length
+   k = 2π / (meshx.stop - meshx.start)
+   modes  = zeros(Float64, nx)
+   modes .= k * vcat(0:nx÷2-1,-nx÷2:-1)
+   modes[1] = 1.0
+   ρ̂  = fft(rho)
+   ρ̂ .= -1im * ρ̂ ./ modes
+   e  = ifft!(ρ̂) 
 
 end

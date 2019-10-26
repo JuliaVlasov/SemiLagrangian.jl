@@ -44,18 +44,22 @@ function rotation_2d(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
 
     f  = zeros(Float64,(n1,n2))
     f .= exact(0.0, mesh1, mesh2)
+    ft = zeros(Float64,(n2,n1))
+    transpose!(ft, f)
     
-    advection_x1! = Advection( Bspline(5), mesh1, 1, :periodic, :periodic )
-    advection_x2! = Advection( Bspline(5), mesh2, 2, :periodic, :periodic )
+    advection_x1! = PeriodicAdvection( mesh1, Bspline(5) )
+    advection_x2! = PeriodicAdvection( mesh2, Bspline(5) )
 
     v1 = - collect(mesh2.points)
     v2 = + collect(mesh1.points)
     
     for n=1:nt
 
-        advection_x2!( f, v2, tan(dt/2))
+        advection_x2!( ft,  v2, tan(dt/2))
+        transpose!(f, ft)
         advection_x1!( f, v1, sin(dt))
-        advection_x2!( f, v2, tan(dt/2))
+        transpose!(ft, f)
+        advection_x2!( ft, v2, tan(dt/2))
 
     end
 

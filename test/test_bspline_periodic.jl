@@ -1,4 +1,4 @@
-import SemiLagrangian: BsplinePeriodic, interpolate!
+using SemiLagrangian
 
 @testset "Bspline periodic advections" begin
   
@@ -12,8 +12,8 @@ import SemiLagrangian: BsplinePeriodic, interpolate!
   mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
   mesh2 = UniformMesh(x2min, x2max, n2; endpoint=false)
 
-  bspl1 = BsplinePeriodic( Bspline(p), mesh1 )
-  bspl2 = BsplinePeriodic( Bspline(p), mesh2 )
+  bspl1! = PeriodicAdvection( mesh1, Bspline(p) )
+  bspl2! = PeriodicAdvection( mesh2, Bspline(p) )
 
   f  = zeros(ComplexF64,(n1,n2))
   f .= exp.(-mesh1.points.^2) .* transpose(exp.(-mesh2.points.^2))
@@ -25,31 +25,19 @@ import SemiLagrangian: BsplinePeriodic, interpolate!
   v1 = ones(Float64, n1)
   v2 = ones(Float64, n2)
 
-  for j = 1:n2
-      alpha = dt * v2[j]
-      interpolate!(f[:,j],  bspl1,  alpha)
-  end
+  bspl1!( f, v2, dt)
 
   transpose!(fᵗ, f)
 
-  for j = 1:n1
-      alpha = dt * v1[j]
-      interpolate!(fᵗ[:,j],  bspl2,  alpha)
-  end
+  bspl2!(fᵗ, v1, dt)
 
   transpose!(f,  fᵗ)
 
-  for j = 1:n2
-      alpha = - dt * v2[j]
-      interpolate!(f[:,j],  bspl1,  alpha)
-  end
+  bspl1!(f,  -v2,  dt)
 
   transpose!(fᵗ, f)
 
-  for j = 1:n1
-      alpha = - dt * v1[j]
-      interpolate!(fᵗ[:,j],  bspl2,  alpha)
-  end
+  bspl2!(fᵗ, -v1,  dt)
 
   transpose!(f,  fᵗ)
 

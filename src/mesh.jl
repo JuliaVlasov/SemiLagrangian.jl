@@ -85,10 +85,8 @@ function compute_e!(e     :: Vector{Float64},
    nx = meshx.length
    k = 2π / (meshx.stop - meshx.start)
    modes  = zeros(Float64, nx)
-   modes .= k * vcat(0:nx÷2-1,-nx÷2:-1)
+   modes .= k .* vcat(0:nx÷2-1,-nx÷2:-1)
    modes[1] = 1.0
-   ρ̂  = fft(rho)
-   ρ̂ .= -1im * ρ̂ ./ modes
-   e  = ifft!(ρ̂) 
+   e .= real(ifft(-1im .* fft(rho) ./ modes))
 
 end

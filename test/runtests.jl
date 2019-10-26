@@ -2,7 +2,8 @@ using Test
 using LinearAlgebra
 using SemiLagrangian
 
-include("test_vp_2d2v.jl")
+include("test_vp_1d1v.jl")
+#include("test_vp_2d2v.jl")
 include("test_bspline_periodic.jl")
 include("test_banded_matrix.jl")
 include("test_spline_1d.jl")

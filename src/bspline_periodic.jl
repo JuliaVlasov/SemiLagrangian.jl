@@ -8,8 +8,8 @@ struct Bspline <: InterpolationType
 
     function Bspline( p :: Int )
 	
-	    @assert (p & 1 == 1)
-	    new( p )
+	@assert (p & 1 == 1)
+	new( p )
 
     end
 end
@@ -55,8 +55,10 @@ function bspline(p::Int, j::Int, x::Float64)
 
 end
 
+export PeriodicAdvection
+
 """
-    BsplinePeriodic( bspl, mesh )
+    advection! = PeriodicAdvection( mesh, bspl )
 
 Type to perform 1d advection on periodic domain. Bspline interpolation
 is used combined with fft transform to solve the system. Bspline degree
@@ -71,20 +73,24 @@ x1min, x1max = -10, 10
 
 mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
 
-bspl = BsplinePeriodic( Bspline(p), mesh1 )
+advection! = PeriodicAdvection( mesh1, Bspline(p) )
 ```
 
+advection! computes the interpolating spline of degree p of odd
+degree of first dimension of array f on a periodic uniform mesh, at
+all points x-alpha. f type is Array{Float64,2}.
+
 """
-mutable struct BsplinePeriodic <: AbstractAdvection
+mutable struct PeriodicAdvection <: AbstractAdvection
 
     p        :: Int
     mesh     :: UniformMesh
     modes    :: Vector{ComplexF64}
     eig_bspl :: Vector{ComplexF64}
     eigalpha :: Vector{ComplexF64}
+    ft       :: Vector{ComplexF64}
 
-    function BsplinePeriodic( bspl :: Bspline, 
-                              mesh :: UniformMesh )
+    function PeriodicAdvection( mesh :: UniformMesh, bspl :: Bspline)
 
         n = mesh.length
         modes = 2π .* (0:n-1) ./ n
@@ -95,68 +101,69 @@ mutable struct BsplinePeriodic <: AbstractAdvection
            eig_bspl .+= (bspline(bspl.p, j-div(bspl.p+1,2), 0.0)
               .* 2 .* cos.(j * modes))
         end
+
+        ft = zeros(ComplexF64, n)
     
-        new( bspl.p, mesh, modes, eig_bspl, eigalpha)
+        new( bspl.p, mesh, modes, eig_bspl, eigalpha, ft)
 
     end
 
 end
 
-"""
-    interpolate!( f, bspl, alpha)
+function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2}, 
+                                      v  :: Vector{Float64},
+                                      dt :: Float64)
 
-Compute the interpolating spline of degree p of odd
-degree of a 1D function f on a periodic uniform mesh, at
-all points x-alpha. f type is Vector{Float64}.
+   p     = adv.p
+   delta = adv.mesh.step
+   for i in 1:length(v)
+       alpha = v[i] * dt
+       ishift = floor(- alpha / delta)
+       beta = - ishift - alpha / delta
+       fill!(adv.eigalpha, 0.0)
+       for j in -div(p-1,2):div(p+1,2)
+          adv.eigalpha .+= (bspline(p, j-div(p+1,2), beta)
+             .* exp.((ishift + j) * 1im .* adv.modes))
+       end
 
-"""
-function interpolate!( f     :: Vector{Float64}, 
-                       bspl  :: BsplinePeriodic, 
-                       alpha :: Float64)
-
-   p     = bspl.p
-   delta = bspl.mesh.step
-   ishift = floor(- alpha / delta)
-   beta = - ishift - alpha / delta
-   fill!(bspl.eigalpha, 0.0)
-   for j in -div(p-1,2):div(p+1,2)
-      bspl.eigalpha .+= (bspline(p, j-div(p+1,2), beta)
-         .* exp.((ishift + j) * 1im .* bspl.modes))
+       adv.ft .= fft(f[:,i])
+       adv.ft .*= adv.eigalpha ./ adv.eig_bspl
+       f[:,i] .= real(ifft(adv.ft))
    end
-
-   f .= real(ifft(fft(f) .* bspl.eigalpha ./ bspl.eig_bspl))
-
-end
-
-"""
-    interpolate!( f, bspl, alpha)
-
-Compute the interpolating spline of degree p of odd
-degree of a 1D function f on a periodic uniform mesh, at
-all points x-alpha
-
-Array representing f is complex and modified inplace.
-
-"""
-function interpolate!( f     :: Vector{Complex{Float64}}, 
-                       bspl  :: BsplinePeriodic, 
-                       alpha :: Float64)
-
-   p = bspl.p
-   n = bspl.mesh.length
-   delta = bspl.mesh.step
-   ishift = floor(- alpha / delta)
-   beta = - ishift - alpha / delta
-   fill!(bspl.eigalpha,0.0)
-   for j in -div(p-1,2):div(p+1,2)
-      bspl.eigalpha .+= (bspline(p, j-div(p+1,2), beta)
-         .* exp.((ishift + j) * 1im .* bspl.modes))
-   end
-
-   fft!(f)
-   f .* bspl.eigalpha ./ bspl.eig_bspl
-   ifft!(f)
 
 end
 
 
+function (adv :: PeriodicAdvection)(f    :: Array{Complex{Float64},2}, 
+                                    v    :: Vector{Float64}, 
+                                    dt   :: Float64)
+    
+   nx = adv.mesh.length
+   nv = length(v)
+   dx = adv.mesh.step
+    
+   fft!(f,1)
+    
+   @inbounds for j in 1:nv
+      alpha = dt * v[j] / dx
+      # compute eigenvalues of cubic splines evaluated at displaced points
+      ishift = floor(-alpha)
+      beta   = -ishift - alpha
+      fill!(adv.eigalpha,0.0im)
+      for i in -div(adv.p-1,2):div(adv.p+1,2)
+         adv.eigalpha .+= (bspline(adv.p, i-div(adv.p+1,2), beta) 
+                        .* exp.((ishift+i) * 1im .* adv.modes))
+      end
+          
+      # compute interpolating spline using fft and 
+      # properties of circulant matrices
+      
+      @inbounds for i in eachindex(adv.eigalpha)
+         f[i,j] *= adv.eigalpha[i] / adv.eig_bspl[i]
+      end
+        
+   end
+        
+   ifft!(f,1)
+    
+end

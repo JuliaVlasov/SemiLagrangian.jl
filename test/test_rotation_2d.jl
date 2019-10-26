@@ -18,7 +18,7 @@ function exact(tf, mesh1::UniformMesh, mesh2::UniformMesh)
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x - sin(tf) * y
         yn = sin(tf) * x + cos(tf) * y
-        f[i,j] = exp(-(xn-1)*(xn-1)/0.1)*exp(-(yn-1)*(yn-1)/0.1)
+        f[i,j] = exp(-(xn-1)*(xn-1)/0.1)*exp(-(yn)*(yn)/0.1)
     end
 
     f
@@ -55,11 +55,11 @@ function rotation_2d(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
     
     for n=1:nt
 
-        advection_x2!( ft,  v2, tan(dt/2))
-        transpose!(f, ft)
-        advection_x1!( f, v1, sin(dt))
+        advection_x1!( f,  v1, tan(dt/2))
         transpose!(ft, f)
-        advection_x2!( ft, v2, tan(dt/2))
+        advection_x2!( ft, v2, sin(dt))
+        transpose!(f, ft)
+        advection_x1!( f, v1, tan(dt/2))
 
     end
 
@@ -71,7 +71,7 @@ end
 
     tf, nt = 2π, 100
     
-    mesh1 = UniformMesh(-π, π, 128; endpoint=false)
+    mesh1 = UniformMesh(-π, π, 256; endpoint=false)
     mesh2 = UniformMesh(-π, π, 256; endpoint=false)
     
     @time fc = rotation_2d(tf, nt, mesh1, mesh2)

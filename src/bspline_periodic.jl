@@ -113,7 +113,6 @@ end
 function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2}, 
                                       v  :: Vector{Float64},
                                       dt :: Float64)
-
    p     = adv.p
    delta = adv.mesh.step
    for i in 1:length(v)
@@ -128,7 +127,8 @@ function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2},
 
        adv.ft .= fft(f[:,i])
        adv.ft .*= adv.eigalpha ./ adv.eig_bspl
-       f[:,i] .= real(ifft(adv.ft))
+       ifft!(adv.ft)
+       f[:,i] .= real(adv.ft)
    end
 
 end

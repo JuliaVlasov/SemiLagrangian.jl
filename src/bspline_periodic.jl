@@ -88,7 +88,6 @@ mutable struct PeriodicAdvection <: AbstractAdvection
     modes    :: Vector{ComplexF64}
     eig_bspl :: Vector{ComplexF64}
     eigalpha :: Vector{ComplexF64}
-    ft       :: Vector{ComplexF64}
 
     function PeriodicAdvection( mesh :: UniformMesh, bspl :: Bspline)
 
@@ -104,7 +103,7 @@ mutable struct PeriodicAdvection <: AbstractAdvection
 
         ft = zeros(ComplexF64, n)
     
-        new( bspl.p, mesh, modes, eig_bspl, eigalpha, ft)
+        new( bspl.p, mesh, modes, eig_bspl, eigalpha)
 
     end
 
@@ -113,34 +112,41 @@ end
 function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2}, 
                                       v  :: Vector{Float64},
                                       dt :: Float64)
+   nv    = length(v)
    p     = adv.p
    delta = adv.mesh.step
-   for i in 1:length(v)
-       alpha = v[i] * dt
+
+   @assert size(f)[2] == nv
+
+   f̂ = fft(f, 1)
+
+   for j in 1:nv
+       alpha = v[j] * dt
        ishift = floor(- alpha / delta)
        beta = - ishift - alpha / delta
        fill!(adv.eigalpha, 0.0)
-       for j in -div(p-1,2):div(p+1,2)
-          adv.eigalpha .+= (bspline(p, j-div(p+1,2), beta)
-             .* exp.((ishift + j) * 1im .* adv.modes))
+       for i in -div(p-1,2):div(p+1,2)
+          adv.eigalpha .+= (bspline(p, i-div(p+1,2), beta)
+             .* exp.((ishift + i) * 1im .* adv.modes))
        end
 
-       adv.ft .= fft(f[:,i])
-       adv.ft .*= adv.eigalpha ./ adv.eig_bspl
-       ifft!(adv.ft)
-       f[:,i] .= real(adv.ft)
+       f̂[:,j] .*= adv.eigalpha ./ adv.eig_bspl
+
    end
+
+   f .= real(ifft(f̂, 1))
 
 end
 
 
-function (adv :: PeriodicAdvection)(f    :: Array{Complex{Float64},2}, 
+function (adv :: PeriodicAdvection)(f    :: Array{ComplexF64,2}, 
                                     v    :: Vector{Float64}, 
                                     dt   :: Float64)
     
-   nx = adv.mesh.length
    nv = length(v)
    dx = adv.mesh.step
+
+   @assert size(f)[2] == nv
     
    fft!(f,1)
     
@@ -158,9 +164,7 @@ function (adv :: PeriodicAdvection)(f    :: Array{Complex{Float64},2},
       # compute interpolating spline using fft and 
       # properties of circulant matrices
       
-      @inbounds for i in eachindex(adv.eigalpha)
-         f[i,j] *= adv.eigalpha[i] / adv.eig_bspl[i]
-      end
+      f[:,j] .*= adv.eigalpha ./ adv.eig_bspl
         
    end
         

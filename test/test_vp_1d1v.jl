@@ -24,7 +24,7 @@ fvx = zeros(Float64, (nv, nx))
 x = mesh_x.points
 v = mesh_v.points
 
-fxv = (1 .+ eps*cos.(kx .* x)) .* transpose(exp.(-.5*v.^2)) ./ sqrt(2π)
+fxv .= (1 .+ eps*cos.(kx .* x)) .* transpose(exp.(-.5*v.^2)) ./ sqrt(2π)
 
 transpose!(fvx, fxv)
 

@@ -6,11 +6,11 @@ eps    = 0.001
 kx     = 0.5
 degree = 5
 
-xmin, xmax, nx =  0., 2π/kx, 64
+xmin, xmax, nx =  0., 2π/kx, 32
 vmin, vmax, nv = -6., 6., 64
 
-mesh_x = UniformMesh( xmin, xmax, nx )
-mesh_v = UniformMesh( vmin, vmax, nv )
+mesh_x = UniformMesh( xmin, xmax, nx, endpoint=false )
+mesh_v = UniformMesh( vmin, vmax, nv, endpoint=false )
 
 advection_x! = PeriodicAdvection( mesh_x, Bspline(degree))
 advection_v! = PeriodicAdvection( mesh_v, Bspline(degree))

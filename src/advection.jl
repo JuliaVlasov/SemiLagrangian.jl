@@ -10,21 +10,19 @@ Creates a 1d backward semi-lagrangian advection.
 - `LBC, RBC` : Boundary conditions type (:periodic, :Hermite)
 
 """
-mutable struct Advection 
-    
-    mesh   :: UniformMesh 
-    interp :: InterpolationType 
-    adv    :: AbstractAdvection
-    
-    function Advection( mesh   :: UniformMesh,
-                        interp :: InterpolationType, 
-                        bc     :: Symbol )
+mutable struct Advection
 
-        new( interp, adv, dims )
+    mesh::UniformMesh
+    interp::InterpolationType
+    adv::AbstractAdvection
+
+    function Advection(mesh::UniformMesh, interp::InterpolationType, bc::Symbol)
+
+        new(interp, adv, dims)
 
     end
 
-    
+
 end
 
 """
@@ -46,24 +44,21 @@ v  = ones( Float64, mesh.length)
 advection!( f, v, dt )
 
 """
-function (self :: Advection)(f  :: Array{Float64,2}, 
-                             v  :: Vector{Float64}, 
-                             dt :: Float64)
+function (self::Advection)(f::Array{Float64,2}, v::Vector{Float64}, dt::Float64)
 
-    p    = self.interp.p
+    p = self.interp.p
     dims = self.dims
 
     if (dims == 1)
         for j in eachindex(v)
             alpha = v[j] * dt
-            f[:,j] .= interpolate(f[:,j], self.adv, alpha)
+            f[:, j] .= interpolate(f[:, j], self.adv, alpha)
         end
     else
         for i in eachindex(v)
             alpha = v[i] * dt
-            f[i,:] .= interpolate(f[i,:], self.adv, alpha)
+            f[i, :] .= interpolate(f[i, :], self.adv, alpha)
         end
     end
 
 end
-

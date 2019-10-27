@@ -4,12 +4,12 @@ export Bspline
 
 struct Bspline <: InterpolationType
 
-    p :: Int
+    p::Int
 
-    function Bspline( p :: Int )
-	
-	@assert (p & 1 == 1)
-	new( p )
+    function Bspline(p::Int)
+
+        @assert (p & 1 == 1)
+        new(p)
 
     end
 end
@@ -40,18 +40,17 @@ B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
 """
 function bspline(p::Int, j::Int, x::Float64)
 
-   if p == 0
-       if j == 0
-           return 1.0
-       else
-           return 0.0
-       end
-   else
-       w  :: Float64 = (x - j) / p
-       w1 :: Float64 = (x - j - 1) / p
-   end
-   ( w       * bspline(p - 1, j    , x) +
-    (1 - w1) * bspline(p - 1, j + 1, x))
+    if p == 0
+        if j == 0
+            return 1.0
+        else
+            return 0.0
+        end
+    else
+        w::Float64 = (x - j) / p
+        w1::Float64 = (x - j - 1) / p
+    end
+    (w * bspline(p - 1, j, x) + (1 - w1) * bspline(p - 1, j + 1, x))
 
 end
 
@@ -83,90 +82,94 @@ all points x-alpha. f type is Array{Float64,2}.
 """
 mutable struct PeriodicAdvection <: AbstractAdvection
 
-    p        :: Int
-    mesh     :: UniformMesh
-    modes    :: Vector{ComplexF64}
-    eig_bspl :: Vector{ComplexF64}
-    eigalpha :: Vector{ComplexF64}
+    p::Int
+    mesh::UniformMesh
+    modes::Vector{ComplexF64}
+    eig_bspl::Vector{ComplexF64}
+    eigalpha::Vector{ComplexF64}
 
-    function PeriodicAdvection( mesh :: UniformMesh, bspl :: Bspline)
+    function PeriodicAdvection(mesh::UniformMesh, bspl::Bspline)
 
         n = mesh.length
-        modes  = zeros(Float64, n)
+        modes = zeros(Float64, n)
         modes .= 2π .* (0:n-1) ./ n
-        eig_bspl = zeros(Complex{Float64},n)
-        eigalpha = zeros(Complex{Float64},n)
-        eig_bspl .= bspline(bspl.p, -div(bspl.p+1,2), 0.0)
-        for j in 1:div(bspl.p+1,2)-1
-           eig_bspl .+= (bspline(bspl.p, j-div(bspl.p+1,2), 0.0)
-              .* 2 .* cos.(j .* modes))
+        eig_bspl = zeros(Complex{Float64}, n)
+        eigalpha = zeros(Complex{Float64}, n)
+        eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), 0.0)
+        for j = 1:div(bspl.p + 1, 2)-1
+            eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0.0) .* 2 .*
+                          cos.(j .* modes))
         end
 
-        new( bspl.p, mesh, modes, eig_bspl, eigalpha)
+        new(bspl.p, mesh, modes, eig_bspl, eigalpha)
 
     end
 
 end
 
-function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2}, 
-                                      v  :: Vector{Float64},
-                                      dt :: Float64)
-   nv    = length(v)
-   p     = adv.p
-   delta = adv.mesh.step
+function (adv::PeriodicAdvection)(
+    f::Array{Float64,2},
+    v::Vector{Float64},
+    dt::Float64,
+)
+    nv = length(v)
+    p = adv.p
+    delta = adv.mesh.step
 
-   @assert size(f)[2] == nv
+    @assert size(f)[2] == nv
 
-   f̂ = fft(f, 1)
+    f̂ = fft(f, 1)
 
-   for j in 1:nv
-       alpha = v[j] * dt / delta
-       ishift = floor(-alpha)
-       beta = - ishift - alpha
-       fill!(adv.eigalpha, 0.0im)
-       for i in -div(p-1,2):div(p+1,2)
-          adv.eigalpha .+= (bspline(p, i-div(p+1,2), beta)
-             .* exp.((ishift + i) * 1im .* adv.modes))
-       end
+    for j = 1:nv
+        alpha = v[j] * dt / delta
+        ishift = floor(-alpha)
+        beta = -ishift - alpha
+        fill!(adv.eigalpha, 0.0im)
+        for i = -div(p - 1, 2):div(p + 1, 2)
+            adv.eigalpha .+= (bspline(p, i - div(p + 1, 2), beta) .*
+                              exp.((ishift + i) * 1im .* adv.modes))
+        end
 
-       f̂[:,j] .= f̂[:,j] .* adv.eigalpha ./ adv.eig_bspl
+        f̂[:, j] .= f̂[:, j] .* adv.eigalpha ./ adv.eig_bspl
 
-   end
+    end
 
-   f .= real(ifft(f̂, 1))
+    f .= real(ifft(f̂, 1))
 
 end
 
 
-function (adv :: PeriodicAdvection)(f    :: Array{ComplexF64,2}, 
-                                    v    :: Vector{Float64}, 
-                                    dt   :: Float64)
-    
-   nv = length(v)
-   dx = adv.mesh.step
+function (adv::PeriodicAdvection)(
+    f::Array{ComplexF64,2},
+    v::Vector{Float64},
+    dt::Float64,
+)
 
-   @assert size(f)[2] == nv
-    
-   fft!(f,1)
-    
-   @inbounds for j in 1:nv
-      alpha = dt * v[j] / dx
+    nv = length(v)
+    dx = adv.mesh.step
+
+    @assert size(f)[2] == nv
+
+    fft!(f, 1)
+
+    @inbounds for j = 1:nv
+        alpha = dt * v[j] / dx
       # compute eigenvalues of cubic splines evaluated at displaced points
-      ishift = floor(-alpha)
-      beta   = -ishift - alpha
-      fill!(adv.eigalpha,0.0im)
-      for i in -div(adv.p-1,2):div(adv.p+1,2)
-         adv.eigalpha .+= (bspline(adv.p, i-div(adv.p+1,2), beta) 
-                        .* exp.((ishift+i) * 1im .* adv.modes))
-      end
-          
-      # compute interpolating spline using fft and 
+        ishift = floor(-alpha)
+        beta = -ishift - alpha
+        fill!(adv.eigalpha, 0.0im)
+        for i = -div(adv.p - 1, 2):div(adv.p + 1, 2)
+            adv.eigalpha .+= (bspline(adv.p, i - div(adv.p + 1, 2), beta) .*
+                              exp.((ishift + i) * 1im .* adv.modes))
+        end
+
+      # compute interpolating spline using fft and
       # properties of circulant matrices
-      
-      f[:,j] .*= adv.eigalpha ./ adv.eig_bspl
-        
-   end
-        
-   ifft!(f,1)
-    
+
+        f[:, j] .*= adv.eigalpha ./ adv.eig_bspl
+
+    end
+
+    ifft!(f, 1)
+
 end

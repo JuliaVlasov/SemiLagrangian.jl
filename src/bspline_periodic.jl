@@ -47,8 +47,8 @@ function bspline(p::Int, j::Int, x::Float64)
            return 0.0
        end
    else
-       w = (x - j) / p
-       w1 = (x - j - 1) / p
+       w  :: Float64 = (x - j) / p
+       w1 :: Float64 = (x - j - 1) / p
    end
    ( w       * bspline(p - 1, j    , x) +
     (1 - w1) * bspline(p - 1, j + 1, x))
@@ -92,17 +92,16 @@ mutable struct PeriodicAdvection <: AbstractAdvection
     function PeriodicAdvection( mesh :: UniformMesh, bspl :: Bspline)
 
         n = mesh.length
-        modes = 2π .* (0:n-1) ./ n
+        modes  = zeros(Float64, n)
+        modes .= 2π .* (0:n-1) ./ n
         eig_bspl = zeros(Complex{Float64},n)
         eigalpha = zeros(Complex{Float64},n)
         eig_bspl .= bspline(bspl.p, -div(bspl.p+1,2), 0.0)
         for j in 1:div(bspl.p+1,2)-1
            eig_bspl .+= (bspline(bspl.p, j-div(bspl.p+1,2), 0.0)
-              .* 2 .* cos.(j * modes))
+              .* 2 .* cos.(j .* modes))
         end
 
-        ft = zeros(ComplexF64, n)
-    
         new( bspl.p, mesh, modes, eig_bspl, eigalpha)
 
     end
@@ -121,16 +120,16 @@ function ( adv :: PeriodicAdvection)( f  :: Array{Float64,2},
    f̂ = fft(f, 1)
 
    for j in 1:nv
-       alpha = v[j] * dt
-       ishift = floor(- alpha / delta)
-       beta = - ishift - alpha / delta
-       fill!(adv.eigalpha, 0.0)
+       alpha = v[j] * dt / delta
+       ishift = floor(-alpha)
+       beta = - ishift - alpha
+       fill!(adv.eigalpha, 0.0im)
        for i in -div(p-1,2):div(p+1,2)
           adv.eigalpha .+= (bspline(p, i-div(p+1,2), beta)
              .* exp.((ishift + i) * 1im .* adv.modes))
        end
 
-       f̂[:,j] .*= adv.eigalpha ./ adv.eig_bspl
+       f̂[:,j] .= f̂[:,j] .* adv.eigalpha ./ adv.eig_bspl
 
    end
 

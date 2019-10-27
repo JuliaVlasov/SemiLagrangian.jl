@@ -61,7 +61,7 @@ function compute_charge!(rho   :: Vector{Float64},
 
     dv   =  meshv.step
     rho .=  dv .* vec(sum(fvx, dims=1))
-    rho .-= mean(rho)
+    rho .= rho .- mean(rho)
 
 end
  

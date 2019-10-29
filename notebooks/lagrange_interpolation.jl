@@ -1,13 +1,15 @@
+# -*- coding: utf-8 -*-
 using Plots
 
-const n = 10
-const a = -10.0
-const b = 10.0
+n = 21
+a = -5.0
+b = 5.0
 
-f( x ) =  1. / (1 .+ x*x)
+f( x ) =  exp( - x^2 / 2)
 
 
 # +
+#xp = [0.5 * (a+b) + 0.5 * (b-a) * cos((2k-1)π/ 2n) for k in 1:n]
 xp = LinRange(a, b, n)
 yp = f.(xp) 
 
@@ -15,15 +17,15 @@ plot(xp, yp)
 # -
 
 function lagrange_interpolate( x, xp, yp )
-  P = 0.0
-  for k in eachindex(yp)
-    L = 1.0
-    for i in eachindex(xp) 
-        L = (i != k) &&  L * (x - xp[i])/(xp[k] - xp[i])
+    P = 0.0
+    for k in eachindex(yp)
+        L = 1.0
+        for i in eachindex(xp) 
+            if (i != k)  L = L * (x - xp[i])/(xp[k] - xp[i]) end
+        end
+        P = P + L * yp[k]
     end
-    P = P + L * yp[k]
-  end
-  P
+    P
 end
 
 function interpolation(xp, yp)
@@ -52,8 +54,9 @@ function interpolation(xp, yp)
     xs, ys
 end
 
-xs, ys = interpolation(xp, yp)
+xs, ys = interpolation(xp, yp);
 
 plot(xs, ys)
+scatter!( xp, yp)
 
 

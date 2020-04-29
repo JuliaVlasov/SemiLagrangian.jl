@@ -1,7 +1,7 @@
 using OffsetArrays
 
-lbound(array::OffsetArray, dim) = first(axes(array)[dim].indices)
-ubound(array::OffsetArray, dim) = last(axes(array)[dim].indices)
+lbound( array :: OffsetArray, dim ) = first(axes(array)[dim])
+ubound( array :: OffsetArray, dim ) = last(axes(array)[dim])
 
 export InterpolatorSpline1D
 

@@ -103,7 +103,7 @@ function lagr_4pt_vec(lag, fi, fp, p, index_shift)
 
     n = length(fi)
 
-    for i = max(2-index_shift,1):min(n-2-index_shift, n)
+    @simd for i = max(2-index_shift,1):min(n-2-index_shift, n)
       fp[i] = (lag.pp[1] * fi[i-1+index_shift] 
              + lag.pp[2] * fi[i+index_shift]   
              + lag.pp[3] * fi[i+1+index_shift] 
@@ -167,7 +167,7 @@ function lagr_6pt_vec(lag, fi, fp, p, index_shift)
 
     lagr_6pt_coeff!(lag.pp, p)
     n = length(fi)
-    for i=max(3-index_shift,1):min(n-3-index_shift, n)
+    @simd for i=max(3-index_shift,1):min(n-3-index_shift, n)
         fp[i] = ( lag.pp[1] * fi[i-2+index_shift]
                 + lag.pp[2] * fi[i-1+index_shift]
                 + lag.pp[3] * fi[i+index_shift]
@@ -240,7 +240,7 @@ function lagr_8pt_vec(lag, fi, fp, p, index_shift)
 
     lagr_8pt_coeff!(lag.pp, p)
     n = length(fi)
-    for i=max(4-index_shift,1):min(n-4-index_shift, n)
+    @simd for i=max(4-index_shift,1):min(n-4-index_shift, n)
         fp[i] = ( lag.pp[1] * fi(i-3+index_shift) 
                 + lag.pp[2] * fi(i-2+index_shift) 
                 + lag.pp[3] * fi(i-1+index_shift) 
@@ -299,7 +299,7 @@ function lagr_3pt_vec(lag, fi, fp, p)
 
     lagr_3pt_coeff!(lag.pp, p)
     n = length(fi)
-    for i=2:n-1
+    @simd for i=2:n-1
         fp[i] = lag.pp[1] * fi[i-1] + lag.pp[2] * fi[i] + lag.pp[3] * fi[i+1]
     end
 
@@ -363,7 +363,7 @@ function lagr_5pt_vec(lag, fi, fp, p)
 
     n = length(fi)
 
-    for i=3:n-2
+    @simd for i=3:n-2
         fp[i] = ( lag.pp[1] * fi[i-2]
                 + lag.pp[2] * fi[i-1]
                 + lag.pp[3] * fi[i]  
@@ -440,7 +440,7 @@ function lagr_7pt_vec(lag, fi, fp, p)
 
     n = length(fi)
 
-    for i=4:n-3
+    @simd for i=4:n-3
         fp[i] = ( lag.pp[1] * fi[i-3] 
                 + lag.pp[2] * fi[i-2] 
                 + lag.pp[3] * fi[i-1] 
@@ -522,7 +522,7 @@ function lagr_9pt_vec(lag, fi, fp, p)
 
     n = length(fi)
 
-    for i=5:n-4
+    @simd for i=5:n-4
         fp[i] = ( lag.pp[1] * fi[i-4]
                 + lag.pp[2] * fi[i-3]
                 + lag.pp[3] * fi[i-2]
@@ -614,7 +614,7 @@ function lagr_11pt_vec(lag, fi, fp, p)
 
     lagr_11pt_coeff!(lag.pp, p)
     n = length(fi)
-    for i=6:n-5
+    @simd for i=6:n-5
       fp[i] = ( lag.pp[1]  * fi[i-5] 
               + lag.pp[2]  * fi[i-4] 
               + lag.pp[3]  * fi[i-3] 

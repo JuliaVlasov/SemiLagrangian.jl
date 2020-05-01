@@ -1,5 +1,7 @@
 module SemiLagrangian
 
+import Base.Threads: @sync, @spawn, nthreads, threadid
+
 abstract type InterpolationType end
 abstract type AbstractAdvection end
 

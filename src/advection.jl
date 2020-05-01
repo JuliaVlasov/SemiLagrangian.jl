@@ -10,7 +10,7 @@ Creates a 1d backward semi-lagrangian advection.
 - `LBC, RBC` : Boundary conditions type (:periodic, :Hermite)
 
 """
-mutable struct Advection
+struct Advection
 
     mesh::UniformMesh
     interp::InterpolationType
@@ -48,16 +48,25 @@ function (self::Advection)(f::Array{Float64,2}, v::Vector{Float64}, dt::Float64)
 
     p = self.interp.p
     dims = self.dims
+    nx, nv = size(f)
 
-    if (dims == 1)
-        for j in eachindex(v)
-            alpha = v[j] * dt
-            f[:, j] .= interpolate(f[:, j], self.adv, alpha)
+    if dims == 1
+        @sync for jv in Iterators.partition(1:nv, nv÷nthreads())
+            @spawn begin
+                for j in jv
+                    alpha = v[j] * dt
+                    f[:, j] .= interpolate(f[:, j], self.adv, alpha)
+                end
+            end
         end
     else
-        for i in eachindex(v)
-            alpha = v[i] * dt
-            f[i, :] .= interpolate(f[i, :], self.adv, alpha)
+        @sync for ix in Iterators.partition(1:nx, nx÷nthreads())
+            @spawn begin
+                for i in eachindex(ix)
+                    alpha = v[i] * dt
+                    f[i, :] .= interpolate(f[i, :], self.adv, alpha)
+                end
+            end
         end
     end
 

@@ -14,7 +14,9 @@
 #     name: julia-1.2
 # ---
 
-using LinearAlgebra, Plots, ProgressMeter
+using LinearAlgebra
+using ProgressMeter
+using UnicodePlots
 
 # +
 
@@ -30,8 +32,6 @@ include("../src/banded_matrix.jl")
 include("../src/spline_1d.jl")
 include("../src/spline_interpolator_1d.jl")
 include("../src/advection.jl")
-
-
 
 # +
 
@@ -61,21 +61,19 @@ fxv .= (1 .+ eps .* cos.(kx .* x)) .* transpose(exp.(-.5*v.^2)) ./ sqrt(2π)
 
 transpose!(fvx, fxv)
 
-surface(fxv)
-
 # +
-tspan  = LinRange(0, 60, 600)
-dt = 0.1
+tspan  = LinRange(0, 30, 600)
+dt = 0.05
 
 compute_charge!(rho, mesh_v, fvx)
 
-plot(x, rho)
-plot!(x, eps * cos.( kx .* x) )
+display(lineplot(x, rho))
+display(lineplot(x, eps * cos.( kx .* x) ))
 
 # +
 compute_e!(ex, mesh_x, rho)
 
-plot(x, ex)
+display(lineplot(x, ex))
 
 # +
 E = Float64[]
@@ -93,6 +91,6 @@ E = Float64[]
 
 end 
 
-plot(tspan, E)
+lineplot(tspan, E)
 # -
 

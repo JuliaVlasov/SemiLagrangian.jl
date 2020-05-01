@@ -11,6 +11,7 @@ include("splinepp.jl")
 include("banded_matrix.jl")
 include("spline_1d.jl")
 include("spline_interpolator_1d.jl")
+include("lagrange_interpolation.jl")
 include("advection.jl")
 
 end

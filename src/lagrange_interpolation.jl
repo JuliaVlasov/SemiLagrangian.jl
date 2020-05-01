@@ -16,6 +16,14 @@ special case.
 Note: The implementation is based on the formulas in Abramowitz and Stegun:
 Handbook of Mathematical Functions, Chapter 25.2
 """
+struct Lagrange
+
+    stencil :: Int
+    pp :: Vector{Float64}
+
+    Lagrange(stencil) = new(stencil, zeros(stencil))
+
+end
 
 
 # --- compile-time constants to avoid run-time division
@@ -69,12 +77,11 @@ end
   - p   : displacement in units of grid spacing
 
 """
-function lagr_4pt(fm1, f0, f1, f2, p)
+function lagr_4pt(lag, fm1, f0, f1, f2, p)
 
-    pp = zeros(4)
-    lagr_4pt_coeff!(pp, p)
+    lagr_4pt_coeff!(lag.pp, p)
 
-    pp[1] * fm1 + pp[2] * f0 + pp[3] * f1 + pp[4] * f2
+    lag.pp[1] * fm1 + lag.pp[2] * f0 + lag.pp[3] * f1 + lag.pp[4] * f2
 
 end 
 
@@ -90,18 +97,17 @@ vectorizable 4-pt-lagrange interpolation
    - index_shift : index shift due to displacement
 
 """
-function lagr_4pt_vec(fi, fp, p, index_shift)
+function lagr_4pt_vec(lag, fi, fp, p, index_shift)
 
-    pp = zeros(4)
-    lagr_4pt_coeff!(pp, p)
+    lagr_4pt_coeff!(lag.pp, p)
 
     n = length(fi)
 
     for i = max(2-index_shift,1):min(n-2-index_shift, n)
-      fp[i] = (pp[1] * fi[i-1+index_shift] 
-             + pp[2] * fi[i+index_shift]   
-             + pp[3] * fi[i+1+index_shift] 
-             + pp[4] * fi[i+2+index_shift])
+      fp[i] = (lag.pp[1] * fi[i-1+index_shift] 
+             + lag.pp[2] * fi[i+index_shift]   
+             + lag.pp[3] * fi[i+1+index_shift] 
+             + lag.pp[4] * fi[i+2+index_shift])
     end
 
 end
@@ -138,13 +144,11 @@ single point 6-pt-lagrange interpolation
 - f3  : known function values at point 3 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_6pt(fm2, fm1, f0, f1, f2, f3, p)
+function lagr_6pt(lag, fm2, fm1, f0, f1, f2, f3, p)
 
-    pp = zeros(6)
+    lagr_6pt_coeff!(lag.pp, p)
     
-    lagr_6pt_coeff!(pp, p)
-    
-    pp[1] * fm2 + pp[2] * fm1 + pp[3] * f0  + pp[4] * f1  + pp[5] * f2 + pp[6] * f3
+    lag.pp[1] * fm2 + lag.pp[2] * fm1 + lag.pp[3] * f0  + lag.pp[4] * f1  + lag.pp[5] * f2 + lag.pp[6] * f3
 
 end
 
@@ -159,18 +163,17 @@ vectorizable 6-pt-lagrange interpolation
 - index_shift : index shift due to displacement
 
 """
-function lagr_6pt_vec(fi, fp, p, index_shift)
+function lagr_6pt_vec(lag, fi, fp, p, index_shift)
 
-    pp = zeros(6)
-    lagr_6pt_coeff!(pp, p)
+    lagr_6pt_coeff!(lag.pp, p)
     n = length(fi)
     for i=max(3-index_shift,1):min(n-3-index_shift, n)
-        fp[i] = ( pp[1] * fi[i-2+index_shift]
-                + pp[2] * fi[i-1+index_shift]
-                + pp[3] * fi[i+index_shift]
-                + pp[4] * fi[i+1+index_shift]
-                + pp[5] * fi[i+2+index_shift] 
-                + pp[6] * fi[i+3+index_shift])
+        fp[i] = ( lag.pp[1] * fi[i-2+index_shift]
+                + lag.pp[2] * fi[i-1+index_shift]
+                + lag.pp[3] * fi[i+index_shift]
+                + lag.pp[4] * fi[i+1+index_shift]
+                + lag.pp[5] * fi[i+2+index_shift] 
+                + lag.pp[6] * fi[i+3+index_shift])
     end
 end
 
@@ -208,19 +211,18 @@ single point 8-pt-lagrange interpolation
 - f4  : known function values at point 4 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_8pt(fm3, fm2, fm1, f0, f1, f2, f3, f4, p)
+function lagr_8pt(lag, fm3, fm2, fm1, f0, f1, f2, f3, f4, p)
 
-    pp = zeros(8)
-    lagr_8pt_coeff!(pp, p)
+    lagr_8pt_coeff!(lag.pp, p)
 
-    ( pp[1] * fm3
-    + pp[2] * fm2
-    + pp[3] * fm1
-    + pp[4] * f0
-    + pp[5] * f1
-    + pp[6] * f2
-    + pp[7] * f3
-    + pp[8] * f4 )
+    ( lag.pp[1] * fm3
+    + lag.pp[2] * fm2
+    + lag.pp[3] * fm1
+    + lag.pp[4] * f0
+    + lag.pp[5] * f1
+    + lag.pp[6] * f2
+    + lag.pp[7] * f3
+    + lag.pp[8] * f4 )
 
 end 
 
@@ -234,19 +236,19 @@ vectorizable 6-pt-lagrange interpolation
 - p  : displacement in units of grid spacing (between 0 and 1)
 - index_shift : index shift due to displacement
 """
-function lagr_8pt_vec(fi, fp, p, index_shift)
+function lagr_8pt_vec(lag, fi, fp, p, index_shift)
 
-    lagr_8pt_coeff!(pp, p)
+    lagr_8pt_coeff!(lag.pp, p)
     n = length(fi)
     for i=max(4-index_shift,1):min(n-4-index_shift, n)
-        fp[i] = ( pp[1] * fi(i-3+index_shift) 
-                + pp[2] * fi(i-2+index_shift) 
-                + pp[3] * fi(i-1+index_shift) 
-                + pp[4] * fi(i+index_shift)   
-                + pp[5] * fi(i+1+index_shift) 
-                + pp[6] * fi(i+2+index_shift) 
-                + pp[7] * fi(i+3+index_shift) 
-                + pp[8] * fi(i+4+index_shift))
+        fp[i] = ( lag.pp[1] * fi(i-3+index_shift) 
+                + lag.pp[2] * fi(i-2+index_shift) 
+                + lag.pp[3] * fi(i-1+index_shift) 
+                + lag.pp[4] * fi(i+index_shift)   
+                + lag.pp[5] * fi(i+1+index_shift) 
+                + lag.pp[6] * fi(i+2+index_shift) 
+                + lag.pp[7] * fi(i+3+index_shift) 
+                + lag.pp[8] * fi(i+4+index_shift))
     end
 end
 
@@ -277,12 +279,11 @@ single point 3-pt-lagrange interpolation
 - f1  : known function values at point 1 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_3pt(fm1, f0, f1, p)
+function lagr_3pt(lag, fm1, f0, f1, p)
 
-    pp = zeros(3)
-    lagr_3pt_coeff!(pp, p)
+    lagr_3pt_coeff!(lag.pp, p)
 
-    pp[1] * fm1 + pp[2] * f0 + pp[3] * f1
+    lag.pp[1] * fm1 + lag.pp[2] * f0 + lag.pp[3] * f1
     
 end
 
@@ -294,13 +295,12 @@ vectorizable 3-pt-lagrange interpolation
 - fp : interpolated function values
 - p  : displacement in units of grid spacing
 """
-function lagr_3pt_vec(fi, fp, p)
+function lagr_3pt_vec(lag, fi, fp, p)
 
-    pp = zeros(3)
-    lagr_3pt_coeff!(pp, p)
+    lagr_3pt_coeff!(lag.pp, p)
     n = length(fi)
     for i=2:n-1
-        fp[i] = pp[1] * fi[i-1] + pp[2] * fi[i] + pp[3] * fi[i+1]
+        fp[i] = lag.pp[1] * fi[i-1] + lag.pp[2] * fi[i] + lag.pp[3] * fi[i+1]
     end
 
 end
@@ -339,12 +339,11 @@ single point 5-pt-lagrange interpolation
 - f2  : known function values at point 2 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_5pt(fm2, fm1, f0, f1, f2, p)
+function lagr_5pt(lag, fm2, fm1, f0, f1, f2, p)
 
-    pp = zeros(5)
-    lagr_5pt_coeff!(pp, p)
+    lagr_5pt_coeff!(lag.pp, p)
 
-    pp[1] * fm2 + pp[2] * fm1 + pp[3] * f0 + pp[4] * f1 + pp[5] * f2
+    lag.pp[1] * fm2 + lag.pp[2] * fm1 + lag.pp[3] * f0 + lag.pp[4] * f1 + lag.pp[5] * f2
 
 end
 
@@ -358,19 +357,18 @@ vectorizable 5-pt-lagrange interpolation
 - p  : displacement in units of grid spacing
 
 """
-function lagr_5pt_vec(fi, fp, p)
+function lagr_5pt_vec(lag, fi, fp, p)
 
-    pp = zeros(5)
-    lagr_5pt_coeff!(pp, p)
+    lagr_5pt_coeff!(lag.pp, p)
 
     n = length(fi)
 
     for i=3:n-2
-        fp[i] = ( pp[1] * fi[i-2]
-                + pp[2] * fi[i-1]
-                + pp[3] * fi[i]  
-                + pp[4] * fi[i+1]
-                + pp[5] * fi[i+2] )
+        fp[i] = ( lag.pp[1] * fi[i-2]
+                + lag.pp[2] * fi[i-1]
+                + lag.pp[3] * fi[i]  
+                + lag.pp[4] * fi[i+1]
+                + lag.pp[5] * fi[i+2] )
     end
 
 end
@@ -412,19 +410,17 @@ single point 7-pt-lagrange interpolation
 - p   : displacement in units of grid spacing
 
 """
-function lagr_7pt(fm3, fm2, fm1, f0, f1, f2, f3, p)
+function lagr_7pt(lag, fm3, fm2, fm1, f0, f1, f2, f3, p)
 
-    pp = zeros(7)
+    lagr_7pt_coeff!(lag, pp, p)
 
-    lagr_7pt_coeff!(pp, p)
-
-    ( pp[1] * fm3 
-    + pp[2] * fm2 
-    + pp[3] * fm1 
-    + pp[4] * f0 
-    + pp[5] * f1
-    + pp[6] * f2
-    + pp[7] * f3 )
+    ( lag.pp[1] * fm3 
+    + lag.pp[2] * fm2 
+    + lag.pp[3] * fm1 
+    + lag.pp[4] * f0 
+    + lag.pp[5] * f1
+    + lag.pp[6] * f2
+    + lag.pp[7] * f3 )
 
 end 
 
@@ -438,22 +434,20 @@ vectorizable 7-pt-lagrange interpolation
 - p  : displacement in units of grid spacing
 
 """
-function lagr_7pt_vec(fi, fp, p)
+function lagr_7pt_vec(lag, fi, fp, p)
 
-    pp = zeros(7)
-
-    lagr_7pt_coeff!(pp, p)
+    lagr_7pt_coeff!(lag.pp, p)
 
     n = length(fi)
 
     for i=4:n-3
-        fp[i] = ( pp[1] * fi[i-3] 
-                + pp[2] * fi[i-2] 
-                + pp[3] * fi[i-1] 
-                + pp[4] * fi[i]   
-                + pp[5] * fi[i+1] 
-                + pp[6] * fi[i+2] 
-                + pp[7] * fi[i+3] )
+        fp[i] = ( lag.pp[1] * fi[i-3] 
+                + lag.pp[2] * fi[i-2] 
+                + lag.pp[3] * fi[i-1] 
+                + lag.pp[4] * fi[i]   
+                + lag.pp[5] * fi[i+1] 
+                + lag.pp[6] * fi[i+2] 
+                + lag.pp[7] * fi[i+3] )
     end    
 
 end
@@ -497,20 +491,19 @@ single point 9-pt-lagrange interpolation
 - f4  : known function values at point 4 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_9pt(fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, p)
+function lagr_9pt(lag, fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, p)
 
-    pp = zeros(9)
-    lagr_9pt_coeff!(pp, p)
+    lagr_9pt_coeff!(lag.pp, p)
 
-    ( pp[1] * fm4 
-    + pp[2] * fm3 
-    + pp[3] * fm2 
-    + pp[4] * fm1 
-    + pp[5] * f0  
-    + pp[6] * f1  
-    + pp[7] * f2  
-    + pp[8] * f3  
-    + pp[9] * f4 )
+    ( lag.pp[1] * fm4 
+    + lag.pp[2] * fm3 
+    + lag.pp[3] * fm2 
+    + lag.pp[4] * fm1 
+    + lag.pp[5] * f0  
+    + lag.pp[6] * f1  
+    + lag.pp[7] * f2  
+    + lag.pp[8] * f3  
+    + lag.pp[9] * f4 )
 
 end
 
@@ -523,23 +516,22 @@ vectorizable 9-pt-lagrange interpolation
 - fp : interpolated function values
 - p  : displacement in units of grid spacing
 """
-function lagr_9pt_vec(fi, fp, p)
+function lagr_9pt_vec(lag, fi, fp, p)
 
-    pp = zeros(9)
-    lagr_9pt_coeff!(pp, p)
+    lagr_9pt_coeff!(lag.pp, p)
 
     n = length(fi)
 
     for i=5:n-4
-        fp[i] = ( pp[1] * fi[i-4]
-                + pp[2] * fi[i-3]
-                + pp[3] * fi[i-2]
-                + pp[4] * fi[i-1]
-                + pp[5] * fi[i]
-                + pp[6] * fi[i+1]
-                + pp[7] * fi[i+2]
-                + pp[8] * fi[i+3]
-                + pp[9] * fi[i+4] )
+        fp[i] = ( lag.pp[1] * fi[i-4]
+                + lag.pp[2] * fi[i-3]
+                + lag.pp[3] * fi[i-2]
+                + lag.pp[4] * fi[i-1]
+                + lag.pp[5] * fi[i]
+                + lag.pp[6] * fi[i+1]
+                + lag.pp[7] * fi[i+2]
+                + lag.pp[8] * fi[i+3]
+                + lag.pp[9] * fi[i+4] )
     end
 
 end
@@ -590,22 +582,21 @@ single point 11-pt-lagrange interpolation
 - f5  : known function values at point 5 (relative to where we want to interpolate)
 - p   : displacement in units of grid spacing
 """
-function lagr_11pt(fm5, fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, f5, p)
+function lagr_11pt(lag, fm5, fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, f5, p)
 
-    pp = zeros(11)
-    lagr_11pt_coeff!(pp, p)
+    lagr_11pt_coeff!(lag, pp, p)
 
-    ( pp[1]  * fm5 
-    + pp[2]  * fm4 
-    + pp[3]  * fm3 
-    + pp[4]  * fm2 
-    + pp[5]  * fm1 
-    + pp[6]  * f0  
-    + pp[7]  * f1  
-    + pp[8]  * f2  
-    + pp[9]  * f3  
-    + pp[10] * f4  
-    + pp[11] * f5  )
+    ( lag.pp[1]  * fm5 
+    + lag.pp[2]  * fm4 
+    + lag.pp[3]  * fm3 
+    + lag.pp[4]  * fm2 
+    + lag.pp[5]  * fm1 
+    + lag.pp[6]  * f0  
+    + lag.pp[7]  * f1  
+    + lag.pp[8]  * f2  
+    + lag.pp[9]  * f3  
+    + lag.pp[10] * f4  
+    + lag.pp[11] * f5  )
 
 end
 
@@ -619,23 +610,22 @@ vectorizable 11-pt-lagrange interpolation
 - fp : interpolated function values
 - p  : displacement in units of grid spacing
 """
-function lagr_11pt_vec(fi, fp, p)
+function lagr_11pt_vec(lag, fi, fp, p)
 
-    pp = zeros(11)
-    lagr_11pt_coeff!(pp, p)
+    lagr_11pt_coeff!(lag.pp, p)
     n = length(fi)
     for i=6:n-5
-      fp[i] = ( pp[1]  * fi[i-5] 
-              + pp[2]  * fi[i-4] 
-              + pp[3]  * fi[i-3] 
-              + pp[4]  * fi[i-2] 
-              + pp[5]  * fi[i-1] 
-              + pp[6]  * fi[i]   
-              + pp[7]  * fi[i+1] 
-              + pp[8]  * fi[i+2] 
-              + pp[9]  * fi[i+3] 
-              + pp[10] * fi[i+4] 
-              + pp[11] * fi[i+5] )
+      fp[i] = ( lag.pp[1]  * fi[i-5] 
+              + lag.pp[2]  * fi[i-4] 
+              + lag.pp[3]  * fi[i-3] 
+              + lag.pp[4]  * fi[i-2] 
+              + lag.pp[5]  * fi[i-1] 
+              + lag.pp[6]  * fi[i]   
+              + lag.pp[7]  * fi[i+1] 
+              + lag.pp[8]  * fi[i+2] 
+              + lag.pp[9]  * fi[i+3] 
+              + lag.pp[10] * fi[i+4] 
+              + lag.pp[11] * fi[i+5] )
     end
 
 end 
@@ -653,21 +643,23 @@ Lagrange interpolation, without boundary conditions.  One sided a the outermost 
 """
 function lagrange_interpolation_1d_disp_fixed_no_bc(fi, fp, p, stencil)
 
+    lag = Lagrange(stencil)
+
     if stencil == 5
 
-        fp[1] = lagr_5pt(fi[1], fi[2], fi[3], fi[4], fi[5], p-2)
-        fp[2] = lagr_5pt(fi[1], fi[2], fi[3], fi[4], fi[5], p-1)
+        fp[1] = lagr_5pt(lag, fi[1], fi[2], fi[3], fi[4], fi[5], p-2)
+        fp[2] = lagr_5pt(lag, fi[1], fi[2], fi[3], fi[4], fi[5], p-1)
 
-        lagr_5pt_vec(fi, fp, p)
+        lagr_5pt_vec(lag, fi, fp, p)
 
-        fp[end-1] = lagr_5pt(fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], p+1)
-        fp[end]   = lagr_5pt(fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], p+2)
+        fp[end-1] = lagr_5pt(lag, fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], p+1)
+        fp[end]   = lagr_5pt(lag, fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], p+2)
 
     elseif stencil == 3
 
-        fp[1] = lagr_3pt(fi[1], fi[2], fi[3], p-1)
-        lagr_3pt_vec(fi, fp, p)
-        fp[end] = lagr_3pt(fi[end-2], fi[end-1], fi[end], p+1)
+        fp[1] = lagr_3pt(lag, fi[1], fi[2], fi[3], p-1)
+        lagr_3pt_vec(lag, fi, fp, p)
+        fp[end] = lagr_3pt(lag, fi[end-2], fi[end-1], fi[end], p+1)
 
     else
 
@@ -690,24 +682,26 @@ Lagrange interpolation, periodic boundary conditions
 """
 function lagrange_interpolation_1d_disp_fixed_periodic(fi, fp, p, stencil)
 
+    lag = Lagrange(stencil)
+
     if stencil == 7
-        fp[1] = lagr_7pt(fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], p)
-        fp[2] = lagr_7pt(fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], p)
-        fp[3] = lagr_7pt(fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], fi[6], p)
-        lagr_7pt_vec(fi, fp, p)
-        fp[end-2] = lagr_7pt(fi[end-5], fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
-        fp[end-1] = lagr_7pt(fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
-        fp[end] = lagr_7pt(fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
+        fp[1] = lagr_7pt(lag, fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], p)
+        fp[2] = lagr_7pt(lag, fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], p)
+        fp[3] = lagr_7pt(lag, fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], fi[6], p)
+        lagr_7pt_vec(lag, fi, fp, p)
+        fp[end-2] = lagr_7pt(lag, fi[end-5], fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
+        fp[end-1] = lagr_7pt(lag, fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
+        fp[end] = lagr_7pt(lag, fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
     elseif stencil == 5
-        fp[1] = lagr_5pt(fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
-        fp[2] = lagr_5pt(fi[end], fi[1], fi[2], fi[3], fi[4], p)
-        lagr_5pt_vec(fi, fp, p)
-        fp[end-1] = lagr_5pt(fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
-        fp[end] = lagr_5pt(fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
+        fp[1] = lagr_5pt(lag, fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
+        fp[2] = lagr_5pt(lag, fi[end], fi[1], fi[2], fi[3], fi[4], p)
+        lagr_5pt_vec(lag, fi, fp, p)
+        fp[end-1] = lagr_5pt(lag, fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
+        fp[end] = lagr_5pt(lag, fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
     elseif stencil == 3
-        fp[1] = lagr_3pt(fi[end], fi[1], fi[2], p)
-        lagr_3pt_vec(fi, fp, p)
-        fp[end] = lagr_3pt(fi[end-1], fi[end], fi[1], p)
+        fp[1] = lagr_3pt(lag, fi[end], fi[1], fi[2], p)
+        lagr_3pt_vec(lag, fi, fp, p)
+        fp[end] = lagr_3pt(lag, fi[end-1], fi[end], fi[1], p)
     else
         @error "Lagrange stencil not implemented"
     end
@@ -724,35 +718,37 @@ Lagrange interpolation, periodic boundary conditions, first value repeated at th
 """
 function lagrange_interpolation_1d_disp_fixed_periodicl(fi, fp, p, stencil)
 
+    lag = Lagrange(stencil)
     n = length(fi)-1
 
     if stencil == 7
-        fp[1] = lagr_7pt(fi[n-2], fi[n-1], fi[n], fi[1], fi[2], fi[3], fi[4], p)
-        fp[2] = lagr_7pt(fi[n-1], fi[n], fi[1], fi[2], fi[3], fi[4], fi[5], p)
-        fp[3] = lagr_7pt(fi[n], fi[1], fi[2], fi[3], fi[4], fi[5], fi[6], p)
-        lagr_7pt_vec(fi, fp, p)
-        fp[n-1] = lagr_7pt(fi[n-4], fi[n-3], fi[n-2], fi[n-1], fi[n], fi[1], fi[2], p)
-        fp[n] = lagr_7pt(fi[n-3], fi[n-2], fi[n-1], fi[n], fi[1], fi[2], fi[3], p)
+
+        fp[1] = lagr_7pt(lag, fi[n-2], fi[n-1], fi[n], fi[1], fi[2], fi[3], fi[4], p)
+        fp[2] = lagr_7pt(lag, fi[n-1], fi[n], fi[1], fi[2], fi[3], fi[4], fi[5], p)
+        fp[3] = lagr_7pt(lag, fi[n], fi[1], fi[2], fi[3], fi[4], fi[5], fi[6], p)
+        lagr_7pt_vec(lag, fi, fp, p)
+        fp[n-1] = lagr_7pt(lag, fi[n-4], fi[n-3], fi[n-2], fi[n-1], fi[n], fi[1], fi[2], p)
+        fp[n] = lagr_7pt(lag, fi[n-3], fi[n-2], fi[n-1], fi[n], fi[1], fi[2], fi[3], p)
         fp[end] = fp[1]
 
     elseif stencil == 5
 
-        fp[1] = lagr_5pt(fi[n-1], fi[n], fi[1], fi[2], fi[3], p)
-        
-        fp[2] = lagr_5pt(fi[n], fi[1], fi[2], fi[3], fi[4], p)
-
-        lagr_5pt_vec(fi, fp, p)
-
-        fp[n] = lagr_5pt(fi[n-2], fi[n-1], fi[n], fi[1], fi[2], p)
-
+        fp[1] = lagr_5pt(lag, fi[n-1], fi[n], fi[1], fi[2], fi[3], p)
+        fp[2] = lagr_5pt(lag, fi[n], fi[1], fi[2], fi[3], fi[4], p)
+        lagr_5pt_vec(lag, fi, fp, p)
+        fp[n] = lagr_5pt(lag, fi[n-2], fi[n-1], fi[n], fi[1], fi[2], p)
         fp[n+1] = fp[1]
 
     elseif stencil == 3
-        fp[1] = lagr_3pt(fi[n], fi[1], fi[2], p)
-        lagr_3pt_vec(fi, fp, p)
+
+        fp[1] = lagr_3pt(lag, fi[n], fi[1], fi[2], p)
+        lagr_3pt_vec(lag, fi, fp, p)
         fp[end] = fp[1]
+
     else
+
         @error "Lagrange stencil not implemented."
+
     end
 
 end
@@ -765,15 +761,17 @@ Lagrange interpolation centered around the interval of displacement, periodic bo
 """
 function lagrange_interpolation_1d_disp_centered_periodicl(fi, fp, p, stencil)
 
+    lag = Lagrange(stencil)
     n = length(fi)-1
     # compute interval shift
     ip = trunc(Int, p)
     pq = p - ip
 
     if stencil == 6
-        lagr_6pt_vec(fi, fp, pq, ip)
+        lagr_6pt_vec(lag, fi, fp, pq, ip)
         for i=1:max(0,2-ip)
-            fp[i] = lagr_6pt(fi[mod1(i-2+ip, n)], 
+            fp[i] = lagr_6pt(lag, 
+                             fi[mod1(i-2+ip, n)], 
                              fi[mod1(i-1+ip, n)], 
                              fi[mod1(i  +ip, n)], 
                              fi[mod1(i+1+ip, n)], 
@@ -782,7 +780,8 @@ function lagrange_interpolation_1d_disp_centered_periodicl(fi, fp, p, stencil)
                              pq)
         end
         for i=min(n,n-2-ip):n
-           fp[i] = lagr_6pt(fi[mod1(i-2+ip, n)], 
+           fp[i] = lagr_6pt(lag,
+                            fi[mod1(i-2+ip, n)], 
                             fi[mod1(i-1+ip, n)],
                             fi[mod1(i  +ip, n)],
                             fi[mod1(i+1+ip, n)],
@@ -794,17 +793,19 @@ function lagrange_interpolation_1d_disp_centered_periodicl(fi, fp, p, stencil)
 
     elseif stencil == 4
 
-        lagr_4pt_vec(fi, fp, pq, ip)
+        lagr_4pt_vec(lag, fi, fp, pq, ip)
 
         for i=1:max(0,1-ip)
-          fp[i] = lagr_4pt(fi[mod1(i-1+ip,n)],
+          fp[i] = lagr_4pt(lag,
+                           fi[mod1(i-1+ip,n)],
                            fi[mod1(i  +ip,n)],
                            fi[mod1(i+1+ip,n)],
                            fi[mod1(i+2+ip,n)],
                            pq)
         end
         for i=min(n,n-1-ip):n
-           fp[i] = lagr_4pt(fi[mod1(i-1+ip, n)], 
+           fp[i] = lagr_4pt(lag,
+                            fi[mod1(i-1+ip, n)], 
                             fi[mod1(i  +ip, n)], 
                             fi[mod1(i+1+ip, n)], 
                             fi[mod1(i+2+ip, n)],

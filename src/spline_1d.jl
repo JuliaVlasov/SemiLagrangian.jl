@@ -1,6 +1,6 @@
 using OffsetArrays
 
-mutable struct Spline1D
+struct Spline1D
 
    degree::Int64
    ncells::Int64

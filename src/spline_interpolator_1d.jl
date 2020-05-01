@@ -5,7 +5,7 @@ ubound( array :: OffsetArray, dim ) = last(axes(array)[dim])
 
 export InterpolatorSpline1D
 
-mutable struct InterpolatorSpline1D
+struct InterpolatorSpline1D
 
     bspl::Spline1D
     tau::Vector{Float64}

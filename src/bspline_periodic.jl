@@ -80,7 +80,7 @@ degree of first dimension of array f on a periodic uniform mesh, at
 all points x-alpha. f type is Array{Float64,2}.
 
 """
-mutable struct PeriodicAdvection <: AbstractAdvection
+struct PeriodicAdvection <: AbstractAdvection
 
     p::Int
     mesh::UniformMesh

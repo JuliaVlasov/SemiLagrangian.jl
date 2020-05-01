@@ -38,7 +38,7 @@ B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
 ```
 
 """
-function bspline(p::Int, j::Int, x::Float64)
+function bspline(p, j, x)
 
     if p == 0
         if j == 0
@@ -47,8 +47,8 @@ function bspline(p::Int, j::Int, x::Float64)
             return 0.0
         end
     else
-        w::Float64 = (x - j) / p
-        w1::Float64 = (x - j - 1) / p
+        w = (x - j) / p
+        w1 = (x - j - 1) / p
     end
     (w * bspline(p - 1, j, x) + (1 - w1) * bspline(p - 1, j + 1, x))
 
@@ -97,7 +97,7 @@ struct PeriodicAdvection <: AbstractAdvection
         eigalpha = zeros(Complex{Float64}, n)
         eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), 0.0)
         for j = 1:div(bspl.p + 1, 2)-1
-            eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0.0) .* 2 .*
+            eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0) .* 2 .*
                           cos.(j .* modes))
         end
 
@@ -120,11 +120,11 @@ function (adv::PeriodicAdvection)(
 
     f̂ = fft(f, 1)
 
-    for j = 1:nv
+    for j in eachindex(v)
         alpha = v[j] * dt / delta
         ishift = floor(-alpha)
         beta = -ishift - alpha
-        fill!(adv.eigalpha, 0.0im)
+        fill!(adv.eigalpha, 0im)
         for i = -div(p - 1, 2):div(p + 1, 2)
             adv.eigalpha .+= (bspline(p, i - div(p + 1, 2), beta) .*
                               exp.((ishift + i) * 1im .* adv.modes))
@@ -152,9 +152,9 @@ function (adv::PeriodicAdvection)(
 
     fft!(f, 1)
 
-    @inbounds for j = 1:nv
+    @inbounds for j in eachindex(v) 
         alpha = dt * v[j] / dx
-      # compute eigenvalues of cubic splines evaluated at displaced points
+        # compute eigenvalues of cubic splines evaluated at displaced points
         ishift = floor(-alpha)
         beta = -ishift - alpha
         fill!(adv.eigalpha, 0.0im)
@@ -163,8 +163,8 @@ function (adv::PeriodicAdvection)(
                               exp.((ishift + i) * 1im .* adv.modes))
         end
 
-      # compute interpolating spline using fft and
-      # properties of circulant matrices
+        # compute interpolating spline using fft and
+        # properties of circulant matrices
 
         f[:, j] .*= adv.eigalpha ./ adv.eig_bspl
 

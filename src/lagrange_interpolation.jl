@@ -678,7 +678,6 @@ function lagrange_interpolation_1d_disp_fixed_no_bc(fi, fp, p, stencil)
 end
 
 
-#=
 """
     lagrange_interpolation_1d_fast_disp_fixed_periodic(fi, fp, p, stencil)
 

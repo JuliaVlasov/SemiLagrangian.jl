@@ -1,6 +1,6 @@
 using FFTW, LinearAlgebra
 
-export Bspline
+export Bspline, BsplinePeriodicAdvection
 
 struct Bspline <: InterpolationType
 
@@ -54,10 +54,9 @@ function bspline(p, j, x)
 
 end
 
-export PeriodicAdvection
 
 """
-    advection! = PeriodicAdvection( mesh, bspl )
+    advection! = BSplinePeriodicAdvection( mesh, bspl )
 
 Type to perform 1d advection on periodic domain. Bspline interpolation
 is used combined with fft transform to solve the system. Bspline degree
@@ -80,7 +79,7 @@ degree of first dimension of array f on a periodic uniform mesh, at
 all points x-alpha. f type is Array{Float64,2}.
 
 """
-struct PeriodicAdvection <: AbstractAdvection
+struct BsplinePeriodicAdvection <: AbstractAdvection
 
     p::Int
     mesh::UniformMesh
@@ -88,7 +87,7 @@ struct PeriodicAdvection <: AbstractAdvection
     eig_bspl::Vector{ComplexF64}
     eigalpha::Vector{ComplexF64}
 
-    function PeriodicAdvection(mesh::UniformMesh, bspl::Bspline)
+    function BsplinePeriodicAdvection(mesh::UniformMesh, bspl::Bspline)
 
         n = mesh.length
         modes = zeros(Float64, n)
@@ -107,7 +106,7 @@ struct PeriodicAdvection <: AbstractAdvection
 
 end
 
-function (adv::PeriodicAdvection)(
+function (adv::BsplinePeriodicAdvection)(
     f::Array{Float64,2},
     v::Vector{Float64},
     dt::Float64,
@@ -139,7 +138,7 @@ function (adv::PeriodicAdvection)(
 end
 
 
-function (adv::PeriodicAdvection)(
+function (adv::BsplinePeriodicAdvection)(
     f::Array{ComplexF64,2},
     v::Vector{Float64},
     dt::Float64,

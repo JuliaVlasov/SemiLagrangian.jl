@@ -631,7 +631,7 @@ function lagr_11pt_vec(lag, fi, fp, p)
 end 
 
 """
-    lagrange_interpolation_1d_fast_disp_fixed_no_bc(fi, fp, p, stencil)
+    lagrange_interpolation_1d_disp_fixed_no_bc(fi, fp, p, stencil)
 
 Lagrange interpolation, without boundary conditions.  One sided a the outermost points.
 
@@ -663,7 +663,7 @@ function lagrange_interpolation_1d_disp_fixed_no_bc(fi, fp, p, stencil)
 
     else
 
-        @error "Lagrange stencil not implemented."
+        @error "Lagrange stencil not implemented (3 or 5)."
 
     end 
 
@@ -671,7 +671,7 @@ end
 
 
 """
-    lagrange_interpolation_1d_fast_disp_fixed_periodic(fi, fp, p, stencil)
+    lagrange_interpolation_1d_disp_fixed_periodic(fi, fp, p, stencil)
 
 Lagrange interpolation, periodic boundary conditions
 
@@ -703,7 +703,7 @@ function lagrange_interpolation_1d_disp_fixed_periodic(fi, fp, p, stencil)
         lagr_3pt_vec(lag, fi, fp, p)
         fp[end] = lagr_3pt(lag, fi[end-1], fi[end], fi[1], p)
     else
-        @error "Lagrange stencil not implemented"
+        @error "Lagrange stencil not implemented (3, 5 or 7)"
     end
 end
 

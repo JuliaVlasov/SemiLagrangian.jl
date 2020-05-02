@@ -6,3 +6,4 @@ Manifest.toml
 *.jl.*.cov
 *.jl.mem
 */.ipynb_checkpoints/
+notebooks/landau1d1v.ipynb

@@ -7,21 +7,17 @@ Creates a 1d backward semi-lagrangian advection.
 
 - `interp`   : Interpolation type (Bspline(degree), Lagrange(degree))
 - `mesh`     : UniformMesh along advection direction
-- `LBC, RBC` : Boundary conditions type (:periodic, :Hermite)
 
 """
 struct Advection
 
     mesh::UniformMesh
     interp::InterpolationType
-    adv::AbstractAdvection
+    f1d::Vector{Float64}
 
-    function Advection(mesh::UniformMesh, interp::InterpolationType, bc::Symbol)
-
-        new(interp, adv, dims)
-
+    function Advection(mesh::UniformMesh, interp::InterpolationType)
+        new(mesh, interp, zeros(mesh.length))
     end
-
 
 end
 
@@ -47,27 +43,15 @@ advection!( f, v, dt )
 function (self::Advection)(f::Array{Float64,2}, v::Vector{Float64}, dt::Float64)
 
     p = self.interp.p
-    dims = self.dims
-    nx, nv = size(f)
 
-    if dims == 1
-        @sync for jv in Iterators.partition(1:nv, nv÷nthreads())
-            @spawn begin
-                for j in jv
-                    alpha = v[j] * dt
-                    f[:, j] .= interpolate(f[:, j], self.adv, alpha)
-                end
+#    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
+#        @spawn begin
+            for j in eachindex(v) # jchunk
+                alpha = - v[j] * dt / self.mesh.step
+                interpolate!( self.f1d, view(f,:, j), alpha, self.interp)
+                f[:,j] .= self.f1d
             end
-        end
-    else
-        @sync for ix in Iterators.partition(1:nx, nx÷nthreads())
-            @spawn begin
-                for i in eachindex(ix)
-                    alpha = v[i] * dt
-                    f[i, :] .= interpolate(f[i, :], self.adv, alpha)
-                end
-            end
-        end
-    end
+#        end
+#    end
 
 end

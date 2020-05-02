@@ -172,3 +172,34 @@ function (adv::BsplinePeriodicAdvection)(
     ifft!(f, 1)
 
 end
+
+
+function interpolate!( fout, f, alpha, bspl :: Bspline)
+
+    n = length(f)
+
+    f̂ = fft(f)
+
+    modes = zeros(Float64, n)
+    modes .= 2π .* (0:n-1) ./ n
+    ishift = floor(-alpha)
+    beta = -ishift - alpha
+    eig_bspl = zeros(Complex{Float64}, n)
+    eigalpha = zeros(Complex{Float64}, n)
+    eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), 0.0)
+
+    for j = 1:div(bspl.p + 1, 2)-1
+        eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0) .* 2 .*
+                      cos.(j .* modes))
+    end
+
+    for i = -div(bspl.p - 1, 2):div(bspl.p + 1, 2)
+        eigalpha .+= (bspline(bspl.p, i - div(bspl.p + 1, 2), beta) .*
+                          exp.((ishift + i) * 1im .* modes))
+    end
+
+    f̂ .= f̂ .* eigalpha ./ eig_bspl
+
+    fout .= real(ifft(f̂))
+
+end

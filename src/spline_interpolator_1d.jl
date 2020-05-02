@@ -121,3 +121,4 @@ function compute_interpolant!(self, gtau, derivs_left, derivs_right)
     solve!(self.matrix, self.bspl.bcoef)
 
 end
+

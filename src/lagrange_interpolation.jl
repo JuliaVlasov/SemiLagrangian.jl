@@ -412,7 +412,7 @@ single point 7-pt-lagrange interpolation
 """
 function lagr_7pt(lag, fm3, fm2, fm1, f0, f1, f2, f3, p)
 
-    lagr_7pt_coeff!(lag, pp, p)
+    lagr_7pt_coeff!(lag.pp, p)
 
     ( lag.pp[1] * fm3 
     + lag.pp[2] * fm2 
@@ -669,6 +669,42 @@ function lagrange_interpolation_1d_disp_fixed_no_bc(fi, fp, p, stencil)
 
 end
 
+
+"""
+    interpolate!(fp, fi, p, Lagrange(stencil))
+
+Lagrange interpolation, periodic boundary conditions
+
+- `fi` : input array of length n
+- `fp` : output array of length n
+- `p` : offset in units of dx (best interpolation when close to zero, about [-1,1], but not a requirement)
+- stencil : number of points in fi used for interpolation (currently possible values 3,5,7)
+"""
+function interpolate!(fp, fi, p, lag :: Lagrange)
+
+    if lag.stencil == 7
+        fp[1] = lagr_7pt(lag, fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], p)
+        fp[2] = lagr_7pt(lag, fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], p)
+        fp[3] = lagr_7pt(lag, fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], fi[6], p)
+        lagr_7pt_vec(lag, fi, fp, p)
+        fp[end-2] = lagr_7pt(lag, fi[end-5], fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
+        fp[end-1] = lagr_7pt(lag, fi[end-4], fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
+        fp[end] = lagr_7pt(lag, fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
+    elseif lag.stencil == 5
+        fp[1] = lagr_5pt(lag, fi[end-1], fi[end], fi[1], fi[2], fi[3], p)
+        fp[2] = lagr_5pt(lag, fi[end], fi[1], fi[2], fi[3], fi[4], p)
+        lagr_5pt_vec(lag, fi, fp, p)
+        fp[end-1] = lagr_5pt(lag, fi[end-3], fi[end-2], fi[end-1], fi[end], fi[1], p)
+        fp[end] = lagr_5pt(lag, fi[end-2], fi[end-1], fi[end], fi[1], fi[2], p)
+    elseif lag.stencil == 3
+        fp[1] = lagr_3pt(lag, fi[end], fi[1], fi[2], p)
+        lagr_3pt_vec(lag, fi, fp, p)
+        fp[end] = lagr_3pt(lag, fi[end-1], fi[end], fi[1], p)
+    else
+        @error "Lagrange stencil not implemented (3, 5 or 7)"
+    end
+
+end
 
 """
     lagrange_interpolation_1d_disp_fixed_periodic(fi, fp, p, stencil)

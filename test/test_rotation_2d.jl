@@ -47,45 +47,8 @@ function rotation_2d_bspline(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
     ft = zeros(Float64,(n2,n1))
     transpose!(ft, f)
     
-    advection_x1! = BsplinePeriodicAdvection( mesh1, Bspline(5) )
-    advection_x2! = BsplinePeriodicAdvection( mesh2, Bspline(5) )
-
-    v1 = - collect(mesh2.points)
-    v2 = + collect(mesh1.points)
-    
-    for n=1:nt
-
-        advection_x1!( f,  v1, tan(dt/2))
-        transpose!(ft, f)
-        advection_x2!( ft, v2, sin(dt))
-        transpose!(f, ft)
-        advection_x1!( f, v1, tan(dt/2))
-
-    end
-
-    f
-
-end
-
-function rotation_2d_lagrange(tf, nt, mesh1::UniformMesh, mesh2::UniformMesh)
-
-    dt = tf/nt
-
-    n1 = mesh1.length
-    x1min, x1max = mesh1.start, mesh1.stop
-    delta1 = mesh1.step
-
-    n2 = mesh2.length
-    x2min, x2max = mesh2.start, mesh2.stop
-    delta2 = mesh2.step
-
-    f  = zeros(Float64,(n1,n2))
-    f .= exact(0.0, mesh1, mesh2)
-    ft = zeros(Float64,(n2,n1))
-    transpose!(ft, f)
-    
-    advection_x1! = LagrangePeriodicAdvection( mesh1, Lagrange(7) )
-    advection_x2! = LagrangePeriodicAdvection( mesh2, Lagrange(7) )
+    advection_x1! = Advection( mesh1, Bspline(5) )
+    advection_x2! = Advection( mesh2, Bspline(5) )
 
     v1 = - collect(mesh2.points)
     v2 = + collect(mesh1.points)
@@ -118,16 +81,3 @@ end
 
 end
 
-@testset "Rotation test with Lagrange advections " begin
-
-    tf, nt = 2π, 100
-    
-    mesh1 = UniformMesh(-π, π, 256; endpoint=false)
-    mesh2 = UniformMesh(-π, π, 256; endpoint=false)
-    
-    @time fc = rotation_2d_lagrange(tf, nt, mesh1, mesh2)
-    fe = exact(tf, mesh1, mesh2)
-
-    @test error1(fc, fe) <  1e-5
-
-end

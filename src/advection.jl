@@ -42,8 +42,6 @@ advection!( f, v, dt )
 """
 function (self::Advection)(f::Array{Float64,2}, v::Vector{Float64}, dt::Float64)
 
-    p = self.interp.p
-
 #    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
 #        @spawn begin
             for j in eachindex(v) # jchunk

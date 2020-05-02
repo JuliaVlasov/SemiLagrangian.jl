@@ -14,7 +14,6 @@ include("spline_1d.jl")
 include("spline_interpolator_1d.jl")
 include("lagrange_interpolation.jl")
 include("bspline_periodic.jl")
-include("lagrange_periodic.jl")
 include("advection.jl")
 
 end

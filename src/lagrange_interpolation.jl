@@ -16,7 +16,7 @@ special case.
 Note: The implementation is based on the formulas in Abramowitz and Stegun:
 Handbook of Mathematical Functions, Chapter 25.2
 """
-struct Lagrange
+struct Lagrange <: InterpolationType
 
     stencil :: Int
     pp :: Vector{Float64}

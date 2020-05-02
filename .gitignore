@@ -7,3 +7,5 @@ Manifest.toml
 *.jl.mem
 */.ipynb_checkpoints/
 notebooks/landau1d1v.ipynb
+notebooks/tmp.gif
+notebooks/rotation.ipynb

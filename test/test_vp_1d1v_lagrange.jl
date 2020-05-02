@@ -1,4 +1,4 @@
-import SemiLagrangian: Lagrange, LagrangePeriodicAdvection
+import SemiLagrangian: Lagrange, Advection
 import SemiLagrangian: compute_e!, compute_charge!
 
 @testset " VP 1D1V " begin
@@ -13,8 +13,8 @@ vmin, vmax, nv = -6., 6., 64
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint=false )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint=false )
 
-advection_x! = LagrangePeriodicAdvection( mesh_x, Lagrange(degree))
-advection_v! = LagrangePeriodicAdvection( mesh_v, Lagrange(degree))
+advection_x! = Advection( mesh_x, Lagrange(degree))
+advection_v! = Advection( mesh_v, Lagrange(degree))
 
 ex  = zeros(Float64, nx)
 rho = zeros(Float64, nx)

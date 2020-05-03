@@ -15,6 +15,17 @@ Advection implementation using Semi-Lagrangian numerical method
 
 **NOTE: This package is still very much under development and is not fully tested.**
 
+## Installation
+
+```julia-repl
+julia>]
+pkg> registry add https://github.com/juliavlasov/Registry
+pkg> add SemiLagrangian
+julia> using SemiLagrangian
+```
+
+Some examples are available in notebooks directory.
+
 ## Fortran code
 
 The original Fortran code was used for the paper

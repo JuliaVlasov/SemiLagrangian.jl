@@ -8,6 +8,7 @@ struct Spline{N}
         return new{N}(tabpol)
     end
 end
+
 function Base.getindex(sp::Spline{N}, index) where{N<:Signed}
     i = index+1
     return if 1 <= i <= size(sp.tabpol, 1)
@@ -83,6 +84,13 @@ function (f::Spline{N})(x) where{N<:Signed}
     end
 end
 
+struct BSplineNew{iscirc, T, N} 
+    order
+    coef::Vector{T}
+    ab::Matrix{T}
+    bspline::Spline{N}
+    
+end
 
 
 

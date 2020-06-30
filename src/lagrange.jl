@@ -10,7 +10,7 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 - `k::Int64` : number of the Polynomial, `k` must be between `0` and `order` (`0<= k <= order`).
 - `order::Int64` : order of the polynomial.
 - `origin::Int64` : origin of the first indice.
-- `N::DataType` : type of the Interger that is the base of the rational type, infact Int64 or BigInt. BigInt is needed for order greater or equal to 21.
+- `N::DataType` : type of the Integer that is the base of the rational type, in fact Int64 or BigInt. BigInt is needed for order greater or equal to 21.
 
 # Returns
 - `Polynomial{Rational{N}}` : the k-th Lagrange polynomial of order `order`
@@ -30,7 +30,7 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
     return result
 end
 """
-    LagrangeNew{iscirc, N, origin}
+    LagrangeNew{iscirc, T, origin, granularity}
 Lagrange Polynomials coefficients
 
 # Fields :
@@ -72,7 +72,7 @@ function polinterpol(
     return Polynomial(lag.coef*resfct)
 end
 
-# modulo for begin to one array
+# modulo for "begin to one" array
 modone(ind, n)=(n+ind-1)%n+1
 """
     polinterpol(
@@ -80,7 +80,7 @@ modone(ind, n)=(n+ind-1)%n+1
     resfct::Vector{T},
     ind
 ) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
-return the interpolation polynomial for the given values of a function a a specified index
+return the interpolation polynomial for the given values of a function at a specified index
 
 # Arguments
 - `lag::LagrangeNew` : object with Lagrange coefficients

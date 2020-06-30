@@ -28,8 +28,8 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x + sin(tf) * y
         yn = - sin(tf) * x + cos(tf) * y
-        f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
-#        f[i,j] = exp(-(xn-0.3)*(xn-0.3)/0.2)*exp(-(yn+0.5)*(yn+0.5)/0.2)
+#       f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
+        f[i,j] = exp(-(xn-0.3)*(xn-0.3)/0.2)*exp(-(yn+0.5)*(yn+0.5)/0.2)
 #       f[i,j] = exp(-(xn-1)*(xn-1)*10)*exp(-(yn)*(yn)*10)
 #       f[i,j] = exp(-(sin(xn)+0.4)^2)*exp(-(cos(yn)-0.5)^2)
 #       f[i,j] = exp(-sin(xn-0.3)*sin(xn-0.3)/0.6)*exp(-cos(yn+0.5)*cos(yn+0.5)/0.6)

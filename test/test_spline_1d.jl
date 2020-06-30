@@ -1,10 +1,10 @@
-import SemiLagrangian: Spline1D, get_cell_and_offset
+
 
 @testset " Get cell number and offset " begin
 
      n       = 10
      degree  = 5
-     bspline = Spline1D( n, degree, -1, 1  )
+     bspline = Spline1D( n, degree, -1.0, 1.0  )
      tau     = -1 .+ 2 .* rand(n)
 
      err = 0.0

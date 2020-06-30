@@ -1,37 +1,37 @@
 using OffsetArrays
 
-struct Spline1D
+struct Spline1D{T}
 
    degree::Int64
    ncells::Int64
    nbasis::Int64
-   start::Float64
-   stop::Float64
-   step::Float64
-   bcoef::Vector{Float64}
+   start::T
+   stop::T
+   step::T
+   bcoef::Vector{T}
 
-   function Spline1D(ncells::Int64, degree::Int64, start, stop)
+   function Spline1D(ncells::Int64, degree::Int64, start::T, stop::T) where{T <: AbstractFloat}
 
       nbasis = ncells + degree
       step = (stop - start) / ncells
-      bcoef = zeros(Float64, ncells + degree)
+      bcoef = zeros(T, ncells + degree)
 
-      new(degree, ncells, nbasis, start, stop, step, bcoef)
+      new{T}(degree, ncells, nbasis, start, stop, step, bcoef)
 
    end
 
 end
 
-function get_cell_and_offset(bspl, x)
+function get_cell_and_offset(bspl, x::T) where {T <: AbstractFloat}
 
    if x == bspl.start
-      return 1, 0.0
+      return 1, zero(T)
    elseif x == bspl.stop
-      return bspl.ncells, 1.0
+      return bspl.ncells, one(T)
    else
       offset = (x - bspl.start) / bspl.step
       icell = min(trunc(Int64, offset), bspl.ncells - 1)
-      return icell + 1, min(offset - icell, 1.0)
+      return icell + 1, min(offset - icell, one(T))
    end
 
 end
@@ -42,7 +42,7 @@ end
 Evaluate value at x of all basis functions with support in local cell
 values[j] = B_j(x) for jmin <= j <= jmin+degree
 """
-function eval_basis!(spl, x, values)
+function eval_basis!(spl::Spline1D{T}, x, values::Vector{T}) where{T<:AbstractFloat}
 
    jmin, offset = get_cell_and_offset(spl, x)
 
@@ -63,9 +63,9 @@ function eval_basis!(spl, x, values)
 
 end
 
-function eval_basis(spl, x)
+function eval_basis(spl::Spline1D{T}, x) where{T<:AbstractFloat}
 
-   values = zeros(Float64, spl.degree + 1)
+   values = zeros(T, spl.degree + 1)
 
    jmin = eval_basis!(spl, x, values)
 
@@ -79,16 +79,16 @@ end
 Evaluate derivative at x of all basis functions with support in local cell
 derivs[j] = B_j'(x) for jmin <= j <= jmin+degree
 """
-function eval_deriv!(derivs, spl, x)
+function eval_deriv!(derivs, spl::Spline1D{T}, x::T) where{T <:AbstractFloat}
 
    jmin, offset = get_cell_and_offset(spl, x)
 
    derivs[1] = 1 / spl.step
    for j = 1:spl.degree-1
       xx = -offset
-      saved = 0.0
+      saved = zero(T)
       for r = 0:j-1
-         xx = xx + 1.0
+         xx = xx + one(T)
          temp = derivs[r+1] / j
          derivs[r+1] = saved + xx * temp
          saved = (j - xx) * temp
@@ -111,21 +111,26 @@ function eval_deriv!(derivs, spl, x)
 
 end
 
-function eval_basis_and_n_derivs!(derivs, spl::Spline1D, x::Float64, n::Int64)
+function eval_basis_and_n_derivs!(
+   derivs, 
+   spl::Spline1D{T}, 
+   x::T, 
+   n::Int64
+   ) where{T <:AbstractFloat}
 
-   ndu = OffsetArray{Float64}(undef, 0:spl.degree, 0:spl.degree)
-   a = OffsetArray{Float64}(undef, 0:1, 0:spl.degree)
+   ndu = OffsetArray{T}(undef, 0:spl.degree, 0:spl.degree)
+   a = OffsetArray{T}(undef, 0:1, 0:spl.degree)
 
    icell, offset = get_cell_and_offset(spl, x)
 
    jmin = icell
 
-   ndu[0, 0] = 1.0
+   ndu[0, 0] = one(T)
    for j = 1:spl.degree
       xx = -offset
-      saved = 0.0
+      saved = zero(T)
       for r = 0:j-1
-         xx = xx + 1.0
+         xx = xx + one(T)
          temp = ndu[r, j-1] / j
          ndu[r, j] = saved + xx * temp
          saved = (j - xx) * temp
@@ -138,9 +143,9 @@ function eval_basis_and_n_derivs!(derivs, spl::Spline1D, x::Float64, n::Int64)
    for r = 0:spl.degree
       s1 = 0
       s2 = 1
-      a[0, 0] = 1.0
+      a[0, 0] = one(T)
       for k = 1:n
-         d = 0.0
+         d = zero(T)
          rk = r - k
          pk = spl.degree - k
          if (r >= k)
@@ -185,9 +190,9 @@ end
 
 Evaluate value of 1D spline at location x: y=S(x)
 """
-function eval_value(spl, x)
+function eval_value(spl, x::T) where {T<:AbstractFloat}
 
-   values = zeros(Float64, spl.degree + 1)
+   values = zeros(T, spl.degree + 1)
 
    jmin = eval_basis!(spl, x, values)
 
@@ -202,9 +207,9 @@ end
 
 Evaluate derivative of 1D spline at location x: y=S'(x)
 """
-function eval_deriv(spl, x)
+function eval_deriv(spl, x::T) where{T <:AbstractFloat}
 
-   derivs = zeros(Float64, spl.degree + 1)
+   derivs = zeros(T, spl.degree + 1)
 
    jmin = eval_deriv!(derivs, spl, x)
 

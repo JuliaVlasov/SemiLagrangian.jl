@@ -5,22 +5,22 @@ ubound( array :: OffsetArray, dim ) = last(axes(array)[dim])
 
 export InterpolatorSpline1D
 
-struct InterpolatorSpline1D
+struct InterpolatorSpline1D{T}
 
     bspl::Spline1D
-    tau::Vector{Float64}
-    matrix::BandedMatrix
+    tau::Vector{T}
+    matrix::BandedMatrix{T}
 
-    function InterpolatorSpline1D(degree, xmin, xmax, ncells)
+    function InterpolatorSpline1D(degree, xmin::T, xmax::T, ncells) where{T <:AbstractFloat}
 
         bspl = Spline1D(ncells, degree, xmin, xmax)
 
         ntau = bspl.nbasis - degree ÷ 2 - degree ÷ 2
 
-        tau = zeros(Float64, ntau)
-        values = zeros(Float64, degree + 1)
+        tau = zeros(T, ntau)
+        values = zeros(T, degree + 1)
 
-        iknots = OffsetArray{Float64}(undef, 2-degree:ntau)
+        iknots = OffsetArray{T}(undef, 2-degree:ntau)
 
         r = 2 - degree
         s = -degree ÷ 2
@@ -47,9 +47,9 @@ struct InterpolatorSpline1D
         ku = max((degree + 1) ÷ 2, degree - 1)
         kl = max((degree + 1) ÷ 2, degree - 1)
 
-        matrix = BandedMatrix(bspl.nbasis, kl, ku)
+        matrix = BandedMatrix(T, bspl.nbasis, kl, ku)
 
-        derivs = OffsetArray{Float64}(undef, 0:degree÷2, 1:degree+1)
+        derivs = OffsetArray{T}(undef, 0:degree÷2, 1:degree+1)
 
         x = bspl.start
         jmin = eval_basis_and_n_derivs!(derivs, bspl, x, degree ÷ 2)
@@ -96,7 +96,7 @@ struct InterpolatorSpline1D
 
         factorize!(matrix)
 
-        new(bspl, tau, matrix)
+        new{T}(bspl, tau, matrix)
 
     end
 

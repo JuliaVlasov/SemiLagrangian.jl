@@ -1,4 +1,4 @@
-using SemiLagrangian
+
 import LinearAlgebra: transpose!
 
 @testset " VP 1D2V " begin

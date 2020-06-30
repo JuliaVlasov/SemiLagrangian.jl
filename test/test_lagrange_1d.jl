@@ -1,9 +1,9 @@
 @testset " Lagrange 1D " begin
 
-  import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_no_bc
-  import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_periodic
-  import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_periodicl
-  import SemiLagrangian:lagrange_interpolation_1d_disp_centered_periodicl
+  # import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_no_bc
+  # import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_periodic
+  # import SemiLagrangian:lagrange_interpolation_1d_disp_fixed_periodicl
+  # import SemiLagrangian:lagrange_interpolation_1d_disp_centered_periodicl
 
   n = 100
   alpha = 0.2

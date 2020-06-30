@@ -1,29 +1,28 @@
 using LinearAlgebra
-import LinearAlgebra.LAPACK: pttrf!, pttrs!
 
-mutable struct SplineNN
+mutable struct SplineNN{T}
 
-    geom::Geometry
-    a1x::Float64
-    a2x::Float64
-    a3x::Float64
-    a4x::Float64
-    a1y::Float64
-    a2y::Float64
-    a3y::Float64
-    a4y::Float64
-    axd::Vector{Float64}
-    ayd::Vector{Float64}
-    axod::Vector{Float64}
-    ayod::Vector{Float64}
-    aym1gamma1::Vector{Float64}
-    aym1gamma2::Vector{Float64}
-    axm1gamma1::Vector{Float64}
-    axm1gamma2::Vector{Float64}
-    coef::Array{Float64,2}
-    bcoef::Array{Float64,2}
+    geom::Geometry{T}
+    a1x::T
+    a2x::T
+    a3x::T
+    a4x::T
+    a1y::T
+    a2y::T
+    a3y::T
+    a4y::T
+    axd::Vector{T}
+    ayd::Vector{T}
+    axod::Vector{T}
+    ayod::Vector{T}
+    aym1gamma1::Vector{T}
+    aym1gamma2::Vector{T}
+    axm1gamma1::Vector{T}
+    axm1gamma2::Vector{T}
+    coef::Array{T,2}
+    bcoef::Array{T,2}
 
-    function SplineNN(geom::Geometry)
+    function SplineNN(geom::Geometry{T}) where {T<:AbstractFloat}
 
         n1 = geom.n1
         n2 = geom.n2
@@ -35,33 +34,33 @@ mutable struct SplineNN
         delta1 = geom.delta1
         delta2 = geom.delta2
 
-        axm1gamma1 = zeros(Float64, n1)
-        axm1gamma2 = zeros(Float64, n1)
-        aym1gamma1 = zeros(Float64, n2)
-        aym1gamma2 = zeros(Float64, n2)
-        axd = 4 * ones(Float64, n1)
-        axod = ones(Float64, n1 - 1)
-        ayd = 4 * ones(Float64, n2)
-        ayod = ones(Float64, n2 - 1)
+        axm1gamma1 = zeros(T, n1)
+        axm1gamma2 = zeros(T, n1)
+        aym1gamma1 = zeros(T, n2)
+        aym1gamma2 = zeros(T, n2)
+        axd = 4 * ones(T, n1)
+        axod = ones(T, n1 - 1)
+        ayd = 4 * ones(T, n2)
+        ayod = ones(T, n2 - 1)
 
-        coef = zeros(Float64, (n1p2, n2p2))
-        bcoef = zeros(Float64, (n2p2, n1p2))
+        coef = zeros(T, (n1p2, n2p2))
+        bcoef = zeros(T, (n2p2, n1p2))
 
-        pttrf!(axd, axod)
-        pttrf!(ayd, ayod)
+        pttrfgen!(axd, axod)
+        pttrfgen!(ayd, ayod)
 
         axm1gamma2[1] = 1
         axm1gamma1[n1] = 1
 
-        pttrs!(axd, axod, axm1gamma1)
-        pttrs!(axd, axod, axm1gamma2)
+        pttrsgen!(axd, axod, axm1gamma1)
+        pttrsgen!(axd, axod, axm1gamma2)
 
         # compute Ay-1.gamma
         aym1gamma2[1] = 1
         aym1gamma1[n2] = 1
 
-        pttrs!(ayd, ayod, aym1gamma1)
-        pttrs!(ayd, ayod, aym1gamma2)
+        pttrsgen!(ayd, ayod, aym1gamma1)
+        pttrsgen!(ayd, ayod, aym1gamma2)
 
         aa1x = 3 / delta1
         aa1y = 3 / delta2
@@ -82,7 +81,7 @@ mutable struct SplineNN
         a3y = aa2y * (2 * aym1gamma1[1] - aym1gamma1[2])
         a4y = aa2y * (1.0 + 2 * aym1gamma2[1] - aym1gamma2[2])
 
-        new(
+        new{T}(
             geom,
             a1x,
             a2x,
@@ -110,10 +109,10 @@ end
 
 function interpolate!(
     spline::SplineNN,
-    f::Array{Float64,2},
-    x1::Array{Float64,2},
-    x2::Array{Float64,2},
-)
+    f::Array{T,2},
+    x1::Array{T,2},
+    x2::Array{T,2},
+) where {T<:AbstractFloat}
 
     nat_x!(spline, f)
     nat_y!(spline)
@@ -131,10 +130,10 @@ qui definissent le deplacement par rapport au maillage.
 """
 function interpolate!(
     spline::SplineNN,
-    f::Array{Float64,2},
-    depx::Float64,
-    depy::Float64,
-)
+    f::Array{T,2},
+    depx::T,
+    depy::T,
+) where {T<:AbstractFloat}
 
     nat_x!(spline, f)
     nat_y!(spline)
@@ -146,7 +145,7 @@ end
     natural splines
 
 """
-function nat_x!(spline::SplineNN, gtau::Array{Float64,2})
+function nat_x!(spline::SplineNN, gtau::Array{T,2}) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -165,7 +164,7 @@ function nat_x!(spline::SplineNN, gtau::Array{Float64,2})
         end
     end
 
-    pttrs!(spline.axd, spline.axod, axm1f)
+    pttrsgen!(spline.axd, spline.axod, axm1f)
 
     for j = 1:n2
        # assemblage du second membre du systeme 2x2
@@ -185,7 +184,7 @@ function nat_x!(spline::SplineNN, gtau::Array{Float64,2})
     end
 end
 
-function nat_y!(spline::SplineNN)
+function nat_y!(spline::SplineNN{T})  where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -203,7 +202,7 @@ function nat_y!(spline::SplineNN)
         end
     end
 
-    pttrs!(spline.ayd, spline.ayod, aym1f)
+    pttrsgen!(spline.ayd, spline.ayod, aym1f)
 
     for i = 1:n1p2
 
@@ -225,11 +224,11 @@ function nat_y!(spline::SplineNN)
 end
 
 function evaltab!(
-    spline::SplineNN,
-    xd::Array{Float64,2},
-    yd::Array{Float64,2},
-    f::Array{Float64,2},
-)
+    spline::SplineNN{T},
+    xd::Array{T,2},
+    yd::Array{T,2},
+    f::Array{T,2},
+) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -309,11 +308,11 @@ function evaltab!(
 end
 
 function evaldep!(
-    spline::SplineNN,
-    alphax::Float64,
-    alphay::Float64,
-    f::Array{Float64,2},
-)
+    spline::SplineNN{T},
+    alphax::T,
+    alphay::T,
+    f::Array{T,2},
+) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2

@@ -1,3 +1,4 @@
+
 """
 # Lagrange interpolation
 
@@ -16,13 +17,16 @@ special case.
 Note: The implementation is based on the formulas in Abramowitz and Stegun:
 Handbook of Mathematical Functions, Chapter 25.2
 """
-struct Lagrange <: InterpolationType
+struct Lagrange{T} <: InterpolationType
 
     stencil :: Int
-    pp :: Vector{Float64}
+    pp :: Vector{T}
 
-    Lagrange(stencil) = new(stencil, zeros(stencil))
-
+    function Lagrange(stencil, x::T) where {T <: AbstractFloat}
+        return new{T}(stencil, zeros(T,stencil))
+    end
+    Lagrange(stencil, T1::DataType)=Lagrange(stencil,zero(T1)) 
+    Lagrange(stencil)=Lagrange(stencil, Float64)
 end
 
 
@@ -680,8 +684,7 @@ Lagrange interpolation, periodic boundary conditions
 - `p` : offset in units of dx (best interpolation when close to zero, about [-1,1], but not a requirement)
 - stencil : number of points in fi used for interpolation (currently possible values 3,5,7)
 """
-function interpolate!(fp, fi, p, lag :: Lagrange)
-
+function interpolate!(adv, fp, fi, p, lag :: Lagrange)
     if lag.stencil == 7
         fp[1] = lagr_7pt(lag, fi[end-2], fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], p)
         fp[2] = lagr_7pt(lag, fi[end-1], fi[end], fi[1], fi[2], fi[3], fi[4], fi[5], p)

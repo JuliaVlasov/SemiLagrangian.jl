@@ -1,5 +1,3 @@
-import SemiLagrangian: Lagrange, Advection
-import SemiLagrangian: compute_e!, compute_charge!
 
 @testset " VP 1D1V " begin
 
@@ -13,8 +11,8 @@ vmin, vmax, nv = -6., 6., 64
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint=false )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint=false )
 
-advection_x! = Advection( mesh_x, Lagrange(degree))
-advection_v! = Advection( mesh_v, Lagrange(degree))
+adv_x = Advection( mesh_x, Lagrange(degree))
+adv_v = Advection( mesh_v, Lagrange(degree))
 
 ex  = zeros(Float64, nx)
 rho = zeros(Float64, nx)
@@ -38,7 +36,7 @@ compute_e!(ex, mesh_x, rho)
 
 for t in tspan
 
-  advection_x!(fxv, v, 0.5dt)
+  advection!(adv_x, fxv, v, 0.5dt)
 
   transpose!(fvx, fxv)
 
@@ -46,11 +44,11 @@ for t in tspan
      
   compute_e!(ex, mesh_x, rho)
 
-  advection_v!(fvx, ex, dt)
+  advection!(adv_v, fvx, ex, dt)
 
   transpose!(fxv, fvx)
 
-  advection_x!(fxv, v, 0.5dt)
+  advection!(adv_x, fxv, v, 0.5dt)
 
 end 
 

@@ -1,27 +1,27 @@
-import LinearAlgebra
-import LinearAlgebra.LAPACK: pttrf!, pttrs!
+# include("lapack.jl")
+using LinearAlgebra
 
-mutable struct SplinePP
+mutable struct SplinePP{T}
 
-    geom::Geometry
-    a1x::Float64
-    a2x::Float64
-    a3x::Float64
-    a4x::Float64
-    a1y::Float64
-    a2y::Float64
-    a3y::Float64
-    a4y::Float64
-    axd::Vector{Float64}
-    ayd::Vector{Float64}
-    axod::Vector{Float64}
-    ayod::Vector{Float64}
-    axm1gamma::Array{Float64,2}
-    aym1gamma::Array{Float64,2}
-    coef::Array{Float64,2}
-    bcoef::Array{Float64,2}
+    geom::Geometry{T}
+    a1x::T
+    a2x::T
+    a3x::T
+    a4x::T
+    a1y::T
+    a2y::T
+    a3y::T
+    a4y::T
+    axd::Vector{T}
+    ayd::Vector{T}
+    axod::Vector{T}
+    ayod::Vector{T}
+    axm1gamma::Array{T,2}
+    aym1gamma::Array{T,2}
+    coef::Array{T,2}
+    bcoef::Array{T,2}
 
-    function SplinePP(geom)
+    function SplinePP(geom::Geometry{T}) where{T<:AbstractFloat}
 
         n1 = geom.n1
         n2 = geom.n2
@@ -32,27 +32,27 @@ mutable struct SplinePP
         n2p2 = n2 + 2
         n2p3 = n2 + 3
 
-        axm1gamma = zeros(Float64, (n1p1, 2))
-        aym1gamma = zeros(Float64, (n2p1, 2))
-        axd = 4 * ones(Float64, n1p1)
-        axod = ones(Float64, n1)
-        ayd = 4 * ones(Float64, n2p1)
-        ayod = ones(Float64, n2)
-        coef = zeros(Float64, (n1p3, n2p3))
-        bcoef = zeros(Float64, (n1p3, n2))
+        axm1gamma = zeros(T, (n1p1, 2))
+        aym1gamma = zeros(T, (n2p1, 2))
+        axd = 4 * ones(T, n1p1)
+        axod = ones(T, n1)
+        ayd = 4 * ones(T, n2p1)
+        ayod = ones(T, n2)
+        coef = zeros(T, (n1p3, n2p3))
+        bcoef = zeros(T, (n1p3, n2))
 
-        pttrf!(axd, axod)
-        pttrf!(ayd, ayod)
+        pttrfgen!(axd, axod)
+        pttrfgen!(ayd, ayod)
 
         axm1gamma[1, 2] = 1
         axm1gamma[n1p1, 1] = 1
 
-        pttrs!(axd, axod, axm1gamma)
+        pttrsgen!(axd, axod, axm1gamma)
 
         aym1gamma[1, 2] = 1
         aym1gamma[n2p1, 1] = 1
 
-        pttrs!(ayd, ayod, aym1gamma)
+        pttrsgen!(ayd, ayod, aym1gamma)
 
         aa1x = 3 / geom.delta1
         aa1y = 3 / geom.delta2
@@ -76,7 +76,7 @@ mutable struct SplinePP
         a4y = aa2y *
               (1.0 + 2 * aym1gamma[1, 2] - aym1gamma[2, 2] + aym1gamma[n2, 2] -
                2 * aym1gamma[n2p1, 2])
-        new(
+        new{T}(
             geom,
             a1x,
             a2x,
@@ -100,10 +100,10 @@ end
 
 function interpolate!(
     spline::SplinePP,
-    f::Array{Float64,2},
-    x::Array{Float64,2},
-    y::Array{Float64,2},
-)
+    f::Array{T,2},
+    x::Array{T,2},
+    y::Array{T,2},
+) where {T<:AbstractFloat}
 
     per_x!(spline, f)
 
@@ -115,10 +115,10 @@ end
 
 function interpolate!(
     spline::SplinePP,
-    f::Array{Float64,2},
-    depx::Float64,
-    depy::Float64,
-)
+    f::Array{T,2},
+    depx::T,
+    depy::T,
+) where {T<:AbstractFloat}
 
     per_x!(spline, f)
     per_y!(spline)
@@ -126,7 +126,7 @@ function interpolate!(
 
 end
 
-function per_x!(spline::SplinePP, gtau::Array{Float64,2})
+function per_x!(spline::SplinePP, gtau::Array{T,2}) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -134,7 +134,7 @@ function per_x!(spline::SplinePP, gtau::Array{Float64,2})
     n1p3 = n1 + 3
     det = spline.a1x * spline.a4x - spline.a2x * spline.a3x
 
-    axm1f = zeros(Float64, (spline.geom.n1 + 1, spline.geom.n2))
+    axm1f = zeros(T, (spline.geom.n1 + 1, spline.geom.n2))
 
     for j = 1:n2
         for i = 1:n1
@@ -143,7 +143,7 @@ function per_x!(spline::SplinePP, gtau::Array{Float64,2})
         axm1f[n1+1, j] = 6 * gtau[1, j]
     end
 
-    pttrs!(spline.axd, spline.axod, axm1f)
+    pttrsgen!(spline.axd, spline.axod, axm1f)
 
     for j = 1:n2
 
@@ -167,7 +167,7 @@ function per_x!(spline::SplinePP, gtau::Array{Float64,2})
 
 end
 
-function per_y!(spline)
+function per_y!(spline::SplinePP{T}) where{T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -178,7 +178,7 @@ function per_y!(spline)
     delta1 = spline.geom.delta1
     delta2 = spline.geom.delta2
 
-    aym1f = zeros(Float64, (n2 + 1, n1 + 3))
+    aym1f = zeros(T, (n2 + 1, n1 + 3))
 
     for i = 1:n1p3
         for j = 1:n2
@@ -187,7 +187,7 @@ function per_y!(spline)
         aym1f[n2+1, i] = 6 * spline.bcoef[i, 1]
     end
 
-    pttrs!(spline.ayd, spline.ayod, aym1f)
+    pttrsgen!(spline.ayd, spline.ayod, aym1f)
 
     for i = 1:n1p3
 
@@ -209,11 +209,11 @@ function per_y!(spline)
 end
 
 function evaltab!(
-    spline::SplinePP,
-    xd::Array{Float64,2},
-    yd::Array{Float64,2},
-    fout::Array{Float64,2},
-)
+    spline::SplinePP{T},
+    xd::Array{T,2},
+    yd::Array{T,2},
+    fout::Array{T,2},
+) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -289,11 +289,11 @@ function evaltab!(
 end
 
 function evaldep!(
-    spline::SplinePP,
-    alphax::Float64,
-    alphay::Float64,
-    fout::Array{Float64,2},
-)
+    spline::SplinePP{T},
+    alphax::T,
+    alphay::T,
+    fout::Array{T,2},
+) where {T<:AbstractFloat}
 
     n1 = spline.geom.n1
     n2 = spline.geom.n2
@@ -309,13 +309,13 @@ function evaldep!(
     delta2yy6 = 1 / (6 * delta2yy)
 
     if (alphax > 0)
-        intaxsdelta1 = trunc(Int64, -alphax / delta1 + eps(Float64)) - 1
+        intaxsdelta1 = trunc(Int64, -alphax / delta1 + eps(T)) - 1
     else
         intaxsdelta1 = trunc(Int64, -alphax / delta1)
     end
 
     if (alphay > 0)
-        intaysdelta2 = trunc(Int64, -alphay / delta2 + eps(Float64)) - 1
+        intaysdelta2 = trunc(Int64, -alphay / delta2 + eps(T)) - 1
     else
         intaysdelta2 = trunc(Int64, -alphay / delta2)
     end

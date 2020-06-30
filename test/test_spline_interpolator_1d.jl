@@ -1,4 +1,4 @@
-import SemiLagrangian: eval_value, eval_deriv
+
 
 @testset " Spline Interpolator 1D cos " begin
 

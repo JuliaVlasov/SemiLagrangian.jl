@@ -2,7 +2,7 @@ import LinearAlgebra.LAPACK: gbtrf!, gbtrs!
 
 export BandedMatrix, set_element!, factorize!, solve!
 
-mutable struct BandedMatrix
+mutable struct BandedMatrix{T}
 
     n::Int64
     kl::Int64
@@ -10,14 +10,17 @@ mutable struct BandedMatrix
     ipiv::AbstractVector
     q::AbstractMatrix
 
-    function BandedMatrix(n, kl, ku)
+    function BandedMatrix(x::T, n, kl, ku) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
 
         ipiv = zeros(Int64, n)
-        q = zeros(Float64, (2 * kl + ku + 1, n))
+        q = zeros(T, (2 * kl + ku + 1, n))
 
-        new(n, kl, ku, ipiv, q)
+        new{T}(n, kl, ku, ipiv, q)
 
     end
+    BandedMatrix(T1::DataType, n, kl, ku)=BandedMatrix(zero(T1), n, kl, ku)
+
+    BandedMatrix(n, kl, ku)=BandedMatrix(Float64, n, kl, ku)
 
 end
 
@@ -29,12 +32,16 @@ end
 
 function factorize!(matrix)
 
-    matrix.q, matrix.ipiv = gbtrf!(matrix.kl, matrix.ku, matrix.n, matrix.q)
+ #   println(" avant gbtrf matrix=$matrix")
+
+    matrix.q, matrix.ipiv = gbtrfgen!(matrix.kl, matrix.ku, matrix.n, matrix.q)
+
+#    println(" après gbtrf matrix=$matrix")
 
 end
 
 function solve!(matrix, b)
 
-    gbtrs!('N', matrix.kl, matrix.ku, matrix.n, matrix.q, matrix.ipiv, b)
+    gbtrsgen!('N', matrix.kl, matrix.ku, matrix.n, matrix.q, matrix.ipiv, b)
 
 end

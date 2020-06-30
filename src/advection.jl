@@ -9,16 +9,23 @@ Creates a 1d backward semi-lagrangian advection.
 - `mesh`     : UniformMesh along advection direction
 
 """
-struct Advection
+struct Advection{T}
 
-    mesh::UniformMesh
+    mesh::UniformMesh{T}
     interp::InterpolationType
-    f1d::Vector{Float64}
-
-    function Advection(mesh::UniformMesh, interp::InterpolationType)
-        new(mesh, interp, zeros(mesh.length))
+    f1d::Vector{T}
+    parfft
+    function Advection(mesh::UniformMesh{T}, interp::InterpolationType) where{T}
+        return new{T}(mesh, interp, zeros(mesh.length), missing)
     end
-
+    function Advection(mesh::UniformMesh{T}, interp::Bspline) where{T}
+        parfft = if T == BigFloat 
+            PrepareFftBig(mesh.length, T, ndims=1)
+        else
+            missing
+        end
+        return new{T}(mesh, interp, zeros(mesh.length), parfft)
+    end
 end
 
 """
@@ -40,14 +47,14 @@ v  = ones( Float64, mesh.length)
 advection!( f, v, dt )
 
 """
-function (self::Advection)(f::Array{Float64,2}, v::Vector{Float64}, dt::Float64)
-
+function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) where {T}
+    buf = zeros(T,size(f,1));
 #    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
 #        @spawn begin
             for j in eachindex(v) # jchunk
                 alpha = - v[j] * dt / self.mesh.step
-                interpolate!( self.f1d, view(f,:, j), alpha, self.interp)
-                f[:,j] .= self.f1d
+                interpolate!( self, buf, f[:, j], alpha, self.interp)
+                f[:,j] .= buf
             end
 #        end
 #    end

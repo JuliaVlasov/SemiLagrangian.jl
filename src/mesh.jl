@@ -1,7 +1,6 @@
-import Statistics: mean
-
+using Test
+#import Statistics: mean
 export UniformMesh
-
 """
 
     UniformMesh(start, stop, length)
@@ -18,37 +17,30 @@ If you want remove the last point for periodic domain, set endpoint=false
     - `width` : Distance between left and right edges.
 
 """
-struct UniformMesh
-
-    start::Float64
-    stop::Float64
+struct UniformMesh{T}
+    start::T
+    stop::T
     length::Int
-    step::Float64
-    points::Vector{Float64}
-    width::Float64
-
-    function UniformMesh(start, stop, length::Int; endpoint = true)
-
+    step::T
+    points::Vector{T}
+    width::T
+    function UniformMesh(start::T, stop::T, length::Int; 
+    endpoint = true
+) where {T <: AbstractFloat}
         if (endpoint)
             points = range(start, stop = stop, length = length)
         else
             points = range(start, stop = stop, length = length + 1)[1:end-1]
         end
-
-        step = points.step
-
+        step_loc = T == BigFloat ? step(points) : points.step
         width = stop - start
-
-        new(start, stop, length, step, points, width)
-
+        new{T}(start, stop, length, step_loc, points, width)
     end
-
 end
-
 export compute_charge!
-
 """
-    compute_rho!( rho, mesh_v, fvx)
+
+    compute_charge!( rho, mesh_v, fvx)
 
  Compute charge density
 
@@ -56,15 +48,14 @@ export compute_charge!
 
 """
 function compute_charge!(
-    rho::Vector{Float64},
+    rho::Vector{T},
     meshv::UniformMesh,
-    fvx::Array{Float64,2},
-)
-
+    fvx::Array{T,2},
+) where {T <: AbstractFloat}
     dv = meshv.step
     rho .= dv .* vec(sum(fvx, dims = 1))
-    rho .= rho .- mean(rho)
-
+    rho .-= sum(rho)/size(rho,1)
+    missing
 end
 
 
@@ -81,14 +72,14 @@ already allocated.
 
 """
 function compute_e!(
-    e::Vector{Float64},
-    meshx::UniformMesh,
-    rho::Vector{Float64},
-)
+    e::Vector{T},
+    meshx::UniformMesh{T},
+    rho::Vector{T},
+) where {T <: AbstractFloat}
 
     nx = meshx.length
     k = 2π / (meshx.stop - meshx.start)
-    modes = zeros(Float64, nx)
+    modes = zeros(T, nx)
     modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
     modes[1] = 1.0
     e .= real(ifft(-1im .* fft(rho) ./ modes))

@@ -15,7 +15,6 @@
 
     end
     
-
     factorize!( matrix )
 
     b = ones(Float64, (n,3))

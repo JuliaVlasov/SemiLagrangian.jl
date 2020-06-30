@@ -2,6 +2,8 @@ using FFTW, LinearAlgebra
 
 export Bspline, BsplinePeriodicAdvection
 
+include("../src/fftbig.jl")
+
 struct Bspline <: InterpolationType
 
     p::Int
@@ -38,13 +40,13 @@ B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
 ```
 
 """
-function bspline(p, j, x)
+function bspline(p, j, x::T) where{T<:AbstractFloat}
 
     if p == 0
         if j == 0
-            return 1.0
+            return one(T)
         else
-            return 0.0
+            return zero(T)
         end
     else
         w = (x - j) / p
@@ -79,38 +81,49 @@ degree of first dimension of array f on a periodic uniform mesh, at
 all points x-alpha. f type is Array{Float64,2}.
 
 """
-struct BsplinePeriodicAdvection <: AbstractAdvection
+struct BsplinePeriodicAdvection{T} <: AbstractAdvection
 
     p::Int
-    mesh::UniformMesh
-    modes::Vector{ComplexF64}
-    eig_bspl::Vector{ComplexF64}
-    eigalpha::Vector{ComplexF64}
+    mesh::UniformMesh{T}
+    modes::Vector{Complex{T}}
+    eig_bspl::Vector{Complex{T}}
+    eigalpha::Vector{Complex{T}}
+    parfft
 
-    function BsplinePeriodicAdvection(mesh::UniformMesh, bspl::Bspline)
+    function BsplinePeriodicAdvection(
+    mesh::UniformMesh{T}, 
+    bspl::Bspline
+) where {T<:AbstractFloat}
 
         n = mesh.length
-        modes = zeros(Float64, n)
+        modes = zeros(T, n)
         modes .= 2π .* (0:n-1) ./ n
-        eig_bspl = zeros(Complex{Float64}, n)
-        eigalpha = zeros(Complex{Float64}, n)
-        eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), 0.0)
+        eig_bspl = zeros(Complex{T}, n)
+        eigalpha = zeros(Complex{T}, n)
+        eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), zero(T))
         for j = 1:div(bspl.p + 1, 2)-1
-            eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0) .* 2 .*
+            eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), zero(T)) .* 2 .*
                           cos.(j .* modes))
         end
+        parfft = if T == BigFloat
+            PrepareFftBig(n, T, ndims=1)
+        else
+            missing
+        end
+        
 
-        new(bspl.p, mesh, modes, eig_bspl, eigalpha)
+        new{T}(bspl.p, mesh, modes, eig_bspl, eigalpha, parfft)
 
     end
 
 end
 
-function (adv::BsplinePeriodicAdvection)(
-    f::Array{Float64,2},
-    v::Vector{Float64},
-    dt::Float64,
-)
+function advection!(
+    adv::BsplinePeriodicAdvection{T},
+    f::Array{T,2},
+    v::Vector{T},
+    dt::T,
+) where {T}
     nv = length(v)
     p = adv.p
     delta = adv.mesh.step
@@ -138,11 +151,12 @@ function (adv::BsplinePeriodicAdvection)(
 end
 
 
-function (adv::BsplinePeriodicAdvection)(
-    f::Array{ComplexF64,2},
-    v::Vector{Float64},
-    dt::Float64,
-)
+function advection!(
+    adv::BsplinePeriodicAdvection{T},
+    f::Array{Complex{T},2},
+    v::Vector{T},
+    dt::T,
+) where {T}
 
     nv = length(v)
     dx = adv.mesh.step
@@ -174,22 +188,22 @@ function (adv::BsplinePeriodicAdvection)(
 end
 
 
-function interpolate!( fout, f, alpha, bspl :: Bspline)
+function interpolate!( adv, fout, f::Array{T}, alpha::T, bspl::Bspline) where{T<:AbstractFloat}
 
     n = length(f)
 
-    f̂ = fft(f)
+    f̂ = fftgen(adv.parfft, f)
 
-    modes = zeros(Float64, n)
+    modes = zeros(T, n)
     modes .= 2π .* (0:n-1) ./ n
     ishift = floor(-alpha)
     beta = -ishift - alpha
-    eig_bspl = zeros(Complex{Float64}, n)
-    eigalpha = zeros(Complex{Float64}, n)
-    eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), 0.0)
+    eig_bspl = zeros(Complex{T}, n)
+    eigalpha = zeros(Complex{T}, n)
+    eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), zero(T))
 
     for j = 1:div(bspl.p + 1, 2)-1
-        eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), 0) .* 2 .*
+        eig_bspl .+= (bspline(bspl.p, j - div(bspl.p + 1, 2), zero(T)) .* 2 .*
                       cos.(j .* modes))
     end
 
@@ -200,6 +214,6 @@ function interpolate!( fout, f, alpha, bspl :: Bspline)
 
     f̂ .= f̂ .* eigalpha ./ eig_bspl
 
-    fout .= real(ifft(f̂))
+    fout .= real(ifftgen(adv.parfft, f̂))
 
 end

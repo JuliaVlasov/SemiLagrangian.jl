@@ -42,6 +42,6 @@ end
 
 function solve!(matrix, b)
 
-    gbtrsgen!('N', matrix.kl, matrix.ku, matrix.n, matrix.q, matrix.ipiv, b)
+    gbtrsgen!( matrix.kl, matrix.ku, matrix.n, matrix.q, matrix.ipiv, b)
 
 end

@@ -26,6 +26,6 @@ function test_spline(order, prec)
         end
     end
 end
-for order = 1:100
+for order = 1:15
     test_spline( order, order < 20 ? 256 : 512 )
 end

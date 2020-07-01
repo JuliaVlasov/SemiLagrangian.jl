@@ -1,7 +1,7 @@
 using Polynomials
 import Base: +, *, -, ==, getindex, setindex!
 # import Base: +, *
-
+include("lapack.jl")
 struct Spline{N}
     tabpol::Vector{Polynomial{Rational{N}}}
     function Spline(tabpol::Vector{Polynomial{Rational{N}}}) where{N<:Signed}
@@ -88,17 +88,22 @@ function (f::Spline{N})(x) where{N<:Signed}
         return zero(x)
     end
 end
-struct BSplineNew{iscirc, T} 
+abstract type InterpolationType end
+struct BSplineNew{iscirc, T} <: InterpolationType
+    ab_ori::Matrix{T}
     ab::Matrix{T}
+    kl
+    ku
+    ipiv
     bspline::Spline
-    function BSplineNew( order, n; typeval=Float64)
+    function BSplineNew( order, n; T::DataType=Float64)
         bspline = getbspline(order, 0)
         kl = ku = div(order, 2)
         if (order % 2) == 0
             ku -= 1
         end
         idiag = ku+1
-        ab =zeros(T, n, 2kl*ku+1)
+        ab =zeros(T, 2kl*ku+1, n)
         for i=1:order
             c = T(bspline(i))
             line = i+kl
@@ -113,7 +118,14 @@ struct BSplineNew{iscirc, T}
                 ab[line, j] = c
             end
         end
-        gbtrfgen!(kl, ku, n, ab)
-        return new{false,T}(ab, bspline)
+        ab_ori = copy(ab)
+        _, ipiv = gbtrfgen!(kl, ku, n, ab)
+        return new{false,T}(ab_ori, ab, kl, ku, ipiv, bspline)
     end
 end
+
+function interpolate!( adv, fp, fi, dec, 
+    bsp::BSplineNew{false,T}
+) where {T}
+end
+

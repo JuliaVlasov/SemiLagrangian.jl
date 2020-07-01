@@ -183,7 +183,7 @@ function test_gbt(isbig, seedval)
         B2 = isbig ? big.(B) : copy(B)
 
         res_1 = gbtrs!('N', kl, ku, n, AB1, p1, B1)
-        res_2 = gbtrsgen!('N', kl, ku, n, AB2, p1, B2)
+        res_2 = gbtrsgen!(kl, ku, n, AB2, p1, B2)
 
         println("norm(B1-B2)=$(norm(B1-B2,Inf))")
         @test isapprox(B1, B2, atol=1e-14, rtol=1e-14)

@@ -1,5 +1,5 @@
 
-function pttrfgen!(D::Vector{T}, E::Vector{T}) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+function pttrfgen!(D::Vector{T}, E::Vector{T}) where {T<:Union{AbstractFloat,Complex{AbstractFloat},Rational,Complex{Rational}}}
     n1 = size(D,1)
     n2 = size(E,1)
     @assert n1 == n2+1 "n1=$n1 and n2=$n2 n1 must be greater than n2 by one"
@@ -9,7 +9,7 @@ function pttrfgen!(D::Vector{T}, E::Vector{T}) where {T<:Union{AbstractFloat,Com
     end
     return (D, E)
 end
-function pttrsgen!(D::Vector{T}, E::Vector{T}, B::Array{T}) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+function pttrsgen!(D::Vector{T}, E::Vector{T}, B::Array{T}) where {T<:Union{AbstractFloat,Complex{AbstractFloat},Rational,Complex{Rational}}}
     n1 = size(D,1)
     n2 = size(E,1)
     n3 = size(B,1)
@@ -208,7 +208,7 @@ end
 #  *
 function gbtrfgen!(kl, ku, m, 
     AB::Matrix{T}
-) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+) where {T<:Union{AbstractFloat,Complex{AbstractFloat},Rational,Complex{Rational}}}
 
     ipiv = collect(1:m)
 
@@ -397,14 +397,14 @@ end
 #  *     Test the input parameters.
 #  *
 function gbtrsgen!(
-    trans, 
+#    trans, 
     kl, 
     ku, 
     m, 
     AB::Matrix{T}, 
     ipiv, 
     B::Array{T}
-)    where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+)    where {T<:Union{AbstractFloat,Complex{AbstractFloat},Rational,Complex{Rational}}}
     info = 0
 
 #        info = 0

@@ -1,5 +1,5 @@
 using Polynomials
-import Base: +, *, -, getindex, setindex!
+import Base: +, *, -, ==, getindex, setindex!
 # import Base: +, *
 
 struct Spline{N}
@@ -36,6 +36,10 @@ function -(a::Spline{N}, b::Spline{N}) where{N<:Signed}
     end
     return(Spline(tabpolnew))
 end
+function ==(a::Spline{N}, b::Spline{N}) where{N<:Signed}
+    return a.tabpol == b.tabpol
+end
+
 function *( a::Spline{N}, pol::Polynomial{Rational{N}}) where{N<:Signed}
     tabpol2 = deepcopy(a.tabpol)
     for i=1:size(tabpol2,1)
@@ -43,6 +47,7 @@ function *( a::Spline{N}, pol::Polynomial{Rational{N}}) where{N<:Signed}
     end
     return Spline(tabpol2)
 end
+
 function decal( a::Spline{N}, n) where{N<:Signed}
     return if n == 0
         a
@@ -83,16 +88,32 @@ function (f::Spline{N})(x) where{N<:Signed}
         return zero(x)
     end
 end
-
-struct BSplineNew{iscirc, T, N} 
-    order
-    coef::Vector{T}
+struct BSplineNew{iscirc, T} 
     ab::Matrix{T}
-    bspline::Spline{N}
-    
+    bspline::Spline
+    function BSplineNew( order, n; typeval=Float64)
+        bspline = getbspline(order, 0)
+        kl = ku = div(order, 2)
+        if (order % 2) == 0
+            ku -= 1
+        end
+        idiag = ku+1
+        ab =zeros(T, n, 2kl*ku+1)
+        for i=1:order
+            c = T(bspline(i))
+            line = i+kl
+            if i <= idiag
+                beginning = 2+ku-i
+                ending=n
+            else
+                beginning=1
+                ending= n +idiag-i
+            end
+            for j=beginning:ending
+                ab[line, j] = c
+            end
+        end
+        gbtrfgen!(kl, ku, n, ab)
+        return new{false,T}(ab, bspline)
+    end
 end
-
-
-
-
-

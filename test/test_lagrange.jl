@@ -30,7 +30,7 @@ function test_interpolation(type::DataType, order, iscirc::Bool, number, granula
     lag = LagrangeNew(type, order; iscirc=iscirc, granularity=granularity)
     coef = iscirc ? 1. : 1.111
     n = number
-    fct(v,n) = cos(2big(pi)*coef*v/n)
+    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
     fp = fct.(BigFloat.(collect(1:n)),n)
     fi = zeros(type, number)
     value = big"0.485713901"
@@ -52,10 +52,10 @@ test_lagrange(BigFloat, 17,false, 1000, 1e-38)
 test_lagrange(BigFloat, 23,false, 1000, 1e-50)
 @testset "Lagrange interpolation order=17 iscirc=true" begin
     for i= 1:25
-        @time test_interpolation(BigFloat, 17,true, 1000, i, 1e-35)
+        @time test_interpolation(BigFloat, 17,true, 1000, i, 1e-20)
     end
 end
-@time test_interpolation(BigFloat, 17,true, 1000, 1, 1e-35, 1000 )
+@time test_interpolation(BigFloat, 17,true, 200, 1, 1e-10, 200 )
 # test_interpolation(BigFloat, 23,true, 1000, 12, 1e-40)
 # test_interpolation(BigFloat, 17,false, 1000, 10, 1e-38)
 # test_interpolation(BigFloat, 23,false, 1000, 12, 1e-40)

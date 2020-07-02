@@ -96,7 +96,7 @@ end
     mesh1 = UniformMesh(-pi, float(pi), 64; endpoint=false)
     mesh2 = UniformMesh(-pi, float(pi), 64; endpoint=false)
 
-    @time lag= LagrangeNew(30, granularity=8)
+    @time lag= LagrangeNew(21, granularity=1)
 
     println("norm lag = $(norm(lag.coef))")
     
@@ -116,7 +116,7 @@ end
 #     mesh1 = UniformMesh(-big(π), big(π), 64; endpoint=false)
 #     mesh2 = UniformMesh(-big(π), big(π), 64; endpoint=false)
 
-#     @time lag = LagrangeNew(BigFloat, 40, granularity=10)
+#     @time lag = LagrangeNew(BigFloat, 21, granularity=1)
     
 #     println("norm lag = $(norm(lag.coef))")
 

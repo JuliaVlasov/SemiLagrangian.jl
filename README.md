@@ -26,14 +26,3 @@ julia> using SemiLagrangian
 
 Some examples are available in notebooks directory.
 
-## Fortran code
-
-The original Fortran code was used for the paper
-
-"Charge conserving grid based methods for the Vlasov-Maxwell equations, Comptes Rendus de Mécanique (Theoritical and numerical approaches for Vlasov-Maxwell equations), 342, pp. 636-646 (2014)."
-
-by N. Crouseilles, P. Navaro, E. Sonnendrücker.
-
-http://people.rennes.inria.fr/Nicolas.Crouseilles/charge-cons-eulerian.pdf
-
-https://doi.org/10.1016/j.crme.2014.06.012

@@ -1,10 +1,7 @@
 language: julia
 
 os: osx
-julia: 1.3
-
-before_install:
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/JuliaVlasov/VlasovBase.jl.git")'
+julia: 1.4
 
 notifications:
   email: true

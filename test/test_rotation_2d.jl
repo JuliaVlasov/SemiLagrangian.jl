@@ -4,13 +4,7 @@ include("../src/mesh.jl")
 include("../src/bspline_periodic.jl")
 include("../src/advection.jl")
 include("../src/lagrange.jl")
-
-
-
-
-
 using LinearAlgebra
-
 """
 
    exact(tf, mesh1, mesh2)
@@ -91,7 +85,7 @@ end
 
 @testset "Rotation test with LagrangeNew advections " begin
 
-    tf, nt = 2π, 100
+    tf, nt = 2π, 200
     
     mesh1 = UniformMesh(-pi, float(pi), 64; endpoint=false)
     mesh2 = UniformMesh(-pi, float(pi), 64; endpoint=false)

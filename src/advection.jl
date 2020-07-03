@@ -51,12 +51,17 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
     buf = zeros(T,size(f,1));
 #    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
 #        @spawn begin
+    maxalpha = 0
+    minalpha = 100000
             for j in eachindex(v) # jchunk
                 alpha = - v[j] * dt / self.mesh.step
+ #               println("j=$j alpha=$alpha")
+                maxalpha = max(maxalpha,abs(alpha))
+                minalpha = min(minalpha,abs(alpha))
                 interpolate!( self, buf, f[:, j], alpha, self.interp)
                 f[:,j] .= buf
             end
 #        end
 #    end
-
+#    println("maxaplha = $maxalpha minaplha = $minalpha")
 end

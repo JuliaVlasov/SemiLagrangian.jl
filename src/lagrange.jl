@@ -135,13 +135,20 @@ return the interpolation polynomial for the given values of a function a a speci
 function interpolate!( adv, fp, fi, dec, 
     lag::LagrangeNew{iscirc, N, origin, granularity}
 ) where {iscirc, N, origin, T<:AbstractFloat, granularity}
+    # if (dec >= 1 || dec < 1)
+    #     cor = Int64(floor(dec))
+    #     val = dec - cor
+    # else
+        cor = 0
+        val = dec
+    # end
     gr1=div(granularity,2)
     gr2=granularity-gr1-1
     borne = size(fp,1)-gr2
     for i=gr1+1:granularity:borne
-        pol = polinterpol(lag, fi, i)
+        pol = polinterpol(lag, fi, i+cor)
         for j=-gr1:gr2
-            fp[i+j] = pol(j+dec)
+            fp[i+j] = pol(j+val)
         end
     end
     reste = size(fp,1)%granularity
@@ -149,9 +156,9 @@ function interpolate!( adv, fp, fi, dec,
         gr1 = div(reste, 2)
         gr2 = reste-gr1-1
         i = size(fp,1)-gr2
-        pol = polinterpol(lag, fi, i)
+        pol = polinterpol(lag, fi, i+cor)
         for j=-gr1:gr2
-            fp[i+j] = pol(j+dec)
+            fp[i+j] = pol(j+val)
         end
     end
 end

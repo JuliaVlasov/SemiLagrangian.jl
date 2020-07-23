@@ -30,25 +30,6 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
     end
     return result
 end
-const XVar=PolyVar{true}("X")
-const YVar=PolyVar{true}("Y")
-function _getpolylagrange2d(k1::Int64, k2::Int64, order::Int64, origin::Int64, N::DataType)
-    0 <= k1 <= order || throw(DomainError("the constaint 0 <= k1 <= order is false"))
-    0 <= k2 <= order || throw(DomainError("the constaint 0 <= k2 <= order is false"))
-    N <: Union{BigInt,Int64} || throw(DomainError(N, "N must be Int64 or BigInt"))
-    result = DynamicPolynomials.Monomial([XVar, YVar], [0, 0])  # that is one
-    x1y0 = DynamicPolynomials.Monomial([XVar, YVar], [1, 0])  # that is X
-    x0y1 = DynamicPolynomials.Monomial([XVar, YVar], [0, 1])  # that is Y
-    for l=0:order
-        if l != k1
-            result *= (x1y0-(l+origin)//1)/(k1-l)
-        end
-        if l != k2
-            result *= (x0y1-(l+origin)//1)/(k2-l)
-        end
-    end
-    return result
-end
 """
     LagrangeNew{iscirc, T, origin, granularity}
 Lagrange Polynomials coefficients

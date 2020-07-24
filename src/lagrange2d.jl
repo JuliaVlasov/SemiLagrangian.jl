@@ -68,10 +68,9 @@ function allcoefficients(
 end
 function polynomialfromall( a::Vector{T}, ref::DynamicPolynomials.Polynomial{true}) where {T}
     refmonovec = DynamicPolynomials.monomials(ref)
-    z = collect(zip( a, refmonovec.Z))
-    z = collect(Iterators.flatten(filter( x-> x[1] != 0, z )))
-    x = DynamicPolynomials.MonomialVector(refmonovec.vars, z[2:2:end])
-    return DynamicPolynomials.Polynomial(z[1:2:end], x)
+    z = collect(zip( a, refmonovec))
+    z = filter( x-> x[1] != 0, z )
+    return sum([ t[1]*t[2] for t in z])
 end
 
 
@@ -95,7 +94,7 @@ struct Lagrange2d{iscirc, T, origin, granularity} <: InterpolationType
     order
     function Lagrange2d(T::DataType, order; iscirc::Bool=true, granularity=1)
         origin = -div(order,2) 
-        type = order <= 14 ? Int64 : BigInt
+        type = order <= 10 ? Int64 : BigInt
         op1 = order+1 
         len = op1^2
         coef = zeros(T, len, len)
@@ -187,9 +186,14 @@ function polinterpol(
     resfct::Array{T,2},
     ind::Tuple{Int64,Int64}
 ) where {iscirc, N, origin, T<:AbstractFloat, granularity}
-   list_x, dec_x = calindices(lag, ind[1], size(resfct,1))
-   list_y, dec_y = calindices(lag, ind[2], size(resfct,2))
-   f = collect(Iterators.flatten([resfct[x,y] for (x,y) in Iterators.product(list_x,list_y)]))
+    list_x, dec_x = calindices(lag, ind[1], size(resfct,1))
+    list_y, dec_y = calindices(lag, ind[2], size(resfct,2))
+    op1 = lag.order+1
+    f = zeros(T,op1^2)
+    for (i_x, x) in enumerate(list_x), (i_y, y) in enumerate(list_y)
+        indice = (i_x-1)*op1+i_y
+        f[indice] = resfct[x,y]
+    end
     polret = polinterpol(lag, f)
     return if dec_x == 0 && dec_y == 0
         polret

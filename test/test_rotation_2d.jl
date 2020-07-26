@@ -85,10 +85,10 @@ end
 
 @testset "Rotation test with LagrangeNew advections " begin
 
-    tf, nt = 2π, 200
+    tf, nt = 2π, 1000
     
-    mesh1 = UniformMesh(-pi, float(pi), 64; endpoint=false)
-    mesh2 = UniformMesh(-pi, float(pi), 64; endpoint=false)
+    mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+    mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
 
     @time lag= LagrangeNew(21, granularity=1)
 

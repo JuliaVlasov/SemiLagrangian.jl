@@ -72,12 +72,6 @@ function polynomialfromall( a::Vector{T}, ref::DynamicPolynomials.Polynomial{tru
     z = filter( x-> x[1] != 0, z )
     return sum([ t[1]*t[2] for t in z])
 end
-
-
-
-
-        
-
 """
     Lagrange2d{iscirc, T, origin, granularity}
 Lagrange Polynomials coefficients
@@ -99,7 +93,7 @@ struct Lagrange2d{iscirc, T, origin, granularity} <: InterpolationType
         len = op1^2
         coef = zeros(T, len, len)
         indref = zeros(Int64, op1, op1)
-        ref = Monomial{true}()
+        ref = DynamicPolynomials.Monomial{true}()
         for i = 0:order, j = 0:order
             ref += DynamicPolynomials.Monomial([XVar, YVar], [i,j])
         end
@@ -115,7 +109,7 @@ struct Lagrange2d{iscirc, T, origin, granularity} <: InterpolationType
         end
         new{iscirc, T, origin, granularity}(coef, ref, indref, order) 
     end
-    Lagrange2d(order; kwargs...)= LagrangeNew(Float64, order; kwargs...)
+    Lagrange2d(order; kwargs...)= Lagrange2d(Float64, order; kwargs...)
 end
 """
     polinterpol(
@@ -225,15 +219,18 @@ function interpolate!( adv, fp, fi, dec::Array{Tuple{T,T},2},
     gr2_y=granularity-gr1_y-1
     borne_y = size(fp,2)-gr2_y
     for i_x=gr1_x+1:granularity:borne_x, i_y=gr1_y+1:granularity:borne_y
-        pol = polinterpol(lag, fi, (i,j))
+        pol = polinterpol(lag, fi, (i_x,i_y))
         for j_x=-gr1_x:gr2_x, j_y=-gr1_y:gr2_y
             x = i_x+j_x
             y = i_y+j_y
-            fp[x, y] = pol(x+dec[x,y][1], y+dec[x,y][2])
+            # if x == y
+            #     println("decx=$(dec[x,y][1]) decy=$(dec[x,y][2])")
+            # end
+            fp[x, y] = pol(dec[x,y][1], dec[x,y][2])
         end
     end
-    @assert size(fp,1)%granularity != 0 "size(fp,1)%granularity != 0"
-    @assert size(fp,2)%granularity != 0 "size(fp,2)%granularity != 0"
+    @assert size(fp,1)%granularity == 0 "size(fp,1)%granularity != 0"
+    @assert size(fp,2)%granularity == 0 "size(fp,2)%granularity != 0"
     # TODO cas ou reste != size%granularity pour chaque dimension
     # if reste != 0
     #     gr1 = div(reste, 2)

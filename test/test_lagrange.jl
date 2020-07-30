@@ -77,7 +77,7 @@ function test_dirac(order, len, nb, modval )
     aff_graph(1,fp)
     for i=1:nb
         fi .= fp
-        interpolate!(missing, fp, fi, value, lag)
+  interpolate!(missing,fp,fi, value, lag)
         if i%modval == 0
             aff_graph(i,fp)
         end

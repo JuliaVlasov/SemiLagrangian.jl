@@ -19,7 +19,7 @@ function test_baselagrange2d(order)
 end
 
 function test_lagrange2d(type::DataType, order, iscirc::Bool, number,  tol)
-    @testset "Lagrange interpolation 2d function type=$type order=$order iscirc=$iscirc" begin
+    @testset "Lagrange2d function type=$type order=$order iscirc=$iscirc" begin
         lag = Lagrange2d(type, order; iscirc=iscirc)
 #        println("lag=$lag")
         n = number
@@ -47,24 +47,27 @@ function test_lagrange2d(type::DataType, order, iscirc::Bool, number,  tol)
 end
 
 function test_interpolation(type::DataType, order, iscirc::Bool, number, granularity,  tol, nb=1)
-    
-    lag = Lagrange2d(type, order; iscirc=iscirc, granularity=granularity)
-    coef = iscirc ? 1. : 1.111
-    n = number
-    fct(x,y,n) = exp( -cos(2big(pi)*coef*v/n)^2+ sin(2big(pi)*coef*y/n+big"0.2"))
-    fp = [fct(i,j,n) for i=1:n, j=1:n]
-    fi = zeros(type, number, number)
-    value_x = big"0.485713901"
-    value_y = big"0.185713901"
-    for i=1:nb
-        fi .= fp
-        fpref = [fct(x+i*value_x, y+i*value_y,n) for x=1:n, y=1:n]
-        interpolate!(missing, fp, fi, (value_x, value_y), lag)
-        println("i=$i granularity=$granularity norm = $(norm(fpref-fp,Inf))")
-        # for i=1:number
-        #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
-        # end
-        @test isapprox(fpref, fp, atol=tol)
+    @testset "Lagrange2d interpolation 2d function type=$type order=$order iscirc=$iscirc" begin    
+        lag = Lagrange2d(type, order; iscirc=iscirc, granularity=granularity)
+        coef = iscirc ? 1. : 1.111
+        n = number
+        fct(x,y,n) = exp( -cos(2big(pi)*coef*x/n)^2+ sin(2big(pi)*coef*y/n+big"0.2"))
+    #    fct(x,y,n) = cos(2big(pi)*coef*x/n)*sin(2big(pi)*coef*y/n+big"0.2")
+        fp = [fct(i,j,n) for i=1:n, j=1:n]
+        fi = zeros(type, number, number)
+        value_x = big"0.485713901"
+        value_y = big"0.185713901"
+        tabdec = fill((value_x, value_y), (n, n))
+        for i=1:nb
+            fi .= fp
+            fpref = [fct(x+i*value_x, y+i*value_y,n) for x=1:n, y=1:n]
+            interpolate!(missing, fp, fi, tabdec, lag)
+            println("i=$i granularity=$granularity norm = $(norm(fpref-fp,Inf))")
+            # for i=1:number
+            #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
+            # end
+            @test isapprox(fpref, fp, atol=tol)
+        end
     end
 end
 for i=3:7
@@ -73,7 +76,7 @@ end
 # test_baselagrange2d(17)
 
 test_lagrange2d(BigFloat, 5,true, 100, 1e-10)
-test_interpolation(BigFoat, 5, true, 100, 1, 1e-7, 1000)
+@time test_interpolation(BigFloat, 11, true, 50, 1, 1e-4, 10)
 # test_lagrange2d(BigFloat, 5,true, 100, 1e-50)
 # test_lagrange(BigFloat, 17,false, 1000, 1e-38)
 # test_lagrange(BigFloat, 23,false, 1000, 1e-50)

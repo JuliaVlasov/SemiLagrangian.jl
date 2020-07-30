@@ -103,7 +103,7 @@ struct BSplineNew{iscirc, T} <: InterpolationType
             ku -= 1
         end
         idiag = ku+1
-        ab =zeros(T, 2kl*ku+1, n)
+        ab = zeros(T, 2kl*ku+1, n)
         for i=1:order
             c = T(bspline(i))
             line = i+kl

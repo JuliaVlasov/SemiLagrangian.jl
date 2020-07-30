@@ -4,6 +4,8 @@ include("../src/mesh.jl")
 include("../src/bspline_periodic.jl")
 include("../src/advection.jl")
 include("../src/lagrange.jl")
+include("../src/lagrange2d.jl")
+include("../src/advection2d.jl")
 using LinearAlgebra
 """
 
@@ -23,7 +25,7 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
         xn = cos(tf) * x + sin(tf) * y
         yn = - sin(tf) * x + cos(tf) * y
 #       f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
-        f[i,j] = exp(-(xn-0.3)*(xn-0.3)/0.2)*exp(-(yn+0.5)*(yn+0.5)/0.2)
+        f[i,j] = exp(-((xn-0.65)*(xn-0.65)+(yn+0.5)*(yn+0.5))/0.2)
 #       f[i,j] = exp(-(xn-1)*(xn-1)*10)*exp(-(yn)*(yn)*10)
 #       f[i,j] = exp(-(sin(xn)+0.4)^2)*exp(-(cos(yn)-0.5)^2)
 #       f[i,j] = exp(-sin(xn-0.3)*sin(xn-0.3)/0.6)*exp(-cos(yn+0.5)*cos(yn+0.5)/0.6)
@@ -82,25 +84,102 @@ function rotation_2d(
     f
 
 end
+function rotation2d_2d(
+    tf, 
+    nt, 
+    mesh1::UniformMesh{T}, 
+    mesh2::UniformMesh{T}, 
+    interp::InterpolationType
+) where {T}
 
-@testset "Rotation test with LagrangeNew advections " begin
+    dt = tf/nt
 
-    tf, nt = 2π, 1000
+    n1 = mesh1.length
+    x1min, x1max = mesh1.start, mesh1.stop
+    delta1 = mesh1.step
+
+    n2 = mesh2.length
+    x2min, x2max = mesh2.start, mesh2.stop
+    delta2 = mesh2.step
+
+    fp  = zeros(T,(n1,n2))
+    fp .= exact(zero(T), mesh1, mesh2)
+
+#    println(f)
+
     
-    mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-    mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+    adv = Advection2d( mesh1, mesh2, interp )
 
-    @time lag= LagrangeNew(21, granularity=1)
-
-    println("norm lag = $(norm(lag.coef))")
+    tabv = [(-y,x) for y in mesh2.points, x in mesh1.points]
     
-    @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
-    fe = exact(tf, mesh1, mesh2)
+    for n=1:nt
+        advection!(adv, fp, tabv, dt)
+        println("n=$n error=$(error1(fp,exact(n*dt, mesh1,mesh2)))")
+    end
+ #   println(f)
+    fp
+
+end
+# @testset "Rotation test with Lagrange2d advections " begin
+
+#     tf, nt = 2π, 1000
+    
+#     mesh1 = UniformMesh(-pi, float(pi), 64; endpoint=false)
+#     mesh2 = UniformMesh(-pi, float(pi), 64; endpoint=false)
+
+#     @time lag= Lagrange2d(11, granularity=1)
+
+#     println("norm lag = $(norm(lag.coef))")
+    
+#     @time fc = rotation2d_2d(tf, nt, mesh1, mesh2, lag)
+#     fe = exact(tf, mesh1, mesh2)
 
  
-    err = error1(fc, fe)
-    println("err=$err")
-    @test err <  1e-1
+#     err = error1(fc, fe)
+#     println("err=$err")
+#     @test err <  1e-1
+
+# end
+
+# @testset "Rotation test with LagrangeNew advections " begin
+
+# tf, nt = 2π, 1000
+
+# mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+# mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+
+# @time lag= LagrangeNew(21, granularity=1)
+
+# println("norm lag = $(norm(lag.coef))")
+
+# @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+# fe = exact(tf, mesh1, mesh2)
+
+
+# err = error1(fc, fe)
+# println("err=$err")
+# @test err <  1e-1
+
+# end
+@testset "Rotation test with LagrangeNew advections " begin
+
+tf, nt = 2big(π), 100
+
+mesh1 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
+mesh2 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
+
+@time lag= LagrangeNew(21, iscirc=true, granularity=1)
+
+println("norm lag = $(norm(lag.coef))")
+println("len=$(size(mesh1.points,1)) nb=$nt order=$(size(lag.coef,1)-1)")
+
+@time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+fe = exact(tf, mesh1, mesh2)
+
+
+err = error1(fc, fe)
+println("err=$err")
+@test err <  1e-1
 
 end
 # @testset "Rotation test with LagrangeNew advections big" begin

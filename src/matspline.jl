@@ -7,12 +7,46 @@ function decLU( A::Matrix{T} ) where{T}
             A[i,k] /= pivot
         end
         for i=k+1:n, j=k+1:n
+            # if A[i,k] != 0 && A[k,j] != 0
+            #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
+            # end
             A[i,j] -= A[i,k]*A[k,j]
+            # if A[i,k] != 0 && A[k,j] != 0
+            #     println("trace après k=$k i=$i j=$j A[i,j]=$(A[i,j])")
+            # end
         end
     end
     return A
 end
+function decLULu(iscirc, band, lastcols, lastrows)
+    wd = size(band, 1)
+    ku = div(wd, 2)
+    kl = wd-1-ku
+    szb = size(band, 2)
+    for k=1:szb
+        pivot = band[ku+1, k]
+        for i=ku+2:wd
+            band[i,k] /= pivot
+        end
+        if iscirc
+            for i=1:ku
+                lastrows[i, k] /= pivot
+            end
+        end
+#        println("trace1 k=$k")
+        for i=1:kl, j=1:ku
+            if k+j <= szb
+#                println("i=$i j=$j avant band=$(band[ku+1+i-j, k+j]) b1=$(band[ku+1+i, k]) b2=$(band[ku+1+j, k+j])")
+                band[ku+1+i-j, k+j] -= band[ku+1+i, k] * band[ku+1-j, k+j]
+#                println("i=$i j=$j apres band=$(band[ku+1+i-j, k+j])")
+            end
+        end 
+#        println("trace2")
 
+# not finish
+    end
+ #   lastrows[k-szb, k]
+end
 function getLU(A::Matrix{T}) where{T}
     n = size(A,1)
     L = zeros(T,n,n)
@@ -53,10 +87,11 @@ end
 
 function topl(n, t, iscirc=true)
     res=zeros(Rational{BigInt},n,n)
-    dec = div(size(t,1), 2)
+    ku = div(size(t,1), 2)
+    kl = size(t,1)-1-ku
     for i=1:n
         for (j,v) in enumerate(t)
-            ind = i+j-dec-1
+            ind = i+j-kl-1
             if 1 <= ind <= n
                 res[i, ind] = v
             elseif iscirc
@@ -81,11 +116,12 @@ struct LuSpline{T}
     ku::Int64
     kl::Int64
     iscirc::Bool
-    lastcols::Matrix{T} # only when iscirc=true
-    lastrows::Matrix{T} # only when iscirc=true
-    function LuSpline(n, t::Vector{T}, iscirc=true) where{T}
+    isLU::Bool
+    lastcols::Union{Matrix{T},Missing} # only when iscirc=true
+    lastrows::Union{Matrix{T},Missing} # only when iscirc=true
+    function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
         wd = size(t,1) # band width
-        ku = div(wd-1,2)
+        ku = div(wd,2)
         kl = wd-1-ku
         szb = iscirc ? n-kl : n
         band = zeros(T, wd, szb)
@@ -118,30 +154,34 @@ struct LuSpline{T}
         else
             lastcols = lastrows = missing
         end
-        return new{T}(band, ku, kl, iscirc, lastcols, lastrows)
-    #   decLULu(iscirc, band, lastcols, lastrows)
+        if isLU
+            decLULu(iscirc, band, lastcols, lastrows)
+        end
+        return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
-    function LuSpline( A::Matrix{T}, ku, kl, iscirc) where {T}
+    function LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
         n = size(A,1)
         if iscirc
             lastrows = copy(A[end-ku+1:end,:])
             lastcols = copy(A[1:end-ku,end-kl+1:end])
+        else
+            lastcols = lastrows = missing
         end
         szb = iscirc ? n-kl : n
         wd = kl+ku+1
         band = zeros(T,wd,szb)
         for j=1:szb
-            for i=j-ku:j+ku
-                if 1 <= i <= n-kl
+            for i=j-ku:j+kl
+                if 1 <= i <= n - (iscirc ? ku : 0)
                     band[ku+i+1-j,j] = A[i,j]
                 end
             end
         end
-        return new{T}(band, ku, kl, iscirc, lastcols, lastrows)
+        return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
 end
 function ==(la::LuSpline{T}, lb::LuSpline{T}) where{T}
     return (la.ku == lb.ku && la.kl == la.kl && la.iscirc == lb.iscirc 
-            && la.band == lb.band && la.lastrows == lb.lastrows 
-            && la.lastcols == lb.lastcols)
+            && la.isLU == lb.isLU && la.band == lb.band 
+            && (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols)))
 end

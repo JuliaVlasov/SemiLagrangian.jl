@@ -141,37 +141,16 @@ end
 
 # end
 
-# @testset "Rotation test with LagrangeNew advections " begin
-
-# tf, nt = 2π, 1000
-
-# mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-# mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-
-# @time lag= LagrangeNew(21, granularity=1)
-
-# println("norm lag = $(norm(lag.coef))")
-
-# @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
-# fe = exact(tf, mesh1, mesh2)
-
-
-# err = error1(fc, fe)
-# println("err=$err")
-# @test err <  1e-1
-
-# end
 @testset "Rotation test with LagrangeNew advections " begin
 
-tf, nt = 2big(π), 100
+tf, nt = 2π, 1000
 
-mesh1 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
-mesh2 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
+mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
 
-@time lag= LagrangeNew(21, iscirc=true, granularity=1)
+@time lag= LagrangeNew(21, granularity=1)
 
 println("norm lag = $(norm(lag.coef))")
-println("len=$(size(mesh1.points,1)) nb=$nt order=$(size(lag.coef,1)-1)")
 
 @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
 fe = exact(tf, mesh1, mesh2)
@@ -182,6 +161,27 @@ println("err=$err")
 @test err <  1e-1
 
 end
+# @testset "Rotation test with LagrangeNew advections " begin
+
+# tf, nt = 2big(π), 100
+
+# mesh1 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
+# mesh2 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
+
+# @time lag= LagrangeNew(21, iscirc=true, granularity=1)
+
+# println("norm lag = $(norm(lag.coef))")
+# println("len=$(size(mesh1.points,1)) nb=$nt order=$(size(lag.coef,1)-1)")
+
+# @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+# fe = exact(tf, mesh1, mesh2)
+
+
+# err = error1(fc, fe)
+# println("err=$err")
+# @test err <  1e-1
+
+# end
 # @testset "Rotation test with LagrangeNew advections big" begin
 
 #     tf, nt = 2big(π), 100

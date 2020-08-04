@@ -56,4 +56,5 @@ end
 
 @testset "test interpolation bspline" begin
     test_interpolation(BigFloat, 11, true, 100, 1e-8)
+    test_interpolation(BigFloat, 21, true, 100, 1e-14)
 end

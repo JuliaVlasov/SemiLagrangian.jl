@@ -1,4 +1,7 @@
 include("../src/bspline.jl")
+include("../src/matspline.jl")
+
+using LinearAlgebra
 using Test
 
 function test_spline(order, prec)
@@ -28,4 +31,29 @@ function test_spline(order, prec)
 end
 for order = 1:15
     test_spline( order, order < 20 ? 256 : 512 )
+end
+
+function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
+    
+    sp = BSplineNew(order, n, zero(type); iscirc=iscirc)
+    coef = convert(type, iscirc ? 1 : 1.111)
+    # fct(v,n) = exp( -cos(2pi*coef*v/n)^2)
+    fct(v,n) = cos(2pi*coef*v/n)
+    fp = fct.(convert.(type,(collect(1:n))),n)
+    fi = zeros(type, n)
+    value = convert(type, big"0.38571390114441619187615524132001118762519")
+    for i=1:n
+        fi .= fp
+        fpref = fct.(convert.(type,(collect(1:n))) .+ i*value,n)
+        interpolate!(missing, fp, fi, value, sp)
+        # for i=1:number
+        #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
+        # end
+        println("i=$i norm=$(norm(fpref-fp))")
+        @test isapprox(fpref, fp, atol=tol)
+    end
+end
+
+@testset "test interpolation bspline" begin
+    test_interpolation(BigFloat, 11, true, 100, 1e-8)
 end

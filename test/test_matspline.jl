@@ -15,25 +15,34 @@ function test_decLU(n)
     @test B*x == b
 end
 
-function test_splu(n, order, iscirc, isLU)
-   t = getbspline(big(order),0).(1:order)
-    A = topl(n, t, iscirc)
+function test_splu(n, order, iscirc, isLU; type=Rational{BigInt}, tol=NaN, perf=false)
+   t = convert.(type, getbspline(big(order),0).(1:order))
+    A = convert.(type, topl(n, t, iscirc))
     ku = div(order,2)
     kl = order-1-ku
     if isLU
-        decLU(A)
+        perf && @time decLU(A)
+        !perf && decLU(A)
     end
     spA = LuSpline(A, ku, kl; iscirc=iscirc, isLU=isLU)
-    spB = LuSpline(n, t; iscirc=iscirc, isLU=isLU)
-
-    @test spA == spB
+    perf && @time spB = LuSpline(n, t; iscirc=iscirc, isLU=isLU)
+    !perf && (spB = LuSpline(n, t; iscirc=iscirc, isLU=isLU))
+    if isnan(tol)
+        @test spA == spB
+    end
 
     dividende = 10000
     b = big.((rand(Int, n) .% dividende) .// dividende)
+    b = convert.(type, b)
     if isLU
         x, y = sol(A, b)
         x2, y2 = sol(spB, b)
-        @test y == y2
+        
+        if isnan(tol)
+            @test x == x2
+        else
+            @test isapprox(x, x2, atol=tol)
+        end
     end
 end
 
@@ -44,17 +53,16 @@ function test_perf(n ,order, iscirc)
     kl = order-1-ku
     @time  decLU(A)
     
-    spA = LuSpline(A, ku, kl; iscirc=iscirc, isLU=isLU)
-    @time spB = LuSpline(n, t; iscirc=iscirc, isLU=isLU)
+    spA = LuSpline(A, ku, kl; iscirc=iscirc, isLU=true)
+    @time spB = LuSpline(n, t; iscirc=iscirc, isLU=true)
 
     dividende = 10000
     b = big.((rand(Int, n) .% dividende) .// dividende)
-    if isLU
         x, y = sol(A, b)
         x2, y2 = sol(spB, b)
         @test y == y2
         @test x == x2
-    end
+    
 end
 
 
@@ -72,4 +80,10 @@ test_splu(30, 9, false, true)
 test_splu(30, 10, false, true)
 test_splu(30, 9, true, true)
 test_splu(31, 10, true, true)
+test_splu(30, 9, true, true, type=BigFloat, tol=1e-70 )
+test_splu(31, 10, true, true, type=BigFloat, tol=1e-70 )
+end
+
+@testset "test perf" begin
+    test_splu(1000,9,true, true, type=Float64, tol=1e-12, perf=true)    
 end

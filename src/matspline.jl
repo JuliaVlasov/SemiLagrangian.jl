@@ -127,8 +127,8 @@ struct LuSpline{T}
     kl::Int64
     iscirc::Bool
     isLU::Bool
-    lastcols::Union{Matrix{T},Missing} # only when iscirc=true
-    lastrows::Union{Matrix{T},Missing} # only when iscirc=true
+    lastcols::Union{Matrix{T},Missing} # missing when iscirc=false
+    lastrows::Union{Matrix{T},Missing} # missing when iscirc=false
     function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
         wd = size(t,1) # band width
         ku = div(wd,2)
@@ -223,10 +223,11 @@ function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
     Y = zeros(T, n)
     Y = copy(b)
     endmat = spA.iscirc ? begrow : n
+    endmat2 = spA.iscirc ? begcol : n
     for i=2:endmat
         fin = i-1
         deb = max( 1, i-spA.kl)
-        Y[i] -= sum([ Y[j]*spA.band[spA.ku+1+i-j, j] for j in deb:fin])
+        Y[i] -= sum([ Y[j]*spA.band[spA.ku+1+i-j, j] for j=deb:fin])
     end
     if spA.iscirc
         for i=begrow+1:n
@@ -241,9 +242,9 @@ function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
     end
     for i=endmat:-1:1
         deb = i+1
-        fin = min(i+spA.ku, endmat)
+        fin = min(i+spA.ku, endmat2)
         if deb <= fin
-            s = sum(spA.band[ spA.ku+1+i-j,j]   * X[j] for j in deb:fin)
+            s = sum(spA.band[ spA.ku+1+i-j,j]   * X[j] for j=deb:fin)
         else
             s = 0
         end
@@ -253,4 +254,48 @@ function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
         X[i] = (Y[i]-s)/spA.band[spA.ku+1,i]
     end
     return X, Y
+end
+
+get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
+get_order(sp::LuSpline)=sp.ku+sp.kl+1
+
+abstract type InterpolationType end
+struct BSplineNew{T} <: InterpolationType
+    ls::LuSpline{T}
+    bspline::Spline
+    function BSplineNew( order, n, eltfortype::T; iscirc=true) where{T}
+        bspline = getbspline(order, 0)
+        ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
+        return new{T}(ls, bspline)
+    end
+    BSplineNew(o, n, t::DataType ; kwargs... )=BSplineNew(o, n, one(t) ; kwargs... )
+end
+
+function interpolate!( adv, fp, fi, dec, 
+    bsp::BSplineNew{T}
+) where {T}
+    res, _ = sol(bsp.ls, fi)
+    n = get_n(bsp.ls)
+    order = get_order(bsp.ls)
+    println("n=$n size(res)=$(size(res,1)) size(fi)=$(size(fi,1)) size(fp)=$(size(fp,1))")
+    if bsp.ls.iscirc
+        for i=1:n
+                fp[i] = 0
+            for j=1:order
+                # fp[i] += res[(i+n-bsp.ls.kl-2+j)%n+1]*bsp.bspline(j-1+dec)
+                fp[i] += res[(i+n-bsp.ls.kl-2+j)%n+1]*bsp.bspline(j-dec)
+            end
+            # diff = fp[i] -fi[i]
+            # println("i2=$i diff=$diff")
+        end
+    else
+        for i=1:n
+            deb = max(1, bsp.ls.kl+2-i)
+            fin = min(order, n-i + ku+1)
+            fp[i] = 0
+            for j=deb:fin
+                fp[i] += res[i-bsp.ls.kl-1+j]*bsp.bspline(j-1+dec)
+            end
+        end
+    end
 end

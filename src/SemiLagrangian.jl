@@ -1,4 +1,4 @@
-# module SemiLagrangianBig
+module SemiLagrangian
 
 import Base.Threads: @sync, @spawn, nthreads, threadid
 
@@ -18,4 +18,4 @@ include("lagrange_interpolation.jl")
 include("bspline_periodic.jl")
 include("advection.jl")
 
-# end
+end

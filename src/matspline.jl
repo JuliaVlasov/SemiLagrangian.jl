@@ -18,6 +18,73 @@ function decLU( A::Matrix{T} ) where{T}
     end
     return A
 end
+function decLDLt( A::Matrix{T} ) where{T}
+    n = size(A,1)
+    L = zeros(T,n,n)
+    D = zeros(T,n,n)
+    
+    for j=1:n
+        L[j,j] = 1
+        D[j,j] = A[j, j] - (j!=1 ? sum(L[j,k]^2 * D[k,k] for k=1:j-1) : 0)
+        for i=j+1:n
+            L[i,j] = (A[i,j] -(j!=1 ? sum(L[i,k]*L[j,k] * D[k,k] for k=1:j-1) : 0 ))/D[j,j]
+        end
+    end
+    return L, D
+end
+# gradconj : solve A*x = b for A symetric and positive
+function gradconj(A::Matrix{T}, b::Vector{T}, tol) where T
+    n = size(A,1)
+    x = zeros(T,n)
+    r = b - A*x
+    p = copy(r)
+    r2 = sum(r .^ 2)
+    for k=1:1000
+        ap = A*p
+        alpha = r2 / sum( p .* ap )
+        x .+= alpha*p
+        r .-= alpha*ap
+        nm = norm(r, Inf)
+        println("k=$k prec=$nm")
+        if nm < tol
+            break
+        end
+        newr2 = sum(r .^ 2)
+        beta = newr2/r2
+        p .= r + beta*p
+        r2 = newr2
+    end
+    return x
+end
+# gradconj_np : solve A*x = b for A symetric and not necessary positive
+function gradconj_np(A::AbstractMatrix{T}, b::Vector{T}, tolabs, tolrel) where T
+    n = size(A,1)
+    x = zeros(T,n)
+    r = A*b - A*(A*x)
+    p = copy(r)
+    r2 = sum(r .^ 2)
+    for k=1:1000
+        ap = A*(A*p)
+        alpha = r2 / sum( p .* ap )
+        x .+= alpha*p
+        r .-= alpha*ap
+        nm = norm(r)
+        nmrel = nm/norm(x)
+        println("k=$k prec=$nm precrel=$nmrel")
+        if nm < tolabs && nmrel < tolrel
+            break
+        end
+        newr2 = sum(r .^ 2)
+        beta = newr2/r2
+        p .= r + beta*p
+        r2 = newr2
+    end
+    return x
+end
+
+
+
+
 function decLULu(iscirc, band, lastcols, lastrows)
     wd = size(band, 1)
     ku = div(wd, 2)
@@ -277,13 +344,21 @@ function interpolate!( adv, fp, fi, dec,
     res, _ = sol(bsp.ls, fi)
     n = get_n(bsp.ls)
     order = get_order(bsp.ls)
-    println("n=$n size(res)=$(size(res,1)) size(fi)=$(size(fi,1)) size(fp)=$(size(fp,1))")
+    decint = convert(Int, floor(dec))
+    decfloat = dec-decint
+    if decfloat > 0.5
+        decfloat -= 1.
+        decint += 1
+    end
+
+#    println("n=$n size(res)=$(size(res,1)) size(fi)=$(size(fi,1)) size(fp)=$(size(fp,1))")
+    precal = bsp.bspline.((1:order) .- decfloat)
     if bsp.ls.iscirc
         for i=1:n
-                fp[i] = 0
+            fp[i] = 0
             for j=1:order
                 # fp[i] += res[(i+n-bsp.ls.kl-2+j)%n+1]*bsp.bspline(j-1+dec)
-                fp[i] += res[(i+n-bsp.ls.kl-2+j)%n+1]*bsp.bspline(j-dec)
+                fp[i] += res[(i+n-bsp.ls.kl+decint-2+j)%n+1]*precal[j]
             end
             # diff = fp[i] -fi[i]
             # println("i2=$i diff=$diff")
@@ -294,7 +369,7 @@ function interpolate!( adv, fp, fi, dec,
             fin = min(order, n-i + ku+1)
             fp[i] = 0
             for j=deb:fin
-                fp[i] += res[i-bsp.ls.kl-1+j]*bsp.bspline(j-1+dec)
+                fp[i] += res[i-bsp.ls.kl-1+j]*precal[j]
             end
         end
     end

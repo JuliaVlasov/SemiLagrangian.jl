@@ -64,7 +64,7 @@ end
 w(p, j)=Polynomials.Polynomial([-j//p, 1//p])
 function _getbspline(n::N, j)  where{N<:Signed}
  #   println("_getbspline($n=$n , j=$j ) N=$N")
-    if n == 0 
+    if n == zero(N) 
         ret = decal(Spline(ones(Polynomials.Polynomial{Rational{N}},1)), j)
     else
         n1 = _getbspline( n-1, j)

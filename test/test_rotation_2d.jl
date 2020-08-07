@@ -6,6 +6,9 @@ include("../src/advection.jl")
 include("../src/lagrange.jl")
 include("../src/lagrange2d.jl")
 include("../src/advection2d.jl")
+include("../src/bspline.jl")
+include("../src/matspline.jl")
+
 using LinearAlgebra
 """
 
@@ -41,7 +44,7 @@ function error1(f, f_exact)
 end
 
 function rotation_2d(
-    tf, 
+    tf::T, 
     nt, 
     mesh1::UniformMesh{T}, 
     mesh2::UniformMesh{T}, 
@@ -85,7 +88,7 @@ function rotation_2d(
 
 end
 function rotation2d_2d(
-    tf, 
+    tf::T, 
     nt, 
     mesh1::UniformMesh{T}, 
     mesh2::UniformMesh{T}, 
@@ -141,26 +144,26 @@ end
 
 # end
 
-@testset "Rotation test with LagrangeNew advections " begin
+# @testset "Rotation test with LagrangeNew advections " begin
 
-tf, nt = 2π, 1000
+# tf, nt = 2π, 1000
 
-mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+# mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+# mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
 
-@time lag= LagrangeNew(21, granularity=1)
+# @time lag= LagrangeNew(21, granularity=1)
 
-println("norm lag = $(norm(lag.coef))")
+# println("norm lag = $(norm(lag.coef))")
 
-@time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
-fe = exact(tf, mesh1, mesh2)
+# @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+# fe = exact(tf, mesh1, mesh2)
 
 
-err = error1(fc, fe)
-println("err=$err")
-@test err <  1e-1
+# err = error1(fc, fe)
+# println("err=$err")
+# @test err <  1e-1
 
-end
+# end
 # @testset "Rotation test with LagrangeNew advections " begin
 
 # tf, nt = 2big(π), 100
@@ -201,21 +204,23 @@ end
 #     @test err <  1e-1
 
 # end
-# @testset "Rotation test with Bspline advections " begin
+@testset "Rotation test with Bspline advections " begin
 
-#     tf, nt = 2π, 100
+    tf, nt = 2big(π), 100
     
-#     mesh1 = UniformMesh(-π, float(π), 128; endpoint=false)
-#     mesh2 = UniformMesh(-π, float(π), 128; endpoint=false)
+    mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
+    mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     
-#     @time fc = rotation_2d(tf, nt, mesh1, mesh2, Bspline(5))
-#     fe = exact(tf, mesh1, mesh2)
+    bsp = BSplineNew(41, nt, BigFloat)
 
-#     err = error1(fc, fe)
-#     println("err=$err")
-#     @test err <  1e-4
+    @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
+    fe = exact(tf, mesh1, mesh2)
 
-# end
+    err = error1(fc, fe)
+    println("err=$err")
+    @test err <  1e-4
+
+end
 
 # @testset "Rotation test with Bspline advections big" begin
 

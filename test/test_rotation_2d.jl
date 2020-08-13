@@ -9,6 +9,7 @@ include("../src/advection2d.jl")
 include("../src/bspline.jl")
 include("../src/matspline.jl")
 
+using Images
 using LinearAlgebra
 """
 
@@ -28,7 +29,8 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
         xn = cos(tf) * x + sin(tf) * y
         yn = - sin(tf) * x + cos(tf) * y
 #       f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
-        f[i,j] = exp(-((xn-0.65)*(xn-0.65)+(yn+0.5)*(yn+0.5))/0.2)
+# f[i,j] = exp(-5*(cos(xn-big"0.65")^2+sin(yn+big"0.5")^2))
+        f[i,j] = exp(-30*((xn)^2+(yn+big"1.2")^2))
 #       f[i,j] = exp(-(xn-1)*(xn-1)*10)*exp(-(yn)*(yn)*10)
 #       f[i,j] = exp(-(sin(xn)+0.4)^2)*exp(-(cos(yn)-0.5)^2)
 #       f[i,j] = exp(-sin(xn-0.3)*sin(xn-0.3)/0.6)*exp(-cos(yn+0.5)*cos(yn+0.5)/0.6)
@@ -40,8 +42,47 @@ end
 
 " Function to compute error "
 function error1(f, f_exact)
-    maximum(abs.(f .- f_exact))
+    i_max=0
+    j_max=0
+    v_max=0
+    i_min=0
+    j_min=0
+    v_min=1.0
+    for i=1:size(f,1), j=1:size(f,2)
+        v = abs(f[i,j]-f_exact[i,j])
+        if v > v_max
+            i_max, j_max, v_max = i, j, v
+        end
+        if v < v_min
+            i_min, j_min, v_min = i, j, v
+        end
+    end
+    println("i_max=$i_max j_max=$j_max v_max=$v_max")
+    println("i_min=$i_min j_min=$j_min v_min=$v_min")
+    return v_max
+    # maximum(abs.(f .- f_exact))
 end
+
+function savefile( f, par, str)
+    img=zeros(RGB,size(f))
+    k = -log.(f)
+    k .-= minimum(k)
+    maxk = maximum(k)
+    k ./= maxk
+
+    borne = min(0.5, par/maxk)
+
+    for i=1:size(f,1), j=1:size(f,2)
+        v = k[i,j]
+        b = v > borne ? (v-borne)/(1-borne) : 0
+        r = 1 -v
+        g = v < borne ? (borne-v)/borne : 0
+        img[i,j] = RGB(r, g, b)
+    end
+    Images.save(str, img)
+end
+
+
 
 function rotation_2d(
     tf::T, 
@@ -81,7 +122,14 @@ function rotation_2d(
         advection!(adv_x2, ft, v2, sin(dt))
         transpose!(f, ft)
         advection!(adv_x1, f, v1, tan(dt/2))
-        println("n=$n error=$(error1(f,exact(n*dt, mesh1,mesh2)))")
+        f_ex = exact(n*dt, mesh1,mesh2) 
+        println("n=$n error=$(error1(f, f_ex))")
+        # if n%10 == 0
+        #     savefile(abs.(f-f_ex),5,"save5_$(nt)_$n.png")
+        #     savefile(abs.(f-f_ex),10,"save10_$(nt)_$n.png")
+        #     savefile(abs.(f-f_ex),15,"save15_$(nt)_$n.png")
+        #     savefile(abs.(f-f_ex),20,"save20_$(nt)_$n.png")
+        # end
     end
  #   println(f)
     f
@@ -206,12 +254,12 @@ end
 # end
 @testset "Rotation test with Bspline advections " begin
 
-    tf, nt = 2big(π), 100
+    tf, nt = 2big(π), 400
     
     mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     
-    bsp = BSplineNew(41, nt, BigFloat)
+    bsp = BSplineNew(31, nt, BigFloat, iscirc=false)
 
     @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
     fe = exact(tf, mesh1, mesh2)

@@ -1,5 +1,7 @@
-export Advection
+# export Advection
 
+
+include("mesh.jl")
 """
     Advection(interpolation_type, mesh, LBC, RBC)
 
@@ -18,14 +20,14 @@ struct Advection{T}
     function Advection(mesh::UniformMesh{T}, interp::InterpolationType) where{T}
         return new{T}(mesh, interp, zeros(mesh.length), missing)
     end
-    function Advection(mesh::UniformMesh{T}, interp::Bspline) where{T}
-        parfft = if T == BigFloat 
-            PrepareFftBig(mesh.length, T, ndims=1)
-        else
-            missing
-        end
-        return new{T}(mesh, interp, zeros(mesh.length), parfft)
-    end
+    # function Advection(mesh::UniformMesh{T}, interp::Bspline) where{T}
+    #     parfft = if T == BigFloat 
+    #         PrepareFftBig(mesh.length, T, ndims=1)
+    #     else
+    #         missing
+    #     end
+    #     return new{T}(mesh, interp, zeros(mesh.length), parfft)
+    # end
 end
 
 """

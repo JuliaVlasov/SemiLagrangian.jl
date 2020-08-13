@@ -30,8 +30,10 @@ function test_interpolation(type::DataType, order, iscirc::Bool, number, granula
     lag = LagrangeNew(type, order; iscirc=iscirc, granularity=granularity)
     coef = iscirc ? 1. : 1.111
     n = number
-    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-    fp = fct.(BigFloat.(collect(1:n)),n)
+ #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
+ #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
+    fct(v,n) = exp( -(0.02*cos(2big(pi)*coef*v/n))^2)
+ fp = fct.(BigFloat.(collect(1:n)),n)
     fi = zeros(type, number)
     value = big"0.38571390114441619187615524132001118762519"
     for i=1:nb
@@ -83,8 +85,8 @@ function test_dirac(order, len, nb, modval )
         end
     end
 end
-test_dirac(31,100, 500, 50)
-# @time test_interpolation(BigFloat, 17,true, 200, 1, 1e-10, 200 )
+#test_dirac(31,100, 500, 50)
+@time test_interpolation(BigFloat, 43,true, 200, 1, 1e-1, 200 )
 # test_interpolation(BigFloat, 23,true, 1000, 12, 1e-40)
 # test_interpolation(BigFloat, 17,false, 1000, 10, 1e-38)
 # test_interpolation(BigFloat, 23,false, 1000, 12, 1e-40)

@@ -33,12 +33,12 @@ x is the type of non transformed data also called signal.
 - root_one_conj : conjugate of root_one
 
 """
-struct PrepareFftBig{T, NDIMS}
+struct PrepareFftBig{T, NDIMS, NUMDIM}
     size_fft
     tab_permut
     root_one
     root_one_conj
-    function PrepareFftBig( size_fft::Integer, x::T; ndims=2 ) where {T<:AbstractFloat}
+    function PrepareFftBig( size_fft::Integer, x::T; ndims=2, numdim=1 ) where {T<:AbstractFloat}
         @assert prevpow(2,size_fft) == size_fft "size_fft=$size_fft is not a power of 2"
         power = convert(Int64,log2(size_fft))
         tab_permut = zeros(Int64,size_fft)
@@ -60,7 +60,7 @@ struct PrepareFftBig{T, NDIMS}
 )
             end
         end
-        return new{T, ndims}(
+        return new{T, ndims, numdim}(
     size_fft, 
     tab_permut, 
     Complex{T}.(root_one), 
@@ -74,8 +74,12 @@ end
 function PrepareFftBig( size_fft::Integer; kwargs...) 
     return PrepareFftBig( size_fft, one(BigFloat); kwargs...)
 end
-function fftbig!(par::PrepareFftBig{T, NDIMS}, signal; flag_inv=false) where{T, NDIMS}
-    s=size(signal, NDIMS)
+function fftbig!(
+    par::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    signal; 
+    flag_inv=false
+) where{T, NDIMS, NUMDIM}
+    s=size(signal, NUMDIM)
     @assert prevpow(2,s) == s "size_fft(signal)=$s is not a power of 2"
     s_div2 = div(s,2)
     len = s
@@ -93,6 +97,9 @@ function fftbig!(par::PrepareFftBig{T, NDIMS}, signal; flag_inv=false) where{T, 
                     if NDIMS == 1
                         signal[start], signal[suite] = (signal[start] + signal[suite]), 
                         (signal[start] - signal[suite])*rootO[j]
+                    elseif NUMDIM == 1
+                        signal[start, :], signal[suite, :] = (signal[start, :] + signal[suite, :]), 
+                        (signal[start, :] - signal[suite, :])*rootO[j]
                     else
                         signal[:,start], signal[:,suite] = (signal[:,start] + signal[:,suite]), 
                         (signal[:,start] - signal[:,suite])*rootO[j]
@@ -108,14 +115,25 @@ function fftbig!(par::PrepareFftBig{T, NDIMS}, signal; flag_inv=false) where{T, 
             nb_r <<= 1
         end
 #    end
-    signal .= NDIMS == 1 ? signal[par.tab_permut] : signal[:,par.tab_permut]       
+    signal .= 
+    if NDIMS == 1 
+        signal[par.tab_permut]
+    elseif NUMDIM == 1
+        signal[par.tab_permut, :]
+    else 
+        signal[:,par.tab_permut]
+    end       
     
     if flag_inv
         signal ./= s
     end
     return signal
 end
-function fftbig(par::PrepareFftBig{T, NDIMS}, signal; flag_inv=false) where{T, NDIMS}
+function fftbig(
+    par::PrepareFftBig{T, NDIMS, NUMDIM},
+    signal;
+    flag_inv=false
+) where{T, NDIMS, NUMDIM}
     fl = flag_inv
     return fftbig!(
         par::PrepareFftBig,
@@ -123,11 +141,15 @@ function fftbig(par::PrepareFftBig{T, NDIMS}, signal; flag_inv=false) where{T, N
         flag_inv=fl
     )
 end
-fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (ndims(t),))
-fftgen(_::Any, t::Array{Float64}) = fft(t, (ndims(t),))
+fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
+fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
+fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
 fftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig(p, t)
-ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (ndims(t),))
-ifftgen(_::Any, t::Array{Float64}) = ifft(t, (ndims(t),))
+fftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig!(p, t)
+ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (1,))
+ifftgen!(_::Any, t::Array{Complex{Float64}}) = ifft!(t, (1,))
+ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
 ifftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
 ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
+ifftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig!(p, t, flag_inv = true)

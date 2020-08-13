@@ -26,7 +26,7 @@ function testfftbig( s, T::DataType, seed_val )
 
     Random.seed!(seed_val)
     tab = zeros(Complex{T}, 1, s)
-    tab .= rand(T, 1, s)
+    tab .= rand(T,  1, s)
     if T == Float64
         tabfftref = fft(tab,2)
     else
@@ -37,7 +37,7 @@ function testfftbig( s, T::DataType, seed_val )
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s, real(tab[1, 1]))
+    p = PrepareFftBig(s, real(tab[1, 1]), numdim=2)
 
     fftbig!(p, tab_test)
 
@@ -52,22 +52,23 @@ function testfftbig( s, T::DataType, seed_val )
     @test isapprox(tab, tab_test, atol=tol, rtol=tol)
 
 end
-function testfftbig2( s, T::DataType, seed_val, nb_v )
+function testfftbig2( s, T::DataType, seed_val, nb_v; numdim=1 )
 
     Random.seed!(seed_val)
-    tab = zeros(Complex{T}, nb_v, s)
-    tab .= rand(T, nb_v, s)
+    sizedims = numdim == 1 ? (s, nb_v) : (nb_v, s)
+    tab = zeros(Complex{T}, sizedims)
+    tab .= rand(T, sizedims)
     if T == Float64
-        tabfftref = fft(tab,2)
+        tabfftref = fft(tab,numdim)
     else
-        tab2 = zeros(Complex{Float64}, nb_v, s)
+        tab2 = zeros(Complex{Float64}, sizedims)
         tab2 .= tab
-        tabfftref = fft(tab2,2)
+        tabfftref = fft(tab2,numdim)
     end
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s, one(T) )
+    p = PrepareFftBig(s, one(T), numdim=numdim )
 
     tab_test2 = fftbig(p, tab_test)
 
@@ -94,8 +95,8 @@ function testfftbigprec(s, seed_v)
         Random.seed!(seed_v)
         for k=1:10
             setprecision(k*256) do
-                p = PrepareFftBig(s)
-                tab = rand(BigFloat, 5, s)
+                p = PrepareFftBig(s, numdim=1)
+                tab = rand(BigFloat, s, 5)
                 tabRef = Complex.(tab)
                 tabRes = fftgen(p,tab)
                 tabRes2 = ifftgen(p, tabRes)
@@ -117,7 +118,9 @@ for t in tab_decl
     s = t[1]
     type = t[2]
     seed_v = t[3]
-    @time @testset "test fftbig for value size=$s type=$type" begin testfftbig(s, type, seed_v) end
+    @time @testset "test fftbig for value size=$s type=$type" begin 
+        testfftbig(s, type, seed_v)
+    end
 end
 tab_decl2 = [[8, Float64, 4556789, 4], [8, BigFloat, 4563, 4],[2^10, Float64, 9900771, 4], [2^13, BigFloat, 125609, 4]]
 
@@ -126,10 +129,15 @@ for t in tab_decl2
     type = t[2]
     seed_v = t[3]
     nb_v = t[4]
-    @time @testset "test fftbig for vector size=$s type=$type nb_v=$nb_v" begin testfftbig2(s, type, seed_v, nb_v) end
+    @time @testset "test fftbig for vector size=$s type=$type nb_v=$nb_v" begin 
+        testfftbig2(s, type, seed_v, nb_v) 
+    end
 end
 
 tab_decl3 =[ 8965, 1919191, 56188827, 9017555]
 for sd in tab_decl3
     testfftbigprec(32,sd)
 end
+
+# @time testfftbig2(2^14, BigFloat, 12344321, 5, numdim=2)
+# @time testfftbig2(2^14, BigFloat, 12344321, 5, numdim=1)

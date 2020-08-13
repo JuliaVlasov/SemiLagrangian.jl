@@ -1,8 +1,12 @@
 using FFTW, LinearAlgebra
 
-export Bspline, BsplinePeriodicAdvection
+# export Bspline, BsplinePeriodicAdvection
 
-include("../src/fftbig.jl")
+abstract type InterpolationType end
+
+include("fftbig.jl")
+include("advection.jl")
+
 
 struct Bspline <: InterpolationType
 
@@ -81,6 +85,7 @@ degree of first dimension of array f on a periodic uniform mesh, at
 all points x-alpha. f type is Array{Float64,2}.
 
 """
+abstract type AbstractAdvection end
 struct BsplinePeriodicAdvection{T} <: AbstractAdvection
 
     p::Int
@@ -97,7 +102,7 @@ struct BsplinePeriodicAdvection{T} <: AbstractAdvection
 
         n = mesh.length
         modes = zeros(T, n)
-        modes .= 2π .* (0:n-1) ./ n
+        modes .= 2big(π) * (0:n-1) / n
         eig_bspl = zeros(Complex{T}, n)
         eigalpha = zeros(Complex{T}, n)
         eig_bspl .= bspline(bspl.p, -div(bspl.p + 1, 2), zero(T))
@@ -163,7 +168,7 @@ function advection!(
 
     @assert size(f)[2] == nv
 
-    fft!(f, 1)
+    fftgen!(adv.parfft, f)
 
     @inbounds for j in eachindex(v) 
         alpha = dt * v[j] / dx
@@ -182,8 +187,7 @@ function advection!(
         f[:, j] .*= adv.eigalpha ./ adv.eig_bspl
 
     end
-
-    ifft!(f, 1)
+    ifftgen!(adv.parfft, f)
 
 end
 

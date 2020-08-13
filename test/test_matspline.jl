@@ -1,5 +1,6 @@
 include("../src/bspline.jl")
 include("../src/matspline.jl")
+using LinearAlgebra
 using Random
 using Test
 Random.seed!(54321)
@@ -18,6 +19,7 @@ end
 function test_splu(n, order, iscirc, isLU; type=Rational{BigInt}, tol=NaN, perf=false)
    t = convert.(type, getbspline(big(order),0).(1:order))
     A = convert.(type, topl(n, t, iscirc))
+    Acp = copy(A)
     ku = div(order,2)
     kl = order-1-ku
     if isLU
@@ -41,6 +43,10 @@ function test_splu(n, order, iscirc, isLU; type=Rational{BigInt}, tol=NaN, perf=
         if isnan(tol)
             @test x == x2
         else
+            println("norm=$(norm(x-x2))")
+            res=Acp*x
+            println("normres=$(norm(res-b))")
+            @test isapprox(res, b, atol=tol)
             @test isapprox(x, x2, atol=tol)
         end
     end
@@ -82,6 +88,8 @@ test_splu(30, 9, true, true)
 test_splu(31, 10, true, true)
 test_splu(30, 9, true, true, type=BigFloat, tol=1e-70 )
 test_splu(31, 10, true, true, type=BigFloat, tol=1e-70 )
+test_splu(30, 11, false, true, type=BigFloat, tol=1e-70 )
+test_splu(31, 10, false, true, type=BigFloat, tol=1e-70 )
 end
 
 @testset "test perf" begin

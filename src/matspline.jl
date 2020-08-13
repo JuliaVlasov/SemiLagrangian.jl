@@ -365,11 +365,14 @@ function interpolate!( adv, fp, fi, dec,
         end
     else
         for i=1:n
-            deb = max(1, bsp.ls.kl+2-i)
-            fin = min(order, n-i + ku+1)
+            # deb = max(1, bsp.ls.kl+2-i)
+            # fin = min(order, n-i + bsp.ls.ku+1)
             fp[i] = 0
-            for j=deb:fin
-                fp[i] += res[i-bsp.ls.kl-1+j]*precal[j]
+            for j=1:order
+                ind = i-bsp.ls.kl+decint-1+j
+                if 1 <= ind <= n
+                    fp[i] += res[ind]*precal[j]
+                end
             end
         end
     end

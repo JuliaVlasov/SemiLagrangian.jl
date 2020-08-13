@@ -32,18 +32,30 @@ end
 for order = 1:15
     test_spline( order, order < 20 ? 256 : 512 )
 end
-
+function nb_diff_tol(f1, f2, tol)
+    nb=0
+    for i=1:size(f1,1)
+        if abs(f1[i]-f2[i])> tol
+            println("indice=$i diff=$(abs(f1[i]-f2[i]))")
+            nb+=1
+        end
+    end
+    return nb
+end
+         
 function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
     
     sp = BSplineNew(order, n, zero(type); iscirc=iscirc)
-    coef = convert(type, iscirc ? 1 : 1.111)
+    coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-    fct(v,n) = cos((coef*2big(pi)/n)*v)
+#    fct(v,n) = exp(-(75*(v-n/2)/n)^2)
+    fct(v,n) = exp( -(cos(2big(pi)*coef*v/n))^2)
     fp = fct.(convert.(type,(collect(1:n))),n)
     fi = zeros(type, n)
-    value = convert(type, 
-#    big"0.0385713901112334905767655546588878787878787887874441619187615524132001118762519")
-    -big"1.385713901112334905767655546588878787878787887874441619187615524132001118762519")
+    value = convert(type,
+#    big"0.000000000000000000000000000000000000001") 
+    -big"3.385713901112334905767655546588878787878787887874441132001118762519")
+#    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
     for i=1:n
         fi .= fp
 #        fpref = fct.(convert.(type,(collect(1:n))) .+ i*value,n)
@@ -52,17 +64,22 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
         # for i=1:number
         #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
         # end
-        if i == n
-            println("i=$i norm=$(norm(fpref-fp))")
+ #       if i == n
+        if i%100 == 0
+            println("i=$i norm=$(norm(fpref-fp)), nb=$(nb_diff_tol(fpref,fp,1e-40))")
         end
+        println("i=$i norm=$(norm(fpref-fp))")
+ #       end
         @test isapprox(fpref, fp, atol=tol)
+        # println("spline=$(sp.bspline)")
+        # break
     end
 end
 
 function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
     
     sp = BSplineNew(order, n, zero(type); iscirc=iscirc)
-    coef = convert(type, iscirc ? 1 : 1.111)
+    coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
     fct(x,y,n) = cos((coef*2big(pi)/n)*(x+y))
     fp = [fct(convert.(type,x), convert.(type, y), n) for x=1:n, y=1:n]
@@ -70,7 +87,7 @@ function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
     buf = zeros(type, n)
     value_x = convert(type, 
 #    big"0.0385713901112334905767655546588878787878787887874441619187615524132001118762519")
-    -big"1.385713901112334905767655546588878787878787887874441619187615524132001118762519")
+    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
     value_y = convert(type, 
     #    big"0.0385713901112334905767655546588878787878787887874441619187615524132001118762519")
         big"0.13901112334905767655546588878787878787887874441619187615524132001118762519")
@@ -99,8 +116,9 @@ function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
 end
 
 @testset "test interpolation bspline" begin
-    test_interpolation(BigFloat, 11, true, 100, 1e-2)
-    test_interpolation(BigFloat, 21, true, 100, 1e-3)
-    test_interpolation(BigFloat, 41, true, 100, 1e-2)
-    test_interpolation_2d(BigFloat, 27, true, 100, 1e-2)
+    # test_interpolation(BigFloat, 11, true, 100, 1e-7)
+    # test_interpolation(BigFloat, 21, true, 100, 1e-15)
+    # test_interpolation(BigFloat, 41, true, 100, 1e-20)
+    test_interpolation(BigFloat, 41, true, 1000, 1e10)
+    # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end

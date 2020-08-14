@@ -86,6 +86,7 @@ all points x-alpha. f type is Array{Float64,2}.
 
 """
 abstract type AbstractAdvection end
+
 struct BsplinePeriodicAdvection{T} <: AbstractAdvection
 
     p::Int
@@ -111,7 +112,7 @@ struct BsplinePeriodicAdvection{T} <: AbstractAdvection
                           cos.(j .* modes))
         end
         parfft = if T == BigFloat
-            PrepareFftBig(n, T, ndims=1)
+            PrepareFftBig(n, T, ndims=2)
         else
             missing
         end
@@ -195,6 +196,7 @@ end
 function interpolate!( adv, fout, f::Array{T}, alpha::T, bspl::Bspline) where{T<:AbstractFloat}
 
     n = length(f)
+    println("trace3")
 
     f̂ = fftgen(adv.parfft, f)
 

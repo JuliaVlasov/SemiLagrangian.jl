@@ -139,5 +139,29 @@ for sd in tab_decl3
     testfftbigprec(32,sd)
 end
 
+@testset "testfftgen" begin
+    s = 128
+    f = zeros(Complex{Float64},s,100)
+    f .= rand(s,100)
+    f_0 = copy(f)
+    f2 = zeros(Complex{BigFloat},128,100)
+    f2 .= f
+    f2_0 = copy(f2)
+    p  = PrepareFftBig(s, 0.0)
+    p2 = PrepareFftBig(s, big"0.0")
+    fftgen!(p,f)
+    fftgen!(p2, f2)
+    println("1norm(f-f2)=$(norm(f-f2))")
+    @test isapprox(f,f2,atol=1e-12)
+    ifftgen!(p,f)
+    ifftgen!(p2, f2)
+    println("2norm(f-f2)=$(norm(f-f2))")
+    @test isapprox(f,f2,atol=1e-12)
+    println("norm(f-f_0)=$(norm(f-f_0))")
+    @test isapprox(f,f_0,atol=1e-12)
+    println("norm(f2-f2_0)=$(norm(f2-f2_0))")
+    @test isapprox(f2,f2_0,atol=1e-70)
+end
+
 # @time testfftbig2(2^14, BigFloat, 12344321, 5, numdim=2)
 # @time testfftbig2(2^14, BigFloat, 12344321, 5, numdim=1)

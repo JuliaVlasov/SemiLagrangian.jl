@@ -16,6 +16,7 @@ function _reverse_num(num, pos)
     end
     return result
 end
+
 """
     PrepareFftBig( size_fft::Unsigned, [T=BigFloat])
 
@@ -33,6 +34,7 @@ x is the type of non transformed data also called signal.
 - root_one_conj : conjugate of root_one
 
 """
+
 struct PrepareFftBig{T, NDIMS, NUMDIM}
     size_fft
     tab_permut
@@ -144,12 +146,18 @@ end
 fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
 fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
 fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
+fftgen(_::PrepareFftBig, t::Array{Complex{Float64}}) = fft(t, (1,))
+fftgen!(_::PrepareFftBig, t::Array{Complex{Float64}}) = fft!(t, (1,))
+fftgen(_::PrepareFftBig, t::Array{Float64}) = fft(t, (1,))
 fftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig!(p, t)
 ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (1,))
 ifftgen!(_::Any, t::Array{Complex{Float64}}) = ifft!(t, (1,))
 ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
+ifftgen(_::PrepareFftBig, t::Array{Complex{Float64}}) = ifft(t, (1,))
+ifftgen!(_::PrepareFftBig, t::Array{Complex{Float64}}) = ifft!(t, (1,))
+ifftgen(_::PrepareFftBig, t::Array{Float64}) = ifft(t, (1,))
 ifftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
 ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
 ifftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig!(p, t, flag_inv = true)

@@ -136,7 +136,7 @@ end
 @testset "Bspline periodic advections with big" begin
   
     for p in (3, 5, 7, 9, 11, 13)
-        println("trace test big p=$p")
+ #       println("trace test big p=$p")
         n1, n2 = 128, 128
 
         x1min, x1max = -big"10.0", big"10.0"

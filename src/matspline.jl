@@ -354,22 +354,26 @@ function interpolate!( adv, fp, fi, dec,
 #    println("n=$n size(res)=$(size(res,1)) size(fi)=$(size(fi,1)) size(fp)=$(size(fp,1))")
     precal = bsp.bspline.((1:order) .- decfloat)
     if bsp.ls.iscirc
+        decall = n-bsp.ls.kl+decint-2
         for i=1:n
             fp[i] = 0
+            dec = decall + i
             for j=1:order
                 # fp[i] += res[(i+n-bsp.ls.kl-2+j)%n+1]*bsp.bspline(j-1+dec)
-                fp[i] += res[(i+n-bsp.ls.kl+decint-2+j)%n+1]*precal[j]
+                fp[i] += res[(dec+j)%n+1]*precal[j]
             end
             # diff = fp[i] -fi[i]
             # println("i2=$i diff=$diff")
         end
     else
+        decall = -bsp.ls.kl+decint-1
         for i=1:n
             # deb = max(1, bsp.ls.kl+2-i)
             # fin = min(order, n-i + bsp.ls.ku+1)
             fp[i] = 0
+            dec = decall+i
             for j=1:order
-                ind = i-bsp.ls.kl+decint-1+j
+                ind = dec+j
                 if 1 <= ind <= n
                     fp[i] += res[ind]*precal[j]
                 end

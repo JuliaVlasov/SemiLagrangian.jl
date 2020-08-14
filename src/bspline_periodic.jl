@@ -196,8 +196,7 @@ end
 function interpolate!( adv, fout, f::Array{T}, alpha::T, bspl::Bspline) where{T<:AbstractFloat}
 
     n = length(f)
-    println("trace3")
-
+ 
     f̂ = fftgen(adv.parfft, f)
 
     modes = zeros(T, n)

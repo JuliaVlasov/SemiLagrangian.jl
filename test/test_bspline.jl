@@ -1,4 +1,4 @@
-include("../src/bspline.jl")
+include("../src/spline.jl")
 include("../src/matspline.jl")
 
 using LinearAlgebra
@@ -45,7 +45,7 @@ end
          
 function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
     
-    sp = BSplineNew(order, n, zero(type); iscirc=iscirc)
+    sp = B_Spline(order, n, zero(type); iscirc=iscirc)
     coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
 #    fct(v,n) = exp(-(75*(v-n/2)/n)^2)
@@ -78,7 +78,7 @@ end
 
 function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
     
-    sp = BSplineNew(order, n, zero(type); iscirc=iscirc)
+    sp = B_Spline(order, n, zero(type); iscirc=iscirc)
     coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
     fct(x,y,n) = cos((coef*2big(pi)/n)*(x+y))

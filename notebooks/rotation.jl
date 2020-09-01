@@ -94,6 +94,6 @@ function run_simulation( interpolation, tf, nt )
 end
 # -
 
-run_simulation( Bspline(3), 2π, 100)
+run_simulation( BsplineOld(3), 2π, 100)
 
 

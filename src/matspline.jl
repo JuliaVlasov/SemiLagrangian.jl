@@ -327,19 +327,19 @@ get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
 abstract type InterpolationType end
-struct BSplineNew{T} <: InterpolationType
+struct B_Spline{T} <: InterpolationType
     ls::LuSpline{T}
     bspline::Spline
-    function BSplineNew( order, n, eltfortype::T; iscirc=true) where{T}
+    function B_Spline( order, n, eltfortype::T; iscirc=true) where{T}
         bspline = getbspline(order, 0)
         ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
         return new{T}(ls, bspline)
     end
-    BSplineNew(o, n, t::DataType ; kwargs... )=BSplineNew(o, n, one(t) ; kwargs... )
+    B_Spline(o, n, t::DataType ; kwargs... )=B_Spline(o, n, one(t) ; kwargs... )
 end
 
 function interpolate!( adv, fp, fi, dec, 
-    bsp::BSplineNew{T}
+    bsp::B_Spline{T}
 ) where {T}
     res, _ = sol(bsp.ls, fi)
     n = get_n(bsp.ls)

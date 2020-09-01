@@ -3,7 +3,7 @@
 include("../src/bspline_periodic.jl")
 using Test
 
-@testset "Bspline periodic advections" begin
+@testset "BsplineOld periodic advections" begin
   
     for p in (3, 5, 7, 9, 11, 13)
 
@@ -15,8 +15,8 @@ using Test
         mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
         mesh2 = UniformMesh(x2min, x2max, n2; endpoint=false)
 
-        adv1 = BsplinePeriodicAdvection( mesh1, Bspline(p) )
-        adv2 = BsplinePeriodicAdvection( mesh2, Bspline(p) )
+        adv1 = BsplinePeriodicAdvection( mesh1, BsplineOld(p) )
+        adv2 = BsplinePeriodicAdvection( mesh2, BsplineOld(p) )
 
         f  = zeros(ComplexF64,(n1,n2))
         f .= exp.(-mesh1.points.^2) .* transpose(exp.(-mesh2.points.^2))
@@ -145,8 +145,8 @@ end
         mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
         mesh2 = UniformMesh(x2min, x2max, n2; endpoint=false)
  
-        adv1 = BsplinePeriodicAdvection( mesh1, Bspline(p) )
-        adv2 = BsplinePeriodicAdvection( mesh2, Bspline(p) )
+        adv1 = BsplinePeriodicAdvection( mesh1, BsplineOld(p) )
+        adv2 = BsplinePeriodicAdvection( mesh2, BsplineOld(p) )
 
         f  = zeros(Complex{BigFloat},(n1,n2))
         f .= exp.(-mesh1.points.^2) .* transpose(exp.(-mesh2.points.^2))

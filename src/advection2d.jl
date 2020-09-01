@@ -5,7 +5,7 @@ export Advection
 
 Creates a 2d backward semi-lagrangian advection.
 
-- `interp`   : Interpolation type (Bspline(degree), Lagrange(degree))
+- `interp`   : Interpolation type (BsplineOld(degree), Lagrange(degree))
 - `mesh`     : UniformMesh along advection direction
 
 """
@@ -25,7 +25,7 @@ created from `Advector` callable type.
 
 ```julia
 mesh = UniformMesh( -π, π, 64 )
-advection! = Advection( mesh, Bspline(3), :periodic )
+advection! = Advection( mesh, BsplineOld(3), :periodic )
 
 f = exp.( - mesh.points .^ 2 )
 

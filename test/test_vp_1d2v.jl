@@ -27,8 +27,8 @@ v2min, v2max, nv2 = -6., 6., 64
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint=false )
 mesh_v = RectMesh2D( v1min, v1max, nv1, v2min, v2max, nv2)
 
-advection_x! = PeriodicAdvection( mesh_x, Bspline(degree))
-advection_v! = Advection( mesh_v, Bspline(degree))
+advection_x! = PeriodicAdvection( mesh_x, BsplineOld(degree))
+advection_v! = Advection( mesh_v, BsplineOld(degree))
 
 ex  = zeros(Float64, nx)
 rho = zeros(Float64, nx)

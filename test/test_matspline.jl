@@ -1,4 +1,4 @@
-include("../src/bspline.jl")
+include("../src/spline.jl")
 include("../src/matspline.jl")
 using LinearAlgebra
 using Random

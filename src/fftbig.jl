@@ -76,6 +76,18 @@ end
 function PrepareFftBig( size_fft::Integer; kwargs...) 
     return PrepareFftBig( size_fft, one(BigFloat); kwargs...)
 end
+
+# Amazing that such function doesn't already exist
+function permutselecteddim(in::Array{T}, numdim, perm) where {T}
+    sz = size(in)
+    out = zeros(T,sz)
+    for i=1:sz[numdim]
+        s_in = selectdim(in, numdim, i)
+        s_out = selectdim(out, numdim, perm[i])
+        s_out .= s_in
+    end
+    return out
+end
 function fftbig!(
     par::PrepareFftBig{T, NDIMS, NUMDIM}, 
     signal; 
@@ -90,7 +102,7 @@ function fftbig!(
     rootO = flag_inv ? par.root_one : par.root_one_conj;
 #    prec= precision(real(rootO[1]))
 #    setprecision(prec+32) do
-        while n_len != 0
+         while n_len != 0
             start = 1
             suite = start+n_len
             for i=1:nb_r
@@ -99,13 +111,24 @@ function fftbig!(
                     if NDIMS == 1
                         signal[start], signal[suite] = (signal[start] + signal[suite]), 
                         (signal[start] - signal[suite])*rootO[j]
-                    elseif NUMDIM == 1
-                        signal[start, :], signal[suite, :] = (signal[start, :] + signal[suite, :]), 
-                        (signal[start, :] - signal[suite, :])*rootO[j]
                     else
-                        signal[:,start], signal[:,suite] = (signal[:,start] + signal[:,suite]), 
-                        (signal[:,start] - signal[:,suite])*rootO[j]
+                        s_start = selectdim(signal, NUMDIM, start)
+                        s_suite = selectdim(signal, NUMDIM, suite)
+                        s_sum = s_start+s_suite
+                        s_diff = (s_start-s_suite)*rootO[j]
+                        s_start .= s_sum
+                        s_suite .= s_diff
                     end
+                    # if NDIMS == 1
+                    #     signal[start], signal[suite] = (signal[start] + signal[suite]), 
+                    #     (signal[start] - signal[suite])*rootO[j]
+                    # elseif NUMDIM == 1
+                    #     signal[start, :], signal[suite, :] = (signal[start, :] + signal[suite, :]), 
+                    #     (signal[start, :] - signal[suite, :])*rootO[j]
+                    # else
+                    #     signal[:,start], signal[:,suite] = (signal[:,start] + signal[:,suite]), 
+                    #     (signal[:,start] - signal[:,suite])*rootO[j]
+                    # end
                     start += 1
                     suite += 1
                 end
@@ -117,15 +140,21 @@ function fftbig!(
             nb_r <<= 1
         end
 #    end
+# signal .= 
+# if NDIMS == 1 
+#     signal[par.tab_permut]
+# elseif NUMDIM == 1
+#     signal[par.tab_permut, :]
+# else 
+#     signal[:,par.tab_permut]
+# end       
     signal .= 
     if NDIMS == 1 
         signal[par.tab_permut]
-    elseif NUMDIM == 1
-        signal[par.tab_permut, :]
-    else 
-        signal[:,par.tab_permut]
+    else
+        permutselecteddim(signal, NUMDIM, par.tab_permut)
     end       
-    
+
     if flag_inv
         signal ./= s
     end
@@ -146,18 +175,48 @@ end
 fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
 fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
 fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
-fftgen(_::PrepareFftBig, t::Array{Complex{Float64}}) = fft(t, (1,))
-fftgen!(_::PrepareFftBig, t::Array{Complex{Float64}}) = fft!(t, (1,))
-fftgen(_::PrepareFftBig, t::Array{Float64}) = fft(t, (1,))
+function fftgen(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Complex{Float64}}
+) where {T, NDIMS, NUMDIM}
+    return fft(t, (NUMDIM,))
+end
+function fftgen!(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Complex{Float64}}
+) where {T, NDIMS, NUMDIM}
+    return fft!(t, (NUMDIM,))
+end
+function fftgen(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Float64}
+) where {T, NDIMS, NUMDIM}
+    return fft(t, (NUMDIM,))
+end
 fftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig!(p, t)
 ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (1,))
 ifftgen!(_::Any, t::Array{Complex{Float64}}) = ifft!(t, (1,))
 ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
-ifftgen(_::PrepareFftBig, t::Array{Complex{Float64}}) = ifft(t, (1,))
-ifftgen!(_::PrepareFftBig, t::Array{Complex{Float64}}) = ifft!(t, (1,))
-ifftgen(_::PrepareFftBig, t::Array{Float64}) = ifft(t, (1,))
-ifftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
-ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig(p, t, flag_inv = true)
-ifftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat}  = fftbig!(p, t, flag_inv = true)
+function ifftgen(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Complex{Float64}}
+) where {T, NDIMS, NUMDIM}
+    return ifft(t, (NUMDIM,))
+end
+function ifftgen!(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Complex{Float64}}
+) where {T, NDIMS, NUMDIM}
+    return ifft!(t, (NUMDIM,))
+end
+function ifftgen(
+    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    t::Array{Float64}
+) where {T, NDIMS, NUMDIM}
+    return ifft(t, (NUMDIM,))
+end
+ifftgen(p::PrepareFftBig, t::Array{T}) where {T}  = fftbig(p, t, flag_inv = true)
+ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T}  = fftbig(p, t, flag_inv = true)
+ifftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T}  = fftbig!(p, t, flag_inv = true)

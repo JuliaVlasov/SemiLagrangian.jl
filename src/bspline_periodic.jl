@@ -1,6 +1,6 @@
 using FFTW, LinearAlgebra
 
-# export Bspline, BsplinePeriodicAdvection
+# export BsplineOld, BsplinePeriodicAdvection
 
 abstract type InterpolationType end
 
@@ -8,11 +8,11 @@ include("fftbig.jl")
 include("advection.jl")
 
 
-struct Bspline <: InterpolationType
+struct BsplineOld <: InterpolationType
 
     p::Int
 
-    function Bspline(p::Int)
+    function BsplineOld(p::Int)
 
         @assert (p & 1 == 1)
         new(p)
@@ -65,7 +65,7 @@ end
     advection! = BSplinePeriodicAdvection( mesh, bspl )
 
 Type to perform 1d advection on periodic domain. Bspline interpolation
-is used combined with fft transform to solve the system. Bspline degree
+is used combined with fft transform to solve the system. BsplineOld degree
 must be odd.
 
 ```@example
@@ -77,7 +77,7 @@ x1min, x1max = -10, 10
 
 mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
 
-advection! = PeriodicAdvection( mesh1, Bspline(p) )
+advection! = PeriodicAdvection( mesh1, BsplineOld(p) )
 ```
 
 advection! computes the interpolating spline of degree p of odd
@@ -98,7 +98,7 @@ struct BsplinePeriodicAdvection{T} <: AbstractAdvection
 
     function BsplinePeriodicAdvection(
     mesh::UniformMesh{T}, 
-    bspl::Bspline
+    bspl::BsplineOld
 ) where {T<:AbstractFloat}
 
         n = mesh.length
@@ -193,7 +193,7 @@ function advection!(
 end
 
 
-function interpolate!( adv, fout, f::Array{T}, alpha::T, bspl::Bspline) where{T<:AbstractFloat}
+function interpolate!( adv, fout, f::Array{T}, alpha::T, bspl::BsplineOld) where{T<:AbstractFloat}
 
     n = length(f)
  

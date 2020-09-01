@@ -6,7 +6,7 @@ include("../src/advection.jl")
 include("../src/lagrange.jl")
 include("../src/lagrange2d.jl")
 include("../src/advection2d.jl")
-include("../src/bspline.jl")
+include("../src/spline.jl")
 include("../src/matspline.jl")
 
 using Images
@@ -254,19 +254,19 @@ end
 # end
 @testset "Rotation test with Bspline advections " begin
 
-    tf, nt = 2big(π), 400
+    tf, nt = 2big(π), 64
     
     mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     
-    bsp = BSplineNew(31, nt, BigFloat, iscirc=false)
+    bsp = B_Spline(21, nt, BigFloat, iscirc=false)
 
     @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
     fe = exact(tf, mesh1, mesh2)
 
     err = error1(fc, fe)
     println("err=$err")
-    @test err <  1e-4
+    @test err <  1e-2
 
 end
 

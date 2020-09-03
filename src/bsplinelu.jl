@@ -1,86 +1,122 @@
 
-function decLU( A::Matrix{T} ) where{T}
-    n = size(A,1)
-    for k=1:n
-        pivot = A[k,k]
-        for i=k+1:n
-            A[i,k] /= pivot
-        end
-        for i=k+1:n, j=k+1:n
-            # if A[i,k] != 0 && A[k,j] != 0
-            #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
-            # end
-            A[i,j] -= A[i,k]*A[k,j]
-            # if A[i,k] != 0 && A[k,j] != 0
-            #     println("trace après k=$k i=$i j=$j A[i,j]=$(A[i,j])")
-            # end
-        end
-    end
-    return A
-end
-function decLDLt( A::Matrix{T} ) where{T}
-    n = size(A,1)
-    L = zeros(T,n,n)
-    D = zeros(T,n,n)
+# function decLU( A::Matrix{T} ) where{T}
+#     n = size(A,1)
+#     for k=1:n
+#         pivot = A[k,k]
+#         for i=k+1:n
+#             A[i,k] /= pivot
+#         end
+#         for i=k+1:n, j=k+1:n
+#             # if A[i,k] != 0 && A[k,j] != 0
+#             #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
+#             # end
+#             A[i,j] -= A[i,k]*A[k,j]
+#             # if A[i,k] != 0 && A[k,j] != 0
+#             #     println("trace après k=$k i=$i j=$j A[i,j]=$(A[i,j])")
+#             # end
+#         end
+#     end
+#     return A
+# end
+# function decLDLt( A::Matrix{T} ) where{T}
+#     n = size(A,1)
+#     L = zeros(T,n,n)
+#     D = zeros(T,n,n)
     
-    for j=1:n
-        L[j,j] = 1
-        D[j,j] = A[j, j] - (j!=1 ? sum(L[j,k]^2 * D[k,k] for k=1:j-1) : 0)
-        for i=j+1:n
-            L[i,j] = (A[i,j] -(j!=1 ? sum(L[i,k]*L[j,k] * D[k,k] for k=1:j-1) : 0 ))/D[j,j]
-        end
-    end
-    return L, D
-end
-# gradconj : solve A*x = b for A symetric and positive
-function gradconj(A::Matrix{T}, b::Vector{T}, tol) where T
-    n = size(A,1)
-    x = zeros(T,n)
-    r = b - A*x
-    p = copy(r)
-    r2 = sum(r .^ 2)
-    for k=1:1000
-        ap = A*p
-        alpha = r2 / sum( p .* ap )
-        x .+= alpha*p
-        r .-= alpha*ap
-        nm = norm(r, Inf)
-        println("k=$k prec=$nm")
-        if nm < tol
-            break
-        end
-        newr2 = sum(r .^ 2)
-        beta = newr2/r2
-        p .= r + beta*p
-        r2 = newr2
-    end
-    return x
-end
-# gradconj_np : solve A*x = b for A symetric and not necessary positive
-function gradconj_np(A::AbstractMatrix{T}, b::Vector{T}, tolabs, tolrel) where T
-    n = size(A,1)
-    x = zeros(T,n)
-    r = A*b - A*(A*x)
-    p = copy(r)
-    r2 = sum(r .^ 2)
-    for k=1:1000
-        ap = A*(A*p)
-        alpha = r2 / sum( p .* ap )
-        x .+= alpha*p
-        r .-= alpha*ap
-        nm = norm(r)
-        nmrel = nm/norm(x)
-        println("k=$k prec=$nm precrel=$nmrel")
-        if nm < tolabs && nmrel < tolrel
-            break
-        end
-        newr2 = sum(r .^ 2)
-        beta = newr2/r2
-        p .= r + beta*p
-        r2 = newr2
-    end
-    return x
-end
+#     for j=1:n
+#         L[j,j] = 1
+#         D[j,j] = A[j, j] - (j!=1 ? sum(L[j,k]^2 * D[k,k] for k=1:j-1) : 0)
+#         for i=j+1:n
+#             L[i,j] = (A[i,j] -(j!=1 ? sum(L[i,k]*L[j,k] * D[k,k] for k=1:j-1) : 0 ))/D[j,j]
+#         end
+#     end
+#     return L, D
+# end
+# function getLU(A::Matrix{T}) where{T}
+#     n = size(A,1)
+#     L = zeros(T,n,n)
+#     U = zeros(T,n,n)
+#     for i=1:n
+#         L[i,i] = 1
+#         for j=1:i-1
+#             L[i,j] = A[i,j]
+#         end
+#         for j=i:n
+#             U[i,j] = A[i,j]
+#         end
+#     end
+#     return L, U
+# end
+
+# function topl(n, t, iscirc=true)
+#     res=zeros(Rational{BigInt},n,n)
+#     kl, ku = get_kl_ku(size(t,1))
+#     for i=1:n
+#         for (j,v) in enumerate(t)
+#             ind = i+j-kl-1
+#             if 1 <= ind <= n
+#                 res[i, ind] = v
+#             elseif iscirc
+#                 if ind < 1
+#                     ind += n
+#                 else
+#                     ind -= n
+#                 end
+#                 res[i,ind] = v
+#             end
+#         end
+#     end
+#     return res
+# end
+# # gradconj : solve A*x = b for A symetric and positive
+# function gradconj(A::Matrix{T}, b::Vector{T}, tol) where T
+#     n = size(A,1)
+#     x = zeros(T,n)
+#     r = b - A*x
+#     p = copy(r)
+#     r2 = sum(r .^ 2)
+#     for k=1:1000
+#         ap = A*p
+#         alpha = r2 / sum( p .* ap )
+#         x .+= alpha*p
+#         r .-= alpha*ap
+#         nm = norm(r, Inf)
+#         println("k=$k prec=$nm")
+#         if nm < tol
+#             break
+#         end
+#         newr2 = sum(r .^ 2)
+#         beta = newr2/r2
+#         p .= r + beta*p
+#         r2 = newr2
+#     end
+#     return x
+# end
+# # gradconj_np : solve A*x = b for A symetric and not necessary positive
+# function gradconj_np(A::AbstractMatrix{T}, b::Vector{T}, tolabs, tolrel) where T
+#     n = size(A,1)
+#     x = zeros(T,n)
+#     r = A*b - A*(A*x)
+#     p = copy(r)
+#     r2 = sum(r .^ 2)
+#     for k=1:1000
+#         ap = A*(A*p)
+#         alpha = r2 / sum( p .* ap )
+#         x .+= alpha*p
+#         r .-= alpha*ap
+#         nm = norm(r)
+#         nmrel = nm/norm(x)
+#         println("k=$k prec=$nm precrel=$nmrel")
+#         if nm < tolabs && nmrel < tolrel
+#             break
+#         end
+#         newr2 = sum(r .^ 2)
+#         beta = newr2/r2
+#         p .= r + beta*p
+#         r2 = newr2
+#     end
+#     return x
+# end
 
 
 
@@ -143,49 +179,15 @@ function decLULu(iscirc, band, lastcols, lastrows)
         end
     end
 end
-function getLU(A::Matrix{T}) where{T}
-    n = size(A,1)
-    L = zeros(T,n,n)
-    U = zeros(T,n,n)
-    for i=1:n
-        L[i,i] = 1
-        for j=1:i-1
-            L[i,j] = A[i,j]
-        end
-        for j=i:n
-            U[i,j] = A[i,j]
-        end
-    end
-    return L, U
-end
-   
 
-
-
-function topl(n, t, iscirc=true)
-    res=zeros(Rational{BigInt},n,n)
-    ku = div(size(t,1), 2)
-    kl = size(t,1)-1-ku
-    for i=1:n
-        for (j,v) in enumerate(t)
-            ind = i+j-kl-1
-            if 1 <= ind <= n
-                res[i, ind] = v
-            elseif iscirc
-                if ind < 1
-                    ind += n
-                else
-                    ind -= n
-                end
-                res[i,ind] = v
-            end
-        end
-    end
-    return res
-end
 
    
 
+function get_kl_ku(order)
+    ku = div(order,2)
+    kl = order-1-ku
+    return kl, ku
+end
 
 
 struct LuSpline{T}
@@ -198,8 +200,7 @@ struct LuSpline{T}
     lastrows::Union{Matrix{T},Missing} # missing when iscirc=false
     function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
         wd = size(t,1) # band width
-        ku = div(wd,2)
-        kl = wd-1-ku
+        kl, ku = get_kl_ku(wd)
         szb = iscirc ? n-kl : n
         band = zeros(T, wd, szb)
         for i=1:wd
@@ -322,28 +323,40 @@ function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
     end
     return X, Y
 end
-
 get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
+
+
+
 abstract type InterpolationType end
-struct B_Spline{T} <: InterpolationType
+abstract type B_Spline{T,iscirc} <: InterpolationType end
+struct B_SplineLU{T,iscirc} <: B_Spline{T,iscirc}
     ls::LuSpline{T}
     bspline::Spline
-    function B_Spline( order, n, eltfortype::T; iscirc=true) where{T}
+    function B_SplineLU( order, n, eltfortype::T; iscirc=true) where{T}
         bspline = getbspline(order, 0)
         ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
-        return new{T}(ls, bspline)
+        return new{T, iscirc}(ls, bspline)
     end
-    B_Spline(o, n, t::DataType ; kwargs... )=B_Spline(o, n, one(t) ; kwargs... )
+    # B_Spline(o, n, t::DataType ; kwargs... )=B_Spline(o, n, one(t) ; kwargs... )
 end
 
+sol(bsp::B_SplineLU{T}, b::Vector{T}) where{T}=sol(bsp.ls, b)[1]
+get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
+get_order(bsp::B_SplineLU{T}) where{T}=get_order(bsp.ls)
+get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
+get_type(bsp::B_SplineLU{T, iscirc}) where{T,iscirc}="B_SplineLU{$T, $iscirc}"
+
 function interpolate!( adv, fp, fi, dec, 
-    bsp::B_Spline{T}
-) where {T}
-    res, _ = sol(bsp.ls, fi)
-    n = get_n(bsp.ls)
-    order = get_order(bsp.ls)
+    bsp::B_Spline{T, iscirc}
+) where {T, iscirc}
+    println("begin interpolate with $(get_type(bsp))")
+    res = sol(bsp, fi)
+    n = get_n(bsp)
+    order = get_order(bsp)
+    kl, ku = get_kl_ku(order)
+
     decint = convert(Int, floor(dec))
     decfloat = dec-decint
     if decfloat > 0.5
@@ -352,9 +365,9 @@ function interpolate!( adv, fp, fi, dec,
     end
 
 #    println("n=$n size(res)=$(size(res,1)) size(fi)=$(size(fi,1)) size(fp)=$(size(fp,1))")
-    precal = bsp.bspline.((1:order) .- decfloat)
-    if bsp.ls.iscirc
-        decall = n-bsp.ls.kl+decint-2
+    precal = get_bspline(bsp).((1:order) .- decfloat)
+    if iscirc
+        decall = n-kl+decint-2
         for i=1:n
             fp[i] = 0
             dec = decall + i
@@ -366,7 +379,7 @@ function interpolate!( adv, fp, fi, dec,
             # println("i2=$i diff=$diff")
         end
     else
-        decall = -bsp.ls.kl+decint-1
+        decall = -kl+decint-1
         for i=1:n
             # deb = max(1, bsp.ls.kl+2-i)
             # fin = min(order, n-i + bsp.ls.ku+1)
@@ -380,4 +393,5 @@ function interpolate!( adv, fp, fi, dec,
             end
         end
     end
+    println("end interpolate with $(get_type(bsp))")
 end

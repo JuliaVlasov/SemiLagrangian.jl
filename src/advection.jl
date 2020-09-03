@@ -16,9 +16,8 @@ struct Advection{T}
     mesh::UniformMesh{T}
     interp::InterpolationType
     f1d::Vector{T}
-    parfft
     function Advection(mesh::UniformMesh{T}, interp::InterpolationType) where{T}
-        return new{T}(mesh, interp, zeros(mesh.length), missing)
+        return new{T}(mesh, interp, zeros(mesh.length))
     end
     # function Advection(mesh::UniformMesh{T}, interp::BsplineOld) where{T}
     #     parfft = if T == BigFloat 
@@ -55,9 +54,9 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
 #        @spawn begin
     maxalpha = 0
     minalpha = 100000
-            for j in eachindex(v) # jchunk
-                alpha = - v[j] * dt / self.mesh.step
- #               println("j=$j alpha=$alpha")
+            for (j, value) in enumerate(v) # jchunk
+                alpha = - value * dt / self.mesh.step
+#               println("j=$j alpha=$alpha")
                 maxalpha = max(maxalpha,abs(alpha))
                 minalpha = min(minalpha,abs(alpha))
                 interpolate!( self, buf, f[:, j], alpha, self.interp)

@@ -1,5 +1,6 @@
 include("../src/spline.jl")
-include("../src/matspline.jl")
+include("../src/bsplinelu.jl")
+include("../src/bsplinefft.jl")
 
 using LinearAlgebra
 using Test
@@ -36,16 +37,20 @@ function nb_diff_tol(f1, f2, tol)
     nb=0
     for i=1:size(f1,1)
         if abs(f1[i]-f2[i])> tol
-            println("indice=$i diff=$(abs(f1[i]-f2[i]))")
+  #          println("indice=$i diff=$(abs(f1[i]-f2[i]))")
             nb+=1
         end
     end
     return nb
 end
          
-function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
+function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, islu::Bool)
     
-    sp = B_Spline(order, n, zero(type); iscirc=iscirc)
+    sp = if (islu)
+            B_SplineLU(order, n, zero(type); iscirc=iscirc)
+    else
+        B_SplineFFT(order, n, zero(type))
+    end
     coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
 #    fct(v,n) = exp(-(75*(v-n/2)/n)^2)
@@ -54,9 +59,9 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
     fi = zeros(type, n)
     value = convert(type,
 #    big"0.000000000000000000000000000000000000001") 
-    -big"3.385713901112334905767655546588878787878787887874441132001118762519")
+    -big"0.385713901112334905767655546588878787878787887874441132001118762519")
 #    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
-    for i=1:n
+    for i=1:nb
         fi .= fp
 #        fpref = fct.(convert.(type,(collect(1:n))) .+ i*value,n)
         fpref = fct.((1:n) .+ i*value,n)
@@ -76,9 +81,9 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n,  tol)
     end
 end
 
-function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
+function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol, islu::Bool)
     
-    sp = B_Spline(order, n, zero(type); iscirc=iscirc)
+    sp = B_SplineLU(order, n, zero(type); iscirc=iscirc)
     coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
     fct(x,y,n) = cos((coef*2big(pi)/n)*(x+y))
@@ -119,6 +124,7 @@ end
     # test_interpolation(BigFloat, 11, true, 100, 1e-7)
     # test_interpolation(BigFloat, 21, true, 100, 1e-15)
     # test_interpolation(BigFloat, 41, true, 100, 1e-20)
-    test_interpolation(BigFloat, 41, true, 1000, 1e10)
+    @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
+    @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end

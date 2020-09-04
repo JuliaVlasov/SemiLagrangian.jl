@@ -19,7 +19,7 @@ ys = similar(yp)
 pm = Progress(1000)
 @gif for i in 1:1000
     alpha = -0.1
-    interpolate!(ys, yp, alpha, Lagrange(5));
+    interpolate!(ys, yp, alpha, LagrangeOld(5));
     yp .= ys
     xs .= a .+ mod.(xs .- a .+ alpha * dx, b-a)
     plot(xp, f.(xs), label="true") 

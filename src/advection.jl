@@ -2,21 +2,34 @@
 
 
 include("mesh.jl")
+
+abstract type InterpolationType{T, iscirc} end
+
+function get_kl_ku(order)
+    ku = div(order,2)
+    kl = order-1-ku
+    return kl, ku
+end
+
+
+
+
+
 """
     Advection(interpolation_type, mesh, LBC, RBC)
 
 Creates a 1d backward semi-lagrangian advection.
 
-- `interp`   : Interpolation type (BsplineOld(degree), Lagrange(degree))
+- `interp`   : Interpolation type (BsplineOld(degree), LagrangeOld(degree))
 - `mesh`     : UniformMesh along advection direction
 
 """
 struct Advection{T}
 
     mesh::UniformMesh{T}
-    interp::InterpolationType
+    interp::InterpolationType{T}
     f1d::Vector{T}
-    function Advection(mesh::UniformMesh{T}, interp::InterpolationType) where{T}
+    function Advection(mesh::UniformMesh{T}, interp::InterpolationType{T}) where{T}
         return new{T}(mesh, interp, zeros(mesh.length))
     end
     # function Advection(mesh::UniformMesh{T}, interp::BsplineOld) where{T}
@@ -28,6 +41,8 @@ struct Advection{T}
     #     return new{T}(mesh, interp, zeros(mesh.length), parfft)
     # end
 end
+
+
 
 """
     advection!(f, v, dt)
@@ -66,3 +81,4 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
 #    end
 #    println("maxaplha = $maxalpha minaplha = $minalpha")
 end
+

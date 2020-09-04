@@ -1,9 +1,10 @@
 using Test
 using LinearAlgebra
+include("../src/advection.jl")
 include("../src/lagrange.jl")
 function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
     @testset "Lagrange interpolation function type=$type order=$order iscirc=$iscirc" begin
-        lag = LagrangeNew(type, order; iscirc=iscirc)
+        lag = Lagrange(type, order; iscirc=iscirc)
 #        println("lag=$lag")
         n = number
         # whennot circuar coef != 1 set the function unperiodic
@@ -27,7 +28,7 @@ end
 
 function test_interpolation(type::DataType, order, iscirc::Bool, number, granularity,  tol, nb=1)
     
-    lag = LagrangeNew(type, order; iscirc=iscirc, granularity=granularity)
+    lag = Lagrange(type, order; iscirc=iscirc, granularity=granularity)
     coef = iscirc ? 1. : 1.111
     n = number
  #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
@@ -59,33 +60,7 @@ end
 #         @time test_interpolation(BigFloat, 17,true, 1000, i, 1e-20, 100)
 #     end
 # end
-function aff_graph(ind, fp)
-    println("ind=$ind begin")
-    for (i, val) in enumerate(fp)
-        println("$i\t$val")
-    end
-    println("ind=$ind end")
-end
-function test_dirac(order, len, nb, modval )
-    lag = LagrangeNew(BigFloat, order; iscirc=true)
-#        println("lag=$lag")
-    n = len
-    # whennot circuar coef != 1 set the function unperiodic
-    fp = zeros(BigFloat,n)
-    fp[div(n,2)] = big"1.0"
-    fi = zeros(BigFloat, n)
-    value = big"0.30529810681113334445566767713091"
-    normax=0.0
-    aff_graph(1,fp)
-    for i=1:nb
-        fi .= fp
-  interpolate!(missing,fp,fi, value, lag)
-        if i%modval == 0
-            aff_graph(i,fp)
-        end
-    end
-end
-#test_dirac(31,100, 500, 50)
+
 @time test_interpolation(BigFloat, 43,true, 200, 1, 1e-1, 200 )
 # test_interpolation(BigFloat, 23,true, 1000, 12, 1e-40)
 # test_interpolation(BigFloat, 17,false, 1000, 10, 1e-38)

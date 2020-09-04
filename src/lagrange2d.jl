@@ -119,7 +119,7 @@ end
 return the interpolation polynomial for the given values of a function
 
 # Arguments
-- `lag::LagrangeNew` : object with Lagrange coefficients
+- `lag::Lagrange` : object with Lagrange coefficients
 - `resfct::Vector{T}`` : result of functions for values lag.origin to lag.origin+size(lag.coef+1, 1)
 
 # Returns :
@@ -168,7 +168,7 @@ end
 return the interpolation polynomial for the given values of a function at a specified index
 
 # Arguments
-- `lag::LagrangeNew` : object with Lagrange coefficients
+- `lag::Lagrange` : object with Lagrange coefficients
 - `resfct::Vector{T}`` : result of functions for all values.
 - `ind` : indices to take values from lag.origin +ind to ind + lag.origin+size(lag.coef+1, 1)
 
@@ -198,7 +198,7 @@ function polinterpol(
     end
 end
 """
-    interpolate!( fp, fi, dec, lag::LagrangeNew)
+    interpolate!( fp, fi, dec, lag::Lagrange)
 return the interpolation polynomial for the given values of a function a a specified index
 
 # Arguments

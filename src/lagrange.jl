@@ -1,6 +1,6 @@
 using Polynomials
-using DynamicPolynomials
-abstract type InterpolationType end
+# using DynamicPolynomials
+
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
 
@@ -30,44 +30,51 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
     end
     return result
 end
+
+function get_origin(order)
+    v, _ = get_kl_ku(order)
+    return -(v+1)
+end
+
 """
-    LagrangeNew{iscirc, T, origin, granularity}
+    Lagrange{T, iscirc, granularity}
 Lagrange Polynomials coefficients
 
 # Fields :
-- `coef::Matrix{Rational{N}}` : Matrice with all Lagrange polynomials coefficients, each culumn from 0 to order had the coefficients for the corresponding Lagrange polynomial. the matrix had a size of (order + 1, order + 1).
-- `origin::Int64` : origin of the coefficients
-- `iscirc::Bool` : 
+- `coef::Matrix{T}` : Matrix with all Lagrange polynomials coefficients, each culumn from 0 to order had the coefficients for the corresponding Lagrange polynomial. the matrix had a size of (order + 1, order + 1).
+
 """
-struct LagrangeNew{iscirc, T, origin, granularity} <: InterpolationType
+struct Lagrange{T, iscirc, granularity} <: InterpolationType{T, iscirc}
     coef::Matrix{T}
-    function LagrangeNew(T::DataType, order; iscirc::Bool=true, granularity=1)
-        origin = -div(order,2) 
-        type = order <= 20 ? Int64 : BigInt 
+    function Lagrange(T::DataType, order; iscirc::Bool=true, granularity=1)
+        type = order <= 10 ? Int64 : BigInt 
         coef = zeros(T, order+1, order+1)
+        origin = get_origin(order)
         for i = 0:order
             coef[:,i+1] .= convert.(T, coeffs(_getpolylagrange( i, order, origin, type)))
         end
-        new{iscirc, T, origin, granularity}(coef) 
+        new{T, iscirc, granularity}(coef) 
     end
-    LagrangeNew(order; kwargs...)= LagrangeNew(Float64, order; kwargs...)
+    Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
+get_order(lag::Lagrange)= size(lag.coef,1)-1
+
 """
     polinterpol(
-    lag::LagrangeNew, 
+    lag::Lagrange, 
     resfct::Vector{T}
 ) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
 return the interpolation polynomial for the given values of a function
 
 # Arguments
-- `lag::LagrangeNew` : object with Lagrange coefficients
+- `lag::Lagrange` : object with Lagrange coefficients
 - `resfct::Vector{T}`` : result of functions for values lag.origin to lag.origin+size(lag.coef+1, 1)
 
 # Returns :
 - Polynomial{T} : the interpolation polynomial
 """
 function polinterpol(
-    lag::LagrangeNew, 
+    lag::Lagrange, 
     resfct::Vector{T}
 ) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
     return Polynomials.Polynomial(lag.coef*resfct)
@@ -77,14 +84,14 @@ end
 modone(ind, n)=(n+ind-1)%n+1
 """
     polinterpol(
-    lag::LagrangeNew, 
+    lag::Lagrange, 
     resfct::Vector{T},
     ind
 ) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
 return the interpolation polynomial for the given values of a function at a specified index
 
 # Arguments
-- `lag::LagrangeNew` : object with Lagrange coefficients
+- `lag::Lagrange` : object with Lagrange coefficients
 - `resfct::Vector{T}`` : result of functions for all values.
 - `ind` : indices to take values from lag.origin +ind to ind + lag.origin+size(lag.coef+1, 1)
 
@@ -92,12 +99,14 @@ return the interpolation polynomial for the given values of a function at a spec
 - Polynomial{T} : the interpolation polynomial
 """
 function polinterpol(
-    lag::LagrangeNew{iscirc, N, origin, granularity}, 
+    lag::Lagrange{T, iscirc, granularity}, 
     resfct::Vector{T},
     ind
-) where {iscirc, N, origin, T<:AbstractFloat, granularity}
+) where {T, iscirc, granularity}
+    order = get_order(lag)
+    origin = get_origin(order)
     indbegin = origin+ind
-    indend = indbegin+size(lag.coef,1)-1
+    indend = indbegin+order
     listind = 
     if iscirc
         modone.(indbegin:indend, size(resfct,1))
@@ -122,7 +131,7 @@ function polinterpol(
     end
 end
 """
-    interpolate!( fp, fi, dec, lag::LagrangeNew)
+    interpolate!( fp, fi, dec, lag::Lagrange)
 return the interpolation polynomial for the given values of a function a a specified index
 
 # Arguments
@@ -134,17 +143,16 @@ return the interpolation polynomial for the given values of a function a a speci
 - No return
 """
 function interpolate!( adv, fp, fi, dec, 
-    lag::LagrangeNew{iscirc, N, origin, granularity}
-) where {iscirc, N, origin, T<:AbstractFloat, granularity}
-    # if (dec >= 1 || dec < 1)
-    #     cor = Int64(floor(dec))
-    #     val = dec - cor
-    # else
+    lag::Lagrange{T, iscirc, granularity}
+) where {T<:AbstractFloat, iscirc, granularity}
+    if (dec >= 1 || dec < 1)
+        cor = Int64(floor(dec))
+        val = dec - cor
+    else
         cor = 0
         val = dec
-    # end
-    gr1=div(granularity,2)
-    gr2=granularity-gr1-1
+    end
+    gr2, gr1=get_kl_ku(granularity)
     borne = size(fp,1)-gr2
     for i=gr1+1:granularity:borne
         pol = polinterpol(lag, fi, i+cor)

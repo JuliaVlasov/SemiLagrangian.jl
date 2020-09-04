@@ -11,8 +11,8 @@ vmin, vmax, nv = -6., 6., 64
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint=false )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint=false )
 
-adv_x = Advection( mesh_x, Lagrange(degree))
-adv_v = Advection( mesh_v, Lagrange(degree))
+adv_x = Advection( mesh_x, LagrangeOld(degree))
+adv_v = Advection( mesh_v, LagrangeOld(degree))
 
 ex  = zeros(Float64, nx)
 rho = zeros(Float64, nx)

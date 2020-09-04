@@ -1,4 +1,7 @@
+
+include("../src/advection.jl")
 include("../src/spline.jl")
+include("../src/bspline.jl")
 include("../src/bsplinelu.jl")
 include("../src/bsplinefft.jl")
 
@@ -124,7 +127,9 @@ end
     # test_interpolation(BigFloat, 11, true, 100, 1e-7)
     # test_interpolation(BigFloat, 21, true, 100, 1e-15)
     # test_interpolation(BigFloat, 41, true, 100, 1e-20)
-    @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
-    @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
+    # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
+    # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
+    @time test_interpolation(BigFloat, 21, true, 2^8, 100, 1e-25, false)
+    @time test_interpolation(BigFloat, 21, true, 2^8, 100, 1e-25, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end

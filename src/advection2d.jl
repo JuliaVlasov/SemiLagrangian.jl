@@ -5,7 +5,7 @@ export Advection
 
 Creates a 2d backward semi-lagrangian advection.
 
-- `interp`   : Interpolation type (BsplineOld(degree), Lagrange(degree))
+- `interp`   : Interpolation type (BsplineOld(degree), LagrangeOld(degree))
 - `mesh`     : UniformMesh along advection direction
 
 """

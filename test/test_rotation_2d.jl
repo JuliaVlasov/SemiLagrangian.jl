@@ -1,13 +1,12 @@
-abstract type InterpolationType end
-abstract type AbstractAdvection end
+
 include("../src/mesh.jl")
-include("../src/bspline_periodic.jl")
 include("../src/advection.jl")
 include("../src/lagrange.jl")
-include("../src/lagrange2d.jl")
-include("../src/advection2d.jl")
-include("../src/spline.jl")
-include("../src/matspline.jl")
+# include("../src/lagrange2d.jl")
+# include("../src/advection2d.jl")
+include("../src/bspline.jl")
+include("../src/bsplinelu.jl")
+include("../src/bsplinefft.jl")
 
 using Images
 using LinearAlgebra
@@ -30,7 +29,7 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
         yn = - sin(tf) * x + cos(tf) * y
 #       f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
 # f[i,j] = exp(-5*(cos(xn-big"0.65")^2+sin(yn+big"0.5")^2))
-        f[i,j] = exp(-30*((xn)^2+(yn+big"1.2")^2))
+        f[i,j] = exp(-13*((xn)^2+(yn+big"1.2")^2))
 #       f[i,j] = exp(-(xn-1)*(xn-1)*10)*exp(-(yn)*(yn)*10)
 #       f[i,j] = exp(-(sin(xn)+0.4)^2)*exp(-(cos(yn)-0.5)^2)
 #       f[i,j] = exp(-sin(xn-0.3)*sin(xn-0.3)/0.6)*exp(-cos(yn+0.5)*cos(yn+0.5)/0.6)
@@ -192,34 +191,34 @@ end
 
 # end
 
-# @testset "Rotation test with LagrangeNew advections " begin
+@testset "Rotation test with Lagrange advections " begin
 
-# tf, nt = 2π, 1000
+tf, nt = 2π, 64
 
-# mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-# mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
+mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
 
-# @time lag= LagrangeNew(21, granularity=1)
+@time lag= Lagrange(31, granularity=1)
 
-# println("norm lag = $(norm(lag.coef))")
+println("norm lag = $(norm(lag.coef))")
 
-# @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
-# fe = exact(tf, mesh1, mesh2)
+@time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+fe = exact(tf, mesh1, mesh2)
 
 
-# err = error1(fc, fe)
-# println("err=$err")
-# @test err <  1e-1
+err = error1(fc, fe)
+println("err=$err")
+@test err <  1e-1
 
-# end
-# @testset "Rotation test with LagrangeNew advections " begin
+end
+# @testset "Rotation test with Lagrange advections " begin
 
 # tf, nt = 2big(π), 100
 
 # mesh1 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
 # mesh2 = UniformMesh(-big(pi), big(pi), 128; endpoint=false)
 
-# @time lag= LagrangeNew(21, iscirc=true, granularity=1)
+# @time lag= Lagrange(21, iscirc=true, granularity=1)
 
 # println("norm lag = $(norm(lag.coef))")
 # println("len=$(size(mesh1.points,1)) nb=$nt order=$(size(lag.coef,1)-1)")
@@ -233,14 +232,14 @@ end
 # @test err <  1e-1
 
 # end
-# @testset "Rotation test with LagrangeNew advections big" begin
+# @testset "Rotation test with Lagrange advections big" begin
 
 #     tf, nt = 2big(π), 100
     
 #     mesh1 = UniformMesh(-big(π), big(π), 64; endpoint=false)
 #     mesh2 = UniformMesh(-big(π), big(π), 64; endpoint=false)
 
-#     @time lag = LagrangeNew(BigFloat, 21, granularity=1)
+#     @time lag = Lagrange(BigFloat, 21, granularity=1)
     
 #     println("norm lag = $(norm(lag.coef))")
 
@@ -252,14 +251,14 @@ end
 #     @test err <  1e-1
 
 # end
-@testset "Rotation test with Bspline advections " begin
+@testset "Rotation test with BsplineLU advections " begin
 
     tf, nt = 2big(π), 64
     
     mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
     
-    bsp = B_Spline(21, nt, BigFloat, iscirc=false)
+    bsp = B_SplineLU(31, nt, BigFloat, iscirc=true)
 
     @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
     fe = exact(tf, mesh1, mesh2)
@@ -267,6 +266,24 @@ end
     err = error1(fc, fe)
     println("err=$err")
     @test err <  1e-2
+
+end
+
+@testset "Rotation test with BsplineFFT advections " begin
+
+tf, nt = 2big(π), 64
+
+mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
+mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
+
+bsp = B_SplineFFT(31, nt, BigFloat)
+
+@time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
+fe = exact(tf, mesh1, mesh2)
+
+err = error1(fc, fe)
+println("err=$err")
+@test err <  1e-2
 
 end
 

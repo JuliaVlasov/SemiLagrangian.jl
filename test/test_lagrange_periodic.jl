@@ -12,8 +12,8 @@
      mesh1 = UniformMesh(x1min, x1max, n1; endpoint=false)
      mesh2 = UniformMesh(x2min, x2max, n2; endpoint=false)
 
-     adv1 = Advection( mesh1, LagrangeNew(p) )
-     adv2 = Advection( mesh2, LagrangeNew(p) )
+     adv1 = Advection( mesh1, Lagrange(p) )
+     adv2 = Advection( mesh2, Lagrange(p) )
 
      f  = zeros(typeof(x1min),(n1,n2))
      f .= exp.(-mesh1.points.^2) .* transpose(exp.(-mesh2.points.^2))

@@ -17,16 +17,16 @@ special case.
 Note: The implementation is based on the formulas in Abramowitz and Stegun:
 Handbook of Mathematical Functions, Chapter 25.2
 """
-struct Lagrange{T} <: InterpolationType
+struct LagrangeOld{T} <: InterpolationType
 
     stencil :: Int
     pp :: Vector{T}
 
-    function Lagrange(stencil, x::T) where {T <: AbstractFloat}
+    function LagrangeOld(stencil, x::T) where {T <: AbstractFloat}
         return new{T}(stencil, zeros(T,stencil))
     end
-    Lagrange(stencil, T1::DataType)=Lagrange(stencil,zero(T1)) 
-    Lagrange(stencil)=Lagrange(stencil, Float64)
+    LagrangeOld(stencil, T1::DataType)=Lagrange(stencil,zero(T1)) 
+    LagrangeOld(stencil)=LagrangeOld(stencil, Float64)
 end
 
 
@@ -800,7 +800,7 @@ Lagrange interpolation centered around the interval of displacement, periodic bo
 """
 function lagrange_interpolation_1d_disp_centered_periodicl(fi, fp, p, stencil)
 
-    lag = Lagrange(stencil)
+    lag = LagrangeOld(stencil)
     n = length(fi)-1
     # compute interval shift
     ip = trunc(Int, p)

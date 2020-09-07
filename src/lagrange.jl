@@ -146,7 +146,7 @@ function interpolate!( adv, fp, fi, dec,
     lag::Lagrange{T, iscirc, granularity}
 ) where {T<:AbstractFloat, iscirc, granularity}
     if (dec >= 1 || dec < 1)
-        cor = Int64(floor(dec))
+        cor = convert(Int, floor(dec))
         val = dec - cor
     else
         cor = 0

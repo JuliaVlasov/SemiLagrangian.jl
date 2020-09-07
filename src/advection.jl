@@ -70,6 +70,7 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
     maxalpha = 0
     minalpha = 100000
             for (j, value) in enumerate(v) # jchunk
+#                println("value=$value dt=$dt step =$(self.mesh.step)")
                 alpha = - value * dt / self.mesh.step
 #               println("j=$j alpha=$alpha")
                 maxalpha = max(maxalpha,abs(alpha))

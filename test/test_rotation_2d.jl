@@ -29,7 +29,7 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
         yn = - sin(tf) * x + cos(tf) * y
 #       f[i,j] = (xn-0.3)^2+(yn+0.5)^2 < 0.03 ? 1.0 : 0.0
 # f[i,j] = exp(-5*(cos(xn-big"0.65")^2+sin(yn+big"0.5")^2))
-        f[i,j] = exp(-13*((xn)^2+(yn+big"1.2")^2))
+        f[i,j] = exp(-5*((xn)^2+(yn+big"1.8")^2))
 #       f[i,j] = exp(-(xn-1)*(xn-1)*10)*exp(-(yn)*(yn)*10)
 #       f[i,j] = exp(-(sin(xn)+0.4)^2)*exp(-(cos(yn)-0.5)^2)
 #       f[i,j] = exp(-sin(xn-0.3)*sin(xn-0.3)/0.6)*exp(-cos(yn+0.5)*cos(yn+0.5)/0.6)
@@ -56,8 +56,8 @@ function error1(f, f_exact)
             i_min, j_min, v_min = i, j, v
         end
     end
-    println("i_max=$i_max j_max=$j_max v_max=$v_max")
-    println("i_min=$i_min j_min=$j_min v_min=$v_min")
+#    println("i_max=$i_max j_max=$j_max v_max=$v_max")
+#    println("i_min=$i_min j_min=$j_min v_min=$v_min")
     return v_max
     # maximum(abs.(f .- f_exact))
 end
@@ -93,17 +93,19 @@ function rotation_2d(
 
     dt = tf/nt
 
-    n1 = mesh1.length
-    x1min, x1max = mesh1.start, mesh1.stop
+    # n1 = mesh1.length
+    # x1min, x1max = mesh1.start, mesh1.stop
     delta1 = mesh1.step
 
-    n2 = mesh2.length
-    x2min, x2max = mesh2.start, mesh2.stop
+    # n2 = mesh2.length
+    # x2min, x2max = mesh2.start, mesh2.stop
     delta2 = mesh2.step
 
-    f  = zeros(T,(n1,n2))
+    println("delta1=$delta1 delta2=$delta2")
+
+    f  = zeros(T,(mesh1.length,mesh2.length))
     f .= exact(zero(T), mesh1, mesh2)
-    ft = zeros(T,(n2,n1))
+    ft = zeros(T,(mesh1.length,mesh2.length))
     transpose!(ft, f)
 
 #    println(f)
@@ -116,6 +118,7 @@ function rotation_2d(
     v2 = + collect(mesh1.points)
     
     for n=1:nt
+        println("dt=$dt")
         advection!(adv_x1, f,  v1, tan(dt/2))
         transpose!(ft, f)
         advection!(adv_x2, ft, v2, sin(dt))
@@ -192,23 +195,29 @@ end
 # end
 
 @testset "Rotation test with Lagrange advections " begin
+function fct1()
+    tf, nt, nb = big(2π), 10, 128
 
-tf, nt = 2π, 64
+    println("nb=$nb")
 
-mesh1 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-mesh2 = UniformMesh(-pi, float(pi), 128; endpoint=false)
-
-@time lag= Lagrange(31, granularity=1)
-
-println("norm lag = $(norm(lag.coef))")
-
-@time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
-fe = exact(tf, mesh1, mesh2)
+    mesh1 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
+    mesh2 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
 
 
-err = error1(fc, fe)
-println("err=$err")
-@test err <  1e-1
+    @time lag= Lagrange(BigFloat, 31, granularity=1)
+
+    println("norm lag = $(norm(lag.coef))")
+
+    @time fc = rotation_2d(tf, nt, mesh1, mesh2, lag)
+    fe = exact(big"0.0", mesh1, mesh2)
+
+
+    err = error1(fc, fe)
+    println("err=$err")
+    @test err <  1e-1
+end
+
+fct1()
 
 end
 # @testset "Rotation test with Lagrange advections " begin
@@ -253,12 +262,12 @@ end
 # end
 @testset "Rotation test with BsplineLU advections " begin
 
-    tf, nt = 2big(π), 64
+    tf, nt, nb = 2big(π), 10, 128
     
-    mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
-    mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
+    mesh1 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
+    mesh2 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
     
-    bsp = B_SplineLU(31, nt, BigFloat, iscirc=true)
+    bsp = B_SplineLU(31, nb, BigFloat, iscirc=true)
 
     @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
     fe = exact(tf, mesh1, mesh2)
@@ -271,12 +280,12 @@ end
 
 @testset "Rotation test with BsplineFFT advections " begin
 
-tf, nt = 2big(π), 64
+tf, nt, nb = 2big(π), 10, 128
 
-mesh1 = UniformMesh(-big(π), big(π), nt; endpoint=false)
-mesh2 = UniformMesh(-big(π), big(π), nt; endpoint=false)
+mesh1 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
+mesh2 = UniformMesh(-big(5.0), big(5.0), nb; endpoint=false)
 
-bsp = B_SplineFFT(31, nt, BigFloat)
+bsp = B_SplineFFT(31, nb, BigFloat)
 
 @time fc = rotation_2d(tf, nt, mesh1, mesh2, bsp)
 fe = exact(tf, mesh1, mesh2)

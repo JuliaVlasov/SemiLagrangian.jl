@@ -1,4 +1,5 @@
 
+include("spline.jl")
 abstract type B_Spline{T,iscirc} <: InterpolationType{T,iscirc} end
 function get_kl_ku(order)
     ku = div(order,2)

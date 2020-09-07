@@ -27,12 +27,10 @@ struct UniformMesh{T}
     function UniformMesh(start::T, stop::T, length::Int; 
     endpoint = true
 ) where {T <: AbstractFloat}
-        if (endpoint)
-            points = range(start, stop = stop, length = length)
-        else
-            points = range(start, stop = stop, length = length + 1)[1:end-1]
-        end
-        step_loc = T == BigFloat ? step(points) : points.step
+        cor = endpoint ? 0 : 1
+        pdeb = range(start, stop = stop, length = length + cor)
+        points = pdeb[1:end-cor]
+        step_loc = T == BigFloat ? step(pdeb) : pdeb.step
         width = stop - start
         new{T}(start, stop, length, step_loc, points, width)
     end

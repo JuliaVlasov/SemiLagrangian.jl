@@ -63,7 +63,7 @@ get_order(lag::Lagrange)= size(lag.coef,1)-1
     polinterpol(
     lag::Lagrange, 
     resfct::Vector{T}
-) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+) where {T}
 return the interpolation polynomial for the given values of a function
 
 # Arguments
@@ -76,7 +76,7 @@ return the interpolation polynomial for the given values of a function
 function polinterpol(
     lag::Lagrange, 
     resfct::Vector{T}
-) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
+) where {T}
     return Polynomials.Polynomial(lag.coef*resfct)
 end
 
@@ -144,7 +144,7 @@ return the interpolation polynomial for the given values of a function a a speci
 """
 function interpolate!( adv, fp, fi, dec, 
     lag::Lagrange{T, iscirc, granularity}
-) where {T<:AbstractFloat, iscirc, granularity}
+) where {T, iscirc, granularity}
     if (dec >= 1 || dec < 1)
         cor = convert(Int, floor(dec))
         val = dec - cor
@@ -171,3 +171,5 @@ function interpolate!( adv, fp, fi, dec,
         end
     end
 end
+get_order(lag::Lagrange{T}) where{T}=size(lag.coef,1)-1
+get_type(lag::Lagrange{T, isc, gr}) where{T,isc,gr}="Lagrange{$T, $isc,$gr}"

@@ -32,42 +32,7 @@
 #     end
 #     return L, D
 # end
-# function getLU(A::Matrix{T}) where{T}
-#     n = size(A,1)
-#     L = zeros(T,n,n)
-#     U = zeros(T,n,n)
-#     for i=1:n
-#         L[i,i] = 1
-#         for j=1:i-1
-#             L[i,j] = A[i,j]
-#         end
-#         for j=i:n
-#             U[i,j] = A[i,j]
-#         end
-#     end
-#     return L, U
-# end
 
-function topl(n, t, iscirc=true)
-    res=zeros(Rational{BigInt},n,n)
-    kl, ku = get_kl_ku(size(t,1))
-    for i=1:n
-        for (j,v) in enumerate(t)
-            ind = i+j-kl-1
-            if 1 <= ind <= n
-                res[i, ind] = v
-            elseif iscirc
-                if ind < 1
-                    ind += n
-                else
-                    ind -= n
-                end
-                res[i,ind] = v
-            end
-        end
-    end
-    return res
-end
 # # gradconj : solve A*x = b for A symetric and positive
 # function gradconj(A::Matrix{T}, b::Vector{T}, tol) where T
 #     n = size(A,1)
@@ -258,26 +223,6 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where{T}
             && la.isLU == lb.isLU && la.band == lb.band 
             && (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols)))
 end
-function sol( A::Matrix{T}, Y::Vector{T}) where{T}
-    L, U = getLU(A)
-    n = size(A,1)
-    Y1 = zeros(T,n)
-    for i=1:n
-        Y1[i] = Y[i] - sum(Y1[1:i-1] .* A[i, 1:i-1])
-    end
- #   @assert Y1 == (L^(-1))*Y "Erreur 1" 
- #   @assert isapprox(Y1, (L^(-1))*Y, atol=1e-60) "Erreur 1" 
-    X = zeros(T,n)
-    for i=n:-1:1
-        X[i] = (Y1[i] - sum(X[i+1:n] .* A[i, i+1:n]))/A[i,i]
-    end
-#    @assert X == (U^(-1))*Y1 "Erreur 2" 
-#    @assert isapprox(X,(U^(-1))*Y1,atol=1e-60) "Erreur 2" 
-#    @assert X == ((L*U)^(-1))*Y "Erreur3"
-#    @assert isapprox(X, ((L*U)^(-1))*Y, atol=1e-60) "Erreur3"
-    return X, Y1
-end
-
 function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
     szb = size(spA.band,2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb

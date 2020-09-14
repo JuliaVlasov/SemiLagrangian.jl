@@ -21,6 +21,7 @@ end
 function Base.setindex!(sp::Spline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
     sp.tabpol[index-1] = pol
 end
+Base.size(sp::Spline, dim=1)=size(sp.tabpol,1)
 function +(a::Spline{N}, b::Spline{N}) where{N<:Signed}
     sizenew = max(size(a.tabpol,1), size(b.tabpol,1))
     tabpolnew = zeros(Polynomials.Polynomial{Rational{N}},sizenew)
@@ -82,9 +83,9 @@ function getbspline(n, j)
     end
 end
 function (f::Spline{N})(x) where{N<:Signed}
-    i = Int64((floor(x)))+1 # it's different from ceil(x)
-    if 1 <= i <= size(f.tabpol,1)
-        return f.tabpol[i](x)
+    i = Int64((floor(x))) # it's different from ceil(x)
+    if 0 <= i < size(f,1)
+        return f[i](x)
     else
         return zero(x)
     end

@@ -46,7 +46,56 @@ function nb_diff_tol(f1, f2, tol)
     end
     return nb
 end
-         
+"""
+    bsplinerec(p, j, x)
+
+Return the value at x in [0,1[ of the B-spline with
+integer nodes of degree p with support starting at j.
+Implemented recursively using the de Boor's recursion formula
+using the [De Boor's Algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
+
+```math
+B_{i,0}(x) := \\left\\{
+\\begin{matrix}
+1 & \\mathrm{if}  \\quad t_i ≤ x < t_{i+1} \\\\
+0 & \\mathrm{otherwise}
+\\end{matrix}
+\\right.
+```
+
+```math
+B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
++ \\frac{t_{i+p+1} - x}{t_{i+p+1} - t_{i+1}} B_{i+1,p-1}(x).
+```
+
+"""
+function bsplinerec(p, j, x::T) where{T}
+
+    if p == 0
+        if j == 0
+            return one(T)
+        else
+            return zero(T)
+        end
+    else
+        w = (x - j) / p
+        w1 = (x - j - 1) / p
+    end
+    (w * bsplinerec(p - 1, j, x) + (1 - w1) * bsplinerec(p - 1, j + 1, x))
+
+end
+
+function test_bspline()
+
+    @time @testset "test verify bspline" begin
+        tab_x=[1821//10000, 1//1234, 7677//8999, big"123456789"//big"234567890", 0//1]
+        for ord=1:9, x in tab_x
+            @test bsplinerec(3,0,x) == getbspline(3,0)(x)
+        end
+    end
+
+end
+       
 function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, islu::Bool)
     
     sp = if (islu)
@@ -57,8 +106,9 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, is
     coef = convert(type, iscirc ? 1 : big"1.111")
 #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
 #    fct(v,n) = exp(-(75*(v-n/2)/n)^2)
-    fct(v,n) = exp( -(cos(2big(pi)*coef*v/n))^2)
-    fp = fct.(convert.(type,(collect(1:n))),n)
+ #   fct(v,n) = exp( -(cos(2big(pi)*coef*v/n))^2)
+    fct(v,n) = cos(2big(pi)*coef*v/n)
+ fp = fct.(convert.(type,(collect(1:n))),n)
     fi = zeros(type, n)
     value = convert(type,
 #    big"0.000000000000000000000000000000000000001") 
@@ -123,13 +173,17 @@ function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol, isl
 
 end
 
+test_bspline()
+
 @testset "test interpolation bspline" begin
     # test_interpolation(BigFloat, 11, true, 100, 1e-7)
     # test_interpolation(BigFloat, 21, true, 100, 1e-15)
     # test_interpolation(BigFloat, 41, true, 100, 1e-20)
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
-    @time test_interpolation(BigFloat, 21, true, 2^8, 100, 1e-25, false)
-    @time test_interpolation(BigFloat, 21, true, 2^8, 100, 1e-25, true)
+    #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, false)
+    #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end
+
+

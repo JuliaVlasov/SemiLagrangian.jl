@@ -85,10 +85,9 @@ function fctmain( sz, dt::T, ordmax) where{T}
 
     p = Plots.plot(
         x,
-        y,
+        log10.(y),
         xlabel="order",
         ylabel="error",
-        yaxis=:log,
         legend=:bottomleft,
         label=labels,
         marker=2
@@ -98,5 +97,67 @@ function fctmain( sz, dt::T, ordmax) where{T}
     Plots.savefig(p, "out/result2_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
-fctmain(128,big(pi)/50, 51)
+function fctinter( interp::InterpolationType, sz)
+
+    fct(x)=cos(2big(pi)*x)
+    mesh = big.(1:sz)/sz
+    deb = fct.(mesh)
+    dec = big"0.351726155665655665187291927162514231451"
+    ref = fct.( mesh .+ dec/sz)
+    res = zeros(BigFloat, sz)
+    interpolate!(missing, res, deb, dec, interp)
+    return norm(ref-res,Inf)
+end
+
+
+function fctmain2(sz, ordmax)
+
+    indmax=ordmax-2
+
+    y = ones(indmax,2)
+    x = zeros(Int64,indmax)
+
+    labels = Array{String, 2}(undef,1,2)
+    labels[1,1] = "Lagrange"
+    labels[1,2] = "B-Spline LU"
+#    labels[1,3] = "B-Spline FFT"
+
+    ind=1
+
+    for order=3:ordmax
+        println("order=$order")
+        lag = Lagrange(BigFloat, order)
+        splu = B_SplineLU(order, sz, big"0.")
+#        spfft = B_SplineFFT(order, sz, big"0.")
+
+        y[ind,1] = fctinter(lag, sz)
+        y[ind,2] = fctinter(splu, sz)
+#        y[ind,3] = fctinter(spfft, sz)
+
+        println("ind=$ind order=$order y[ind,:]=$(y[ind,:])")
+
+        x[ind] = order
+
+
+        ind += 1
+    end
+
+    p = Plots.plot(
+        x,
+        log10.(y),
+        xlabel="order",
+        ylabel="error",
+        legend=:bottomleft,
+        label=labels,
+        marker=2
+    )
+    prec = precision(BigFloat)
+    
+    Plots.savefig(p, "out/resinterp_$(sz)_$(prec)_$(ordmax).pdf")
+end
+
+
+setprecision(1024) do
+    fctmain2(1001, 51)
+end
 

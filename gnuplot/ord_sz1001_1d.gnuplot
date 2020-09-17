@@ -3,6 +3,7 @@ set ylabel "Error"
 set xlabel "Order"
 set title "Error as a function of order for size=1001 and precision=1024 bits"
 set logscale y
+set grid
 set format y "10^{%L}"
 # set pointsize 0.6
 # set style line 1 lc rgb 'cyan' pt 5   # circle

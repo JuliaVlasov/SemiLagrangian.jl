@@ -1,6 +1,7 @@
 set terminal png font "arial"
 set ylabel "Error"
 set xlabel "Size"
+set grid
 set title "Error as a function of size with precision=1024 bits"
 set logscale y
 set format y "10^{%L}"

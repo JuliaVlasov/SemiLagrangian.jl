@@ -6,6 +6,7 @@ include("../src/lagrange.jl")
 include("../src/bspline.jl")
 include("../src/bsplinelu.jl")
 include("../src/bsplinefft.jl")
+include("../src/interpolation.jl")
 
 using LinearAlgebra
 using Plots
@@ -105,8 +106,8 @@ function fctinter( interp::InterpolationType, sz)
     dec = big"0.351726155665655665187291927162514231451"
     ref = fct.( mesh .+ dec/sz)
     res = zeros(BigFloat, sz)
-    interpolate!(missing, res, deb, dec, interp)
-    return norm(ref-res,Inf)
+    interpolate!(res, deb, dec, interp)
+    return Float64(norm(ref-res,Inf))
 end
 
 
@@ -156,8 +157,43 @@ function fctmain2(sz, ordmax)
     Plots.savefig(p, "out/resinterp_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
+function fctmain_gnuplot(sz, ordmax)
+
+    prec = precision(BigFloat)
+    println("# begin gnuplot size=$sz julia precision=$prec")
+    println("# order\tLagrange\tB_SplineLU")
+    for order=3:ordmax
+        lag = Lagrange(BigFloat, order)
+        splu = B_SplineLU(order, sz, big"0.")
+        reslag = fctinter(lag, sz)
+        ressplu = fctinter(splu, sz)
+        println("$order\t$reslag\t$ressplu")
+    end
+end
+function fctmainsize_gnuplot(szlist, orderlist)
+
+    prec = precision(BigFloat)
+    println("# begin gnuplot order=$orderlist julia precision=$prec")
+    print("# size")
+    for order in orderlist
+        print("\tLagrange($order)\tB_Spline($order)")
+    end
+    println("")
+    for sz in szlist
+        print("$sz")
+        for order in orderlist
+            lag = Lagrange(BigFloat, order)
+            splu = B_SplineLU(order, sz, big"0.")
+            reslag = fctinter(lag, sz)
+            ressplu = fctinter(splu, sz)
+            print("\t$reslag\t$ressplu")
+        end
+        println("")
+    end
+end
 
 setprecision(1024) do
-    fctmain2(1001, 51)
+#    fctmain_gnuplot(1001, 51)
+    fctmainsize_gnuplot(101:100:10001,[3,11,31])
 end
 

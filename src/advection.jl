@@ -72,10 +72,10 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
             for (j, value) in enumerate(v) # jchunk
 #                println("value=$value dt=$dt step =$(self.mesh.step)")
                 alpha = - value * dt / self.mesh.step
-#               println("j=$j alpha=$alpha")
+#                println("j=$j alpha=$alpha")
                 maxalpha = max(maxalpha,abs(alpha))
                 minalpha = min(minalpha,abs(alpha))
-                interpolate!( self, buf, f[:, j], alpha, self.interp)
+                interpolate!( buf, f[:, j], alpha, self.interp)
                 f[:,j] .= buf
             end
 #        end

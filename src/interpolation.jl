@@ -16,6 +16,9 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
  
     decint = convert(Int, floor(dec))
     decfloat = dec - decint
+
+   # println("dec=$dec decint=$decint decfloat=$decfloat")
+
     res = sol(interp,fi)
 #    println("size res=$(size(res))")
     order=get_order(interp)
@@ -37,7 +40,7 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
     if iscirc
         # println("trace iscirc=true")
         for i=1:n
-            indbeg=i+origin
+            indbeg=i+origin+decint
             indend=indbeg+order
             fp[i] = sum(res[modone.(indbeg:indend, n)] .* precal)
         end

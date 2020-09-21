@@ -26,9 +26,9 @@ function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
     end
 end
 
-function test_interpolation(type::DataType, order, iscirc::Bool, number, granularity,  tol, nb=1)
+function test_interpolation(type::DataType, order, iscirc::Bool, number,  tol, nb=1)
     
-    lag = Lagrange(type, order; iscirc=iscirc, granularity=granularity)
+    lag = Lagrange(type, order; iscirc=iscirc)
     coef = iscirc ? 1. : 1.111
     n = number
  #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
@@ -40,8 +40,8 @@ function test_interpolation(type::DataType, order, iscirc::Bool, number, granula
     for i=1:nb
         fi .= fp
         fpref = fct.(BigFloat.(collect(1:n)).+i*value,n)
-        interpolate!(missing, fp, fi, value, lag)
-        println("i=$i granularity=$granularity norm = $(norm(fpref-fp,Inf))")
+        interpolate!(fp, fi, value, lag)
+        println("i=$i norm = $(norm(fpref-fp,Inf))")
         # for i=1:number
         #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
         # end
@@ -61,7 +61,7 @@ end
 #     end
 # end
 
-@time test_interpolation(BigFloat, 43,true, 200, 1, 1e-1, 200 )
+@time test_interpolation(BigFloat, 43,true, 200, 1e-1, 200 )
 # test_interpolation(BigFloat, 23,true, 1000, 12, 1e-40)
 # test_interpolation(BigFloat, 17,false, 1000, 10, 1e-38)
 # test_interpolation(BigFloat, 23,false, 1000, 12, 1e-40)

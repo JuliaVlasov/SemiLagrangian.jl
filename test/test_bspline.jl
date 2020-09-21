@@ -118,7 +118,7 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, is
         fi .= fp
 #        fpref = fct.(convert.(type,(collect(1:n))) .+ i*value,n)
         fpref = fct.((1:n) .+ i*value,n)
-        interpolate!(missing, fp, fi, value, sp)
+        interpolate!(fp, fi, value, sp)
         # for i=1:number
         #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
         # end
@@ -134,7 +134,7 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, is
     end
 end
 
-function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol, islu::Bool)
+function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
     
     sp = B_SplineLU(order, n, zero(type); iscirc=iscirc)
     coef = convert(type, iscirc ? 1 : big"1.111")
@@ -157,7 +157,7 @@ function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol, isl
     for k=1:n, l=1:2
         for i=1:n
             fi .= fp[:,i]
-            interpolate!(missing, buf, fi, (value_x, value_y)[l], sp)
+            interpolate!( buf, fi, (value_x, value_y)[l], sp)
             fp[:,i] .= buf
         end
         fp=transpose(fp)
@@ -182,7 +182,7 @@ test_bspline()
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
     #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, false)
-    #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, true)
+    @time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end
 

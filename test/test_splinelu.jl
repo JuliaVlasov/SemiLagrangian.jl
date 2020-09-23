@@ -154,6 +154,13 @@ function test_perf(n ,order, iscirc)
     
 end
 
+function test_interface()
+    bsp = B_SplineLU(25,105,big"0.")
+    @test 105 == get_n(bsp)
+    @test 25 == get_order(bsp)
+    @test "B_SplineLU{BigFloat, true}" == get_type(bsp)
+end
+    
 
 @testset "test decLU that is a tool for test" begin
     test_decLU(30)
@@ -185,7 +192,7 @@ test_splu(30, 3, true, true, type=BigFloat, tol=1e-70 )
 test_splu(31, 4, true, true, type=BigFloat, tol=1e-70 )
 test_splu(30, 5, false, true, type=BigFloat, tol=1e-70 )
 test_splu(31, 4, false, true, type=BigFloat, tol=1e-70 )
-
+test_interface()
 end
 
 @testset "test perf" begin

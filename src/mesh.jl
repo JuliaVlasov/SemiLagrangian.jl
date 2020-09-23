@@ -36,8 +36,32 @@ struct UniformMesh{T}
     end
 end
 export compute_charge!
-"""
 
+"""
+Energie electrique
+|| E(t,.) ||_L2 = 
+"""
+function compute_ee(mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
+    dx = mesh_x.step
+    rho = zeros(T,size(fvx,2))
+    compute_charge!(rho, mesh_v, fvx)
+    return dx * sum(rho.^2)/2
+end
+"""
+kinetic Energie 
+1/2∫∫ v^2 f(x,v,t) dv dx
+"""
+function compute_ke( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
+    sum_x = zeros(T,size(fvx,1))
+    sum_x .= sum(fvx, dims = 2)
+    return sum( mesh_v.points .^ 2 .* sum_x)
+end
+
+function compute_etot( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
+    return compute_ke( mesh_v, mesh_x, fvx)+compute_ee( mesh_v, mesh_x, fvx)
+end
+
+"""
     compute_charge!( rho, mesh_v, fvx)
 
  Compute charge density

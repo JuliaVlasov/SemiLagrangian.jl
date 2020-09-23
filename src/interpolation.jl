@@ -42,6 +42,11 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
         for i=1:n
             indbeg=i+origin+decint
             indend=indbeg+order
+            # if modone(indbeg,n) == 1
+            #     println("i=$i indbeg=$indbeg indend=$indend suite=$(modone.(indbeg:indend, n))")
+            #     v = sum(res[modone.(indbeg:indend, n)] .* precal)
+            #     println("res=$(res[modone.(indbeg:indend, n)]) v=$v")
+            # end
             fp[i] = sum(res[modone.(indbeg:indend, n)] .* precal)
         end
     else

@@ -98,12 +98,11 @@ function fctmain( sz, dt::T, ordmax) where{T}
     Plots.savefig(p, "out/result2_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
-function fctinter( interp::InterpolationType, sz)
+function fctinter( interp::InterpolationType, sz, dec)
 
     fct(x)=cos(2big(pi)*x)
     mesh = big.(1:sz)/sz
     deb = fct.(mesh)
-    dec = big"0.351726155665655665187291927162514231451"
     ref = fct.( mesh .+ dec/sz)
     res = zeros(BigFloat, sz)
     interpolate!(res, deb, dec, interp)
@@ -157,17 +156,24 @@ function fctmain2(sz, ordmax)
     Plots.savefig(p, "out/resinterp_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
-function fctmain_gnuplot(sz, ordmax)
+function formule(order, sz, dec)
+    return Float64((big(pi)/sz)^(order+1) * 4*dec*(1-dec)/sqrt(big(pi)*(order+1)/2))
+end
 
+
+function fctmain_gnuplot(sz, ordmax)
     prec = precision(BigFloat)
     println("# begin gnuplot size=$sz julia precision=$prec")
-    println("# order\tLagrange\tB_SplineLU")
+    println("# order\tLagrange\tformule\t(formule-lag)\tB_SplineLU")
+    dec=big"0.351726155665655665187291927162514231451"
     for order=3:ordmax
         lag = Lagrange(BigFloat, order)
         splu = B_SplineLU(order, sz, big"0.")
-        reslag = fctinter(lag, sz)
-        ressplu = fctinter(splu, sz)
-        println("$order\t$reslag\t$ressplu")
+        reslag = fctinter(lag, sz, dec)
+        ressplu = fctinter(splu, sz, dec)
+        resformule = formule(order, sz, dec)
+        resdiff = resformule-reslag
+        println("$order\t$reslag\t$resformule\t$resdiff\t$ressplu")
     end
 end
 function fctmainsize_gnuplot(szlist, orderlist)
@@ -179,13 +185,14 @@ function fctmainsize_gnuplot(szlist, orderlist)
         print("\tLagrange($order)\tB_Spline($order)")
     end
     println("")
+    dec=big"0.351726155665655665187291927162514231451"
     for sz in szlist
         print("$sz")
         for order in orderlist
             lag = Lagrange(BigFloat, order)
             splu = B_SplineLU(order, sz, big"0.")
-            reslag = fctinter(lag, sz)
-            ressplu = fctinter(splu, sz)
+            reslag = fctinter(lag, sz, dec)
+            ressplu = fctinter(splu, sz, dec)
             print("\t$reslag\t$ressplu")
         end
         println("")
@@ -193,7 +200,7 @@ function fctmainsize_gnuplot(szlist, orderlist)
 end
 
 setprecision(1024) do
-#    fctmain_gnuplot(1001, 51)
-    fctmainsize_gnuplot(101:100:10001,[3,11,31])
+    fctmain_gnuplot(1001, 51)
+#    fctmainsize_gnuplot(101:100:10001,[3,11,31])
 end
 

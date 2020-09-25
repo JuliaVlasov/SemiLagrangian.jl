@@ -35,26 +35,26 @@ struct UniformMesh{T}
         new{T}(start, stop, length, step_loc, points, width)
     end
 end
-export compute_charge!
+# export compute_charge!
 
 """
 Energie electrique
 || E(t,.) ||_L2 = 
 """
-function compute_ee(mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
+function compute_ee(mesh_x::UniformMesh, elfield::Vector{T}) where {T}
     dx = mesh_x.step
-    rho = zeros(T,size(fvx,2))
-    compute_charge!(rho, mesh_v, fvx)
-    return dx * sum(rho.^2)/2
+    return dx * sum(elfield.^2)/2
 end
 """
 kinetic Energie 
 1/2∫∫ v^2 f(x,v,t) dv dx
 """
 function compute_ke( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
+    dx = mesh_x.step
+    dy = mesh_v.step
     sum_x = zeros(T,size(fvx,1))
     sum_x .= sum(fvx, dims = 2)
-    return sum( mesh_v.points .^ 2 .* sum_x)
+    return dx * dy * sum( mesh_v.points .^ 2 .* sum_x)
 end
 
 function compute_etot( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
@@ -75,13 +75,13 @@ function compute_charge!(
     fvx::Array{T,2},
 ) where {T <: AbstractFloat}
     dv = meshv.step
-    rho .= dv .* vec(sum(fvx, dims = 1))
+    rho .= dv * vec(sum(fvx, dims = 1))
     rho .-= sum(rho)/size(rho,1)
     missing
 end
 
 
-export compute_e!
+# export compute_e!
 
 """
 
@@ -93,7 +93,7 @@ Inplace computation of electric field. Fields e and rho are
 already allocated.
 
 """
-function compute_e!(
+function compute_elfield!(
     e::Vector{T},
     meshx::UniformMesh{T},
     rho::Vector{T},

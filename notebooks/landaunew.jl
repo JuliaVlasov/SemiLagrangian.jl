@@ -25,107 +25,136 @@ include("../src/spline.jl")
 include("../src/bspline.jl")
 include("../src/bsplinelu.jl")
 include("../src/bsplinefft.jl")
+include("../src/lagrange.jl")
+include("../src/interpolation.jl")
 
 
 
 
 function landau( 
     dt::T, 
-    epsilon::T, 
+    epsilon::T,
+    nbper, 
     mesh_x::UniformMesh{T}, 
     mesh_v::UniformMesh{T}, 
     interp_x::InterpolationType{T, true},
-    interp_y::InterpolationType{T, true}
+    interp_v::InterpolationType{T, true}
 ) where{T}
-    advection_x! = Advection( mesh_x, interp_x)
-    advection_v! = Advection( mesh_v, interp_y)
+    adv_x = Advection( mesh_x, interp_x)
+    adv_v = Advection( mesh_v, interp_v)
 
     nx = mesh_x.length
-    ny = mesh_y.length
+    nv = mesh_v.length
+
+    v = mesh_v.points
     
     fxv = zeros(T, (nx, nv))
     fvx = zeros(T, (nv, nx))
     
     fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
-    fct_x(x)=epsilon * cos(x) + 1
+    fct_x(x)=epsilon * cos(nbper*x) + 1
     fxv .= fct_x.(mesh_x.points) .* transpose(fct_v.(mesh_v.points))
 
-    ex = Vector{T}(nx,undef)
-    rho = Vector{T}(nx,undef)
+    elf = Vector{T}(undef, nx)
+    rho = Vector{T}(undef, nx)
+
+    println("#time\tel-energy\tkinetic-energy\tglobal-energy")
+
+    transpose!(fvx, fxv)
+    compute_charge!(rho, mesh_v, fvx)
+    compute_elfield!(elf, mesh_x, rho)
+    elenergy = Float64(compute_ee(mesh_x, elf))
+    kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+    energyall = elenergy + kinenergy
+    println("$(Float64(0.))\t$elenergy\t$kinenergy\t$energyall")
 
 
     for i=1:100
-        advection_x!(fxv, v, 0.5dt)
+        advection!(adv_x, fxv, v, dt/2)
         transpose!(fvx, fxv)
         compute_charge!(rho, mesh_v, fvx)
-        compute_e!(ex, mesh_x, rho)
-        advection_v!(fvx, ex, dt)
+        compute_elfield!(elf, mesh_x, rho)
+        advection!(adv_v, fvx, elf, dt)
         transpose!(fxv, fvx)
-        advection_x!(fxv, v, 0.5dt)
+        advection!(adv_x, fxv, v, dt/2)
+        transpose!(fvx, fxv)
+        compute_charge!(rho, mesh_v, fvx)
+        compute_elfield!(elf, mesh_x, rho)
+        elenergy = Float64(compute_ee(mesh_x, elf))
+        kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+        energyall = elenergy + kinenergy
+        println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
     end
 end
     
 
-    eps    = 0.001
-kx     = 0.5
-degree = 3
+eps    = big"0.01"
+nbper = 8
+dt = big"0.1"
 
-xmin, xmax, nx =  0., 2π/kx, 32
-vmin, vmax, nv = -6., 6., 64
+xmin, xmax, nx =  big"0.", 2big(pi),  64
+vmin, vmax, nv = -big"6.", big"6.", 128
 
-mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false )
+mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false, isfft=true )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
 
 
-ex  = zeros(Float64, nx)
-rho = zeros(Float64, nx)
+interp=Lagrange(BigFloat,21)
+
+landau(dt, eps, nbper, mesh_x, mesh_v, interp, interp)
 
 
-# +
-tspan  = LinRange(0, 30, 600)
-dt = 0.05
 
-transpose!(fvx,fxv)
-compute_charge!(rho, mesh_v, fvx)
-compute_elfield!(ex, mesh_x, rho)
 
-p = plot(layout=(1,2))
-scatter!(p[1,1], x, rho, label=:computed, title="rho")
-plot!(p[1,1], x, eps * cos.( kx .* x), label=:true)
-scatter!(p[1,2], x , ex, label=:computed, title="Ex")
-plot!(p[1,2], x , eps * sin.(kx .* x) / kx, label=:true)
+# ex  = zeros(Float64, nx)
+# rho = zeros(Float64, nx)
 
-# +
-function simulation( fxv, tspan, mesh_x, mesh_v, interpolation )
+
+# # +
+# tspan  = LinRange(0, 30, 600)
+# dt = 0.05
+
+# transpose!(fvx,fxv)
+# compute_charge!(rho, mesh_v, fvx)
+# compute_elfield!(ex, mesh_x, rho)
+
+# p = plot(layout=(1,2))
+# scatter!(p[1,1], x, rho, label=:computed, title="rho")
+# plot!(p[1,1], x, eps * cos.( kx .* x), label=:true)
+# scatter!(p[1,2], x , ex, label=:computed, title="Ex")
+# plot!(p[1,2], x , eps * sin.(kx .* x) / kx, label=:true)
+
+# # +
+# function simulation( fxv, tspan, mesh_x, mesh_v, interpolation )
     
-    fvx = zeros(Float64, (nv, nx))
-    transpose!(fvx, fxv)
+#     fvx = zeros(Float64, (nv, nx))
+#     transpose!(fvx, fxv)
     
-    E = Float64[]
+#     E = Float64[]
 
-    @showprogress 1 for t in tspan
+#     @showprogress 1 for t in tspan
 
-        advection_x!(fxv, v, 0.5dt)
-        transpose!(fvx, fxv)
-        compute_charge!(rho, mesh_v, fvx)
-        compute_e!(ex, mesh_x, rho)
-        push!(E, 0.5 * log(sum(ex .* ex) * mesh_x.step))
-        advection_v!(fvx, ex, dt)
-        transpose!(fxv, fvx)
-        advection_x!(fxv, v, 0.5dt)
+#         advection_x!(fxv, v, 0.5dt)
+#         transpose!(fvx, fxv)
+#         compute_charge!(rho, mesh_v, fvx)
+#         compute_e!(ex, mesh_x, rho)
+#         push!(E, 0.5 * log(sum(ex .* ex) * mesh_x.step))
+#         advection_v!(fvx, ex, dt)
+#         transpose!(fxv, fvx)
+#         advection_x!(fxv, v, 0.5dt)
 
-    end
-    return E
-end
+#     end
+#     return E
+# end
 
-plot(tspan, E)
+# plot(tspan, E)
 
-eps    = 0.001
-kx     = 0.5
-degree = 3
+# eps    = 0.001
+# kx     = 0.5
+# degree = 3
 
-xmin, xmax, nx =  0., 2π/kx, 32
-vmin, vmax, nv = -6., 6., 64
+# xmin, xmax, nx =  0., 2π/kx, 32
+# vmin, vmax, nv = -6., 6., 64
 
-mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false )
-mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
+# mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false )
+# mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )

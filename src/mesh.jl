@@ -24,15 +24,18 @@ struct UniformMesh{T}
     step::T
     points::Vector{T}
     width::T
+    pfft
     function UniformMesh(start::T, stop::T, length::Int; 
-    endpoint = true
+    endpoint = true, 
+    isfft = false
 ) where {T <: AbstractFloat}
         cor = endpoint ? 0 : 1
         pdeb = range(start, stop = stop, length = length + cor)
         points = pdeb[1:end-cor]
         step_loc = T == BigFloat ? step(pdeb) : pdeb.step
         width = stop - start
-        new{T}(start, stop, length, step_loc, points, width)
+        pfft = isfft ? PrepareFftBig(length; ndims=1, numdim=1) : missing
+        new{T}(start, stop, length, step_loc, points, width, pfft)
     end
 end
 # export compute_charge!
@@ -51,10 +54,10 @@ kinetic Energie
 """
 function compute_ke( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
     dx = mesh_x.step
-    dy = mesh_v.step
+    dv = mesh_v.step
     sum_x = zeros(T,size(fvx,1))
-    sum_x .= sum(fvx, dims = 2)
-    return dx * dy * sum( mesh_v.points .^ 2 .* sum_x)
+    sum_x .= sum(fvx, dims = 2)[:,1]
+    return dx * dv * sum( mesh_v.points .^ 2 .* sum_x)
 end
 
 function compute_etot( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
@@ -100,10 +103,10 @@ function compute_elfield!(
 ) where {T <: AbstractFloat}
 
     nx = meshx.length
-    k = 2π / (meshx.stop - meshx.start)
+    k = 2T(pi) / (meshx.stop - meshx.start)
     modes = zeros(T, nx)
     modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
-    modes[1] = 1.0
-    e .= real(ifft(-1im .* fft(rho) ./ modes))
+    modes[1] = one(T)
+    e .= real(ifftgen(meshx.pfft, -1im .* fftgen(meshx.pfft, rho) ./ modes))
 
 end

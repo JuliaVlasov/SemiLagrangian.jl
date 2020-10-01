@@ -68,10 +68,15 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
 #        @spawn begin
     maxalpha = 0
     minalpha = 100000
+    tabbuf = Vector{Vector{T}}(undef, Threads.nthreads())
+    for i=1:size(tabbuf,1)
+        tabbuf[i] = zeros(T,size(f,1));
+    end
+
     Threads.@threads for j=1:size(v,1)
         value = v[j]
     #for (j, value) in enumerate(v) # jchunk
-        buf = zeros(T,size(f,1));
+        buf = tabbuf[Threads.threadid()]
         #                println("value=$value dt=$dt step =$(self.mesh.step)")
         alpha = - value * dt / self.mesh.step
 #                println("j=$j alpha=$alpha")

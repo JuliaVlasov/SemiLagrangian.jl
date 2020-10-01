@@ -46,7 +46,7 @@ Energie electrique
 """
 function compute_ee(mesh_x::UniformMesh, elfield::Vector{T}) where {T}
     dx = mesh_x.step
-    return dx * sum(elfield.^2)/2
+    return dx * sum(elfield.^2)
 end
 """
 kinetic Energie 

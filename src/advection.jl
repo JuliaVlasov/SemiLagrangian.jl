@@ -64,13 +64,15 @@ advection!( f, v, dt )
 
 """
 function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) where {T}
-    buf = zeros(T,size(f,1));
 #    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
 #        @spawn begin
     maxalpha = 0
     minalpha = 100000
-    for (j, value) in enumerate(v) # jchunk
-#                println("value=$value dt=$dt step =$(self.mesh.step)")
+    Threads.@threads for j=1:size(v,1)
+        value = v[j]
+    #for (j, value) in enumerate(v) # jchunk
+        buf = zeros(T,size(f,1));
+        #                println("value=$value dt=$dt step =$(self.mesh.step)")
         alpha = - value * dt / self.mesh.step
 #                println("j=$j alpha=$alpha")
         maxalpha = max(maxalpha,abs(alpha))

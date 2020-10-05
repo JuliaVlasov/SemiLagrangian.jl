@@ -61,6 +61,7 @@ function landau(
     println("# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
     println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
     println("# interpolation : $(get_type(interp_x)) order=$(get_order(interp_x))")
+    println("# type=$T precision = $(precision(T))")
     println("#time\tel-energy\tkinetic-energy\tglobal-energy")
 
     transpose!(fvx, fxv)
@@ -73,6 +74,10 @@ function landau(
 
     minall=10000000
     maxall=0
+    modulo = nbdt/1000
+    if modulo < 1
+        modulo = 1
+    end
     for i=1:nbdt
         advection!(adv_x, fxv, v, dt/2)
         transpose!(fvx, fxv)
@@ -87,7 +92,9 @@ function landau(
         elenergy = Float64(compute_ee(mesh_x, elf))
         kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
         energyall = elenergy + kinenergy
-        println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+        if (i%modulo == 0)
+            println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+        end
         minall=min(energyall,minall)
         maxall=max(energyall,maxall)
     end
@@ -95,18 +102,18 @@ function landau(
 end
     
 
-eps    = big"0.5"
+eps    = big"0.001"
 nbdt = 1000
 dt = big"0.1"
 
 xmin, xmax, nx =  big"0.", 4big(pi),  64
-vmin, vmax, nv = -big"6.", big"6.", 128
+vmin, vmax, nv = -big"6.", big"6.", 128*8
 
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false, isfft=true )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
 
 
-interp=Lagrange(BigFloat,21)
+interp=Lagrange(BigFloat,41)
 
 landau(dt, eps, nbdt, mesh_x, mesh_v, interp, interp)
 

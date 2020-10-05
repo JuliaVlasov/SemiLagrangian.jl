@@ -10,6 +10,6 @@ set format y "10^{%L}"
 # set style line 2 lc rgb 'green' pt 5   # triangle
 # set yrange [0:100]
 # set key left top Left reverse
-set output "../out/landau_x64_v128_41.png"
-plot [0:100] "landau_x64_v128_e1e-3_41_256.dat" u 1:2 t "ε = 10^{-3}" with linespoints pt 1, "landau_x64_v128_e1e-6_41_256.dat" u 1:2 t "ε = 10^{-6}" with linespoints pt 1
+set output "../out/landau_x64_v128_1024_41.png"
+plot [0:100] "landau_x64_v128_e1e-3_41_256.dat" u 1:2 t "v=128, ε = 10^{-3}" with linespoints pt 1, "landau_x64_v1024_e1e-3_41.dat" u 1:2 t "v=1024, ε = 10^{-3}" with linespoints pt 1, "landau_x64_v128_e1e-6_41_256.dat" u 1:2 t "v=128, ε = 10^{-6}" with linespoints pt 1
  

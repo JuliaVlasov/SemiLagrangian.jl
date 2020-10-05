@@ -15,8 +15,8 @@
 # ---
 
 using LinearAlgebra
-using ProgressMeter
-using Plots
+# using ProgressMeter
+# using Plots
 
 # +
 import Base.Threads: @spawn, @sync, nthreads, threadid

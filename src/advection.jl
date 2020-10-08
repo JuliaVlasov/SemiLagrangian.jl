@@ -70,7 +70,7 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
     minalpha = 100000
     tabbuf = Vector{Vector{T}}(undef, Threads.nthreads())
     for i=1:size(tabbuf,1)
-        tabbuf[i] = zeros(T,size(f,1));
+        tabbuf[i] = Vector{T}(undef,size(f,1));
     end
 
     Threads.@threads for j=1:size(v,1)

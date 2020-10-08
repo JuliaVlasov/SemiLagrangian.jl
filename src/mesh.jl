@@ -17,7 +17,7 @@ If you want remove the last point for periodic domain, set endpoint=false
     - `width` : Distance between left and right edges.
 
 """
-struct UniformMesh{T}
+struct UniformMesh{T, ndims}
     start::T
     stop::T
     length::Int
@@ -27,15 +27,16 @@ struct UniformMesh{T}
     pfft
     function UniformMesh(start::T, stop::T, length::Int; 
     endpoint = true, 
-    isfft = false
+    isfft = false,
+    ndims = 1,
 ) where {T <: AbstractFloat}
         cor = endpoint ? 0 : 1
         pdeb = range(start, stop = stop, length = length + cor)
         points = pdeb[1:end-cor]
-        step_loc = T == BigFloat ? step(pdeb) : pdeb.step
+        step_loc = step(pdeb)
         width = stop - start
-        pfft = isfft ? PrepareFftBig(length; ndims=1, numdim=1) : missing
-        new{T}(start, stop, length, step_loc, points, width, pfft)
+        pfft = isfft ? PrepareFftBig(length; ndims=ndims, numdim=1) : missing
+        new{T, ndims}(start, stop, length, step_loc, points, width, pfft)
     end
 end
 # export compute_charge!
@@ -73,18 +74,40 @@ end
 
 """
 function compute_charge!(
-    rho::Vector{T},
-    meshv::UniformMesh,
-    fvx::Array{T,2},
-) where {T <: AbstractFloat}
+    rho::Array{T,ndims},
+    meshv::UniformMesh{T,ndims},
+    fvx::Array{T,doublendims},
+) where {T <: AbstractFloat, ndims, doublendims}
+    nx = size(fvx,ndims*2)
+    sh = [(nx), (nx, nx)]
+    dims_v = ntuple(x -> x, ndims)
+#    println("dims_v=$dims_v typeof(fvx)=$(typeof(fvx))")
     dv = meshv.step
-    rho .= dv * vec(sum(fvx, dims = 1))
-    rho .-= sum(rho)/size(rho,1)
+    rho .= dv^ndims * reshape(sum(fvx, dims = dims_v),sh[ndims])
+    rho .-= sum(rho)/(size(rho,1)^ndims)
     missing
 end
 
+# function selectdim(A, d::NTuple{N,Int}, i::NTuple{N,Int}) where{N}
+#     if N == 0
+#         A
+#     else
+#         par = Base.selectdim(A, d[end], i[end])
+#         selectdim( par, d[1:end-1], i[1:end-1])
+#     end
+# end
+# @inline tuplejoin(x) = x
+# @inline tuplejoin(x, y) = (x..., y...)
+# @inline tuplejoin(x, y, z...) = tuplejoin(tuplejoin(x, y), z...)
 
 # export compute_e!
+
+
+# function Base.PermutedDimsArray(pa::Base.PermutedDimsArray{T,N,perm,iperm,AA}, newperm) where {T,N,perm,iperm,AA<:AbstractArray}
+#     totuple(v)=Tuple(x for x in v)
+#     tovector(t)=[ x for x in t]
+#     return PermutedDimsArray(pa.parent, totuple(tovector(newperm)[tovector(perm)]))
+# end
 
 """
 
@@ -97,16 +120,30 @@ already allocated.
 
 """
 function compute_elfield!(
-    e::Vector{T},
-    meshx::UniformMesh{T},
-    rho::Vector{T},
-) where {T <: AbstractFloat}
+    e::Array{T, ndims},
+    meshx::UniformMesh{T, ndims},
+    rho::Array{T, ndims},
+) where {T <: AbstractFloat, ndims}
 
     nx = meshx.length
     k = 2T(pi) / (meshx.stop - meshx.start)
-    modes = zeros(T, nx)
+    modes = Vector{T}(undef, nx)
     modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
     modes[1] = one(T)
-    e .= real(ifftgen(meshx.pfft, -1im .* fftgen(meshx.pfft, rho) ./ modes))
+
+    if ndims == 1
+        e .= real(ifftgen(meshx.pfft, -1im .* fftgen(meshx.pfft, rho) ./ modes))
+    elseif ndims == 2
+    #     buf = real(ifftgen(
+    # meshx.pfft, 
+    # -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(rho,(2,1))) ./ modes
+    # ))
+    #     e .= real(ifftgen(
+    # meshx.pfft, 
+    # -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(buf,(2,1))) ./ modes
+    # ))
+    else
+        println("not yet implemented")
+    end
 
 end

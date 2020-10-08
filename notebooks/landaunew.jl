@@ -35,28 +35,48 @@ function landau(
     dt::T, 
     epsilon::T,
     nbdt, 
-    mesh_x::UniformMesh{T}, 
-    mesh_v::UniformMesh{T}, 
+    tabcoef::Vector{T},
+    mesh_x::UniformMesh{T,ndims}, 
+    mesh_v::UniformMesh{T,ndims}, 
     interp_x::InterpolationType{T, true},
     interp_v::InterpolationType{T, true}
-) where{T}
+) where{T,ndims}
     adv_x = Advection( mesh_x, interp_x)
     adv_v = Advection( mesh_v, interp_v)
 
     nx = mesh_x.length
     nv = mesh_v.length
 
-    v = mesh_v.points
-    
-    fxv = zeros(T, (nx, nv))
-    fvx = zeros(T, (nv, nx))
-    
+    t_coef = vcat(tabcoef, tabcoef[end-1:-1:1])
+    nbcoef = size(t_coef,1)
+  
     fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
     fct_x(x)=epsilon * cos(x/2) + 1
-    fxv .= fct_x.(mesh_x.points) .* transpose(fct_v.(mesh_v.points))
+    lgn_x = fct_x.(mesh_x.points)
+    lgn_v = fct_v.(mesh_v.points)
 
-    elf = Vector{T}(undef, nx)
-    rho = Vector{T}(undef, nx)
+    v = mesh_v.points
+
+    if ndims == 1
+        nxtp = (nx)
+        nvtp = (nv)
+        fxv = zeros(T, (nx, nv))
+        fvx = zeros(T, (nv, nx))
+        fxv .= lgn_x .* reshape( lgn_v, (1,nv))
+#        fxv .= fct_x.(mesh_x.points)  .* transpose(fct_v.(mesh_v.points))
+        perm = [2,1]
+    elseif ndims == 2
+        nxtp = (nx, nx)
+        nvtp = (nv, nv)
+        fxv = zeros( nx, nx, nx, nv)
+        fvx = zeros( nv, nv, nx, nx)
+        fxv = lgn_x .* reshape(lgn_x,(1,nx)) .* reshape(lgn_v, (1,1,nv)) .* reshape(lgn_v,(1,1,1,nv))
+        perm = [3, 4, 1, 2]
+    else
+        println("not yet implemented !!!")
+    end
+    elf = Array{T,ndims}(undef, nxtp)
+    rho = Array{T, ndims}(undef, nxtp)
     println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nx size_v=$nv")
     println("# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
     println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
@@ -64,7 +84,8 @@ function landau(
     println("# type=$T precision = $(precision(T))")
     println("#time\tel-energy\tkinetic-energy\tglobal-energy")
 
-    transpose!(fvx, fxv)
+ #   transpose!(fvx, fxv)
+    permutedims!(fvx, fxv, perm)
     compute_charge!(rho, mesh_v, fvx)
     compute_elfield!(elf, mesh_x, rho)
     elenergy = Float64(compute_ee(mesh_x, elf))
@@ -74,25 +95,45 @@ function landau(
 
     minall=10000000
     maxall=0
-    modulo = nbdt/1000
-    if modulo < 1
-        modulo = 1
-    end
+    t_coef *= dt
+    fltraceend = true
     for i=1:nbdt
-        advection!(adv_x, fxv, v, dt/2)
-        transpose!(fvx, fxv)
-        compute_charge!(rho, mesh_v, fvx)
-        compute_elfield!(elf, mesh_x, rho)
-        advection!(adv_v, fvx, elf, dt)
-        transpose!(fxv, fvx)
-        advection!(adv_x, fxv, v, dt/2)
-        transpose!(fvx, fxv)
-        compute_charge!(rho, mesh_v, fvx)
-        compute_elfield!(elf, mesh_x, rho)
-        elenergy = Float64(compute_ee(mesh_x, elf))
-        kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
-        energyall = elenergy + kinenergy
-        if (i%modulo == 0)
+        # advection!(adv_x, fxv, v, dt/2)
+        # transpose!(fvx, fxv)
+        # compute_charge!(rho, mesh_v, fvx)
+        # compute_elfield!(elf, mesh_x, rho)
+        # advection!(adv_v, fvx, elf, dt)
+        # transpose!(fxv, fvx)
+        # advection!(adv_x, fxv, v, dt/2)
+        # transpose!(fvx, fxv)
+        # compute_charge!(rho, mesh_v, fvx)
+        # compute_elfield!(elf, mesh_x, rho)
+        # elenergy = Float64(compute_ee(mesh_x, elf))
+        # kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+        # energyall = elenergy + kinenergy
+        # if (i%modulo == 0)
+        #     println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+        # end
+        # minall=min(energyall,minall)
+        # maxall=max(energyall,maxall)
+    
+        for k=1:size(t_coef, 1)
+            if k%2 == 1
+                advection!(adv_x, fxv, v, t_coef[k])
+                permutedims!(fvx, fxv, perm)
+                if fltraceend || k != size(t_coef,1)
+                    compute_charge!(rho, mesh_v, fvx)
+                    compute_elfield!(elf, mesh_x, rho)
+                end
+            else
+                advection!(adv_v, fvx, elf, t_coef[k])
+                permutedims!(fxv, fvx, perm)
+            end
+        end
+        if fltraceend
+            elenergy = Float64(compute_ee(mesh_x, elf))
+            kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+            energyall = elenergy + kinenergy
             println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
         end
         minall=min(energyall,minall)
@@ -105,17 +146,19 @@ end
 eps    = big"0.001"
 nbdt = 1000
 dt = big"0.1"
+tabcoef=[big"0.5", big"1."]
+
 
 xmin, xmax, nx =  big"0.", 4big(pi),  64
-vmin, vmax, nv = -big"6.", big"6.", 128*8
+vmin, vmax, nv = -big"6.", big"6.", 128
 
 mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false, isfft=true )
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
 
 
-interp=Lagrange(BigFloat,41)
+interp=Lagrange(BigFloat,51)
 
-landau(dt, eps, nbdt, mesh_x, mesh_v, interp, interp)
+landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
 
 
 

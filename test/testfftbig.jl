@@ -88,6 +88,7 @@ function testfftbig2( s, T::DataType, seed_val, nb_v; dims=(1,) )
     @test isapprox(tab, tab_test, atol=tol, rtol=tol)
 
 end
+
 function testfftbig2bis( s, T::DataType, seed_val, nb_v; dims=(1,) )
 
     Random.seed!(seed_val)
@@ -193,6 +194,7 @@ for sd in tab_decl3
     testfftbigprec(32,sd)
 end
 
+
 @time @testset "testfftgen" begin
     s = 128
     #s = 2048
@@ -273,11 +275,54 @@ end
     println("norm(f2-f2_0)=$(norm(f2-f2_0))")
     @test isapprox(f2,f2_0,atol=1e-70)
 end
-Base.GC.gc()
-@time testfftbig2(2^7, BigFloat, 12344321, 50, dims=(2,))
-Base.GC.gc()
-@time testfftbig2(2^7, BigFloat, 12344321, 50, dims=(1,))
-Base.GC.gc()
-@time testfftbig2bis(2^7, BigFloat, 12344321, 50, dims=(2,))
-Base.GC.gc()
-@time testfftbig2bis(2^7, BigFloat, 12344321, 50, dims=(1,))
+@testset "performance fft" begin
+    Base.GC.gc()
+    @time testfftbig2(2^7, BigFloat, 12344321, 50, dims=(2,))
+    Base.GC.gc()
+    @time testfftbig2(2^7, BigFloat, 12344321, 50, dims=(1,))
+    Base.GC.gc()
+    @time testfftbig2bis(2^7, BigFloat, 12344321, 50, dims=(2,))
+    Base.GC.gc()
+    @time testfftbig2bis(2^7, BigFloat, 12344321, 50, dims=(1,))
+end
+
+function testfftbigmult( s, T::DataType, seed_val; dims=(1,) )
+
+    Random.seed!(seed_val)
+    tab = zeros(Complex{T}, s)
+    tab .= rand(T, s)
+    if T == Float64
+        tabfftref = fft(tab,dims)
+    else
+        tab2 = zeros(Complex{Float64}, s)
+        tab2 .= tab
+        tabfftref = fft(tab2,dims)
+    end
+
+    tab_test = copy(tab)
+
+    p = PrepareFftBig(s[collect(dims)], one(T), dims=dims )
+
+    tab_test2 = fftbig(p, tab_test)
+
+    @test isapprox(tabfftref, tab_test2, atol=1e-15, rtol=1e-15)
+
+    fftbig!(p, tab_test)
+
+    @test isapprox(tabfftref, tab_test, atol=1e-15, rtol=1e-15)
+
+    tol = (T == BigFloat) ? 1e-50 : 1e-15
+
+    tab_test3 = fftbig(p, tab_test, flag_inv=true)
+    @test isapprox(tab, tab_test3, atol=tol, rtol=tol)
+
+    fftbig!(p, tab_test, flag_inv=true)
+
+    @test isapprox(tab, tab_test, atol=tol, rtol=tol)
+
+end
+@testset "multi-dimension test" begin
+    @time testfftbigmult((3,32,5,16), BigFloat, 15413;dims=(2,4) )
+    @time testfftbigmult((3,32,16,8), BigFloat, 44444, dims=(2,3,4))
+end
+

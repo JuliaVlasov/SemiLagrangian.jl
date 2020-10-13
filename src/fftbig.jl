@@ -90,33 +90,34 @@ end
 # these functions operate a permutation along one dimension
 #
 function permuteselecteddim(in::Array{T}, dim, perm) where {T}
-    sz = size(in)
-#    println("sz=$sz dim=$dim size(perm)=$(size(perm))")
-    out = zeros(T,sz)
-    for i=1:sz[dim]
-        s_in = selectdim(in, dim, i)
-        s_out = selectdim(out, dim, perm[i])
-        s_out .= s_in
-    end
-    return out
+    return selectdim(in, dim, perm)
+#     sz = size(in)
+# #    println("sz=$sz dim=$dim size(perm)=$(size(perm))")
+#     out = zeros(T,sz)
+#     for i=1:sz[dim]
+#         s_in = selectdim(in, dim, i)
+#         s_out = selectdim(out, dim, perm[i])
+#         s_out .= s_in
+#     end
+#     return out
 end
 # inplace version
 function permuteselecteddim!(a::Array{T}, dim, perm) where {T}
-    sz = size(a)
-    ind = 1
-    for i in 1:(sz[dim]-1)
-        ind = perm[i]
-        while ind < i
-            ind = perm[ind]
-        end
-        if ind != i
-            # swap
-            s1 = selectdim(a, dim, i)
-            s2 = selectdim(a, dim, ind)
-            s1, s2 .= s2, s1
-        end
-    end
+    a .= selectdim(a, dim, perm)
     return a
+#     sz = size(a)
+#     ind = 1
+#     for i in 1:(sz[dim]-1)
+#         ind = perm[i]
+#         while ind < i
+#             ind = perm[ind]
+#         end
+#         if ind != i
+#             # swap
+#             selectdim(a, dim, [i,ind]) .= selectdim(a, dim, [ind, i])
+#         end
+#     end
+#     return a
 end
 
 function fftbig!(
@@ -132,6 +133,7 @@ function fftbig!(
         n_len = len>>1
         nb_r = 1
         rootO = flag_inv ? par.root_one[inddim] : par.root_one_conj[inddim];
+        perm = par.tab_permut[inddim]
 #    prec= precision(real(rootO[1]))
 #    setprecision(prec+32) do
          while n_len != 0
@@ -171,20 +173,11 @@ function fftbig!(
             n_len >>= 1
             nb_r <<= 1
         end
-#    end
-# signal .= 
-# if NDIMS == 1 
-#     signal[par.tab_permut]
-# elseif NUMDIM == 1
-#     signal[par.tab_permut, :]
-# else 
-#     signal[:,par.tab_permut]
-# end       
         signal .= 
         if NUMDIMS == 1 
-            signal[par.tab_permut[inddim]]
+            signal[perm]
         else
-            permuteselecteddim(signal, dim, par.tab_permut[inddim])
+            selectdim(signal, dim, perm)
         end       
 
         if flag_inv

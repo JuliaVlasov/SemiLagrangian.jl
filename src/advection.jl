@@ -64,8 +64,6 @@ advection!( f, v, dt )
 
 """
 function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) where {T}
-#    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
-#        @spawn begin
     maxalpha = 0
     minalpha = 100000
     tabbuf = Vector{Vector{T}}(undef, Threads.nthreads())
@@ -85,6 +83,24 @@ function advection!(self::Advection{T}, f::Array{T,2}, v::Vector{T}, dt::T) wher
         interpolate!( buf, f[:, j], alpha, self.interp)
         f[:,j] .= buf
     end
+
+    # nbthr = Threads.nthreads()
+
+    # @sync for numtr=1:nbthr
+    #     @spawn begin
+    #         buf = Vector{T}(undef,size(f,1));
+    #         for j=numtr:nbthr:size(v,1)
+    #             value = v[j]
+    #             alpha = - value * dt / self.mesh.step
+    #             interpolate!( buf, f[:, j], alpha, self.interp)
+    #             f[:,j] .= buf
+    #         end
+    #     end
+    # end
+
+    #    @sync for jchunk in Iterators.partition(1:nj, nj÷nthreads())
+#        @spawn begin
+
 #        end
 #    end
 #    println("maxaplha = $maxalpha minaplha = $minalpha")

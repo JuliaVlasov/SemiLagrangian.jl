@@ -144,7 +144,7 @@ end
     
 
 eps    = big"0.001"
-nbdt = 1000
+nbdt = 50
 dt = big"0.1"
 tabcoef=[big"0.5", big"1."]
 

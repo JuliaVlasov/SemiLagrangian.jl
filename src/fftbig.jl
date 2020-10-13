@@ -33,87 +33,119 @@ x is the type of non transformed data also called signal.
 - root_one : size order roots of one
 - root_one_conj : conjugate of root_one
 
+# struct parameters
+- T : type of Float 
+- NUMDIMS : Numbers of dimensions
+- DIMS : tuple of dimensions
+
 """
 
-struct PrepareFftBig{T, NDIMS, NUMDIM}
+struct PrepareFftBig{T, NUMDIMS, DIMS}
     size_fft
     tab_permut
     root_one
     root_one_conj
-    function PrepareFftBig( size_fft::Integer, x::T; ndims=2, numdim=1 ) where {T<:AbstractFloat}
-        @assert prevpow(2,size_fft) == size_fft "size_fft=$size_fft is not a power of 2"
-        power = convert(Int64,log2(size_fft))
-        tab_permut = zeros(Int64,size_fft)
-        root_one = zeros(Complex{T}, size_fft )
-        root_one_conj = zeros(Complex{T}, size_fft )
-        prec= precision(T)
-        setprecision(prec+32) do
-            for i=1:size_fft
-                tab_permut[i] = _reverse_num( i-1, power) + 1
-                root_one[i] = round(
-    exp(one(T)*2big(pi)*im*(i-1)/size_fft),    
+    function PrepareFftBig( size_fft::NTuple{N,Integer}, x::T; numdims=2, dims::NTuple{N,Integer}=(1,) ) where {T<:AbstractFloat, N}
+        tab_permut = Vector{Vector{Int64}}(undef,N)
+        root_one = Vector{Vector{Complex{T}}}(undef,N)
+        root_one_conj = Vector{Vector{Complex{T}}}(undef,N)
+        for (inddim,dim) in enumerate(dims)
+            sfft = size_fft[inddim]
+            @assert prevpow(2,sfft) == sfft "size_fft[$inddim]=$sfft is not a power of 2"
+            power = convert(Int64,log2(sfft))
+            prec = precision(T)
+            setprecision(prec+32) do
+                tab_permut[inddim] = tperm = Vector{Int64}(undef,sfft)
+                root_one[inddim] = rone = Vector{Complex{T}}(undef, sfft )
+                root_one_conj[inddim]= rone_conj = Vector{Complex{T}}(undef, sfft )
+                for i=1:sfft
+                    tperm[i] = _reverse_num( i-1, power) + 1
+                    rone[i] = round(
+    exp(one(T)*2big(pi)*im*(i-1)/sfft),    
     digits=prec+16, 
     base=2 
 )
-                root_one_conj[i] = round(
-    exp(-one(T)*2big(pi)*im*(i-1)/size_fft),
-    digits=prec+16,
-    base=2
-)
+                    rone_conj[i] = conj(rone[i])
+                end
             end
         end
-        return new{T, ndims, numdim}(
+        return new{T, numdims, dims}(
     size_fft, 
     tab_permut, 
-    Complex{T}.(root_one), 
-    Complex{T}.(root_one_conj)
+    root_one, 
+    root_one_conj
 )
     end
 end
-function PrepareFftBig( size_fft::Integer, type::DataType; kwargs... ) 
+function PrepareFftBig( size_fft, type::DataType; kwargs... ) 
     return PrepareFftBig( size_fft, one(type); kwargs...)
 end
-function PrepareFftBig( size_fft::Integer; kwargs...) 
+function PrepareFftBig( size_fft; kwargs...) 
     return PrepareFftBig( size_fft, one(BigFloat); kwargs...)
 end
-
+function PrepareFftBig( s::Integer, x::T ; kwargs...) where{T<:AbstractFloat}
+    return PrepareFftBig( (s,), x; kwargs...)
+end
 # Amazing that such function doesn't already exist
-function permutselecteddim(in::Array{T}, numdim, perm) where {T}
+# these functions operate a permutation along one dimension
+#
+function permuteselecteddim(in::Array{T}, dim, perm) where {T}
     sz = size(in)
+#    println("sz=$sz dim=$dim size(perm)=$(size(perm))")
     out = zeros(T,sz)
-    for i=1:sz[numdim]
-        s_in = selectdim(in, numdim, i)
-        s_out = selectdim(out, numdim, perm[i])
+    for i=1:sz[dim]
+        s_in = selectdim(in, dim, i)
+        s_out = selectdim(out, dim, perm[i])
         s_out .= s_in
     end
     return out
 end
+# inplace version
+function permuteselecteddim!(a::Array{T}, dim, perm) where {T}
+    sz = size(a)
+    ind = 1
+    for i in 1:(sz[dim]-1)
+        ind = perm[i]
+        while ind < i
+            ind = perm[ind]
+        end
+        if ind != i
+            # swap
+            s1 = selectdim(a, dim, i)
+            s2 = selectdim(a, dim, ind)
+            s1, s2 .= s2, s1
+        end
+    end
+    return a
+end
+
 function fftbig!(
-    par::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    par::PrepareFftBig{T, NUMDIMS, DIMS}, 
     signal; 
     flag_inv=false
-) where{T, NDIMS, NUMDIM}
-    s=size(signal, NUMDIM)
-    @assert prevpow(2,s) == s "size_fft(signal)=$s is not a power of 2"
-    s_div2 = div(s,2)
-    len = s
-    n_len = len>>1
-    nb_r = 1
-    rootO = flag_inv ? par.root_one : par.root_one_conj;
+) where{T, NUMDIMS, DIMS}
+    for (inddim,dim) in enumerate(DIMS)
+        s=size(signal, dim)
+        @assert par.size_fft[inddim] == s "size of dim $dim is $s while $(par.sizefft[inddim]) is waiting "
+        s_div2 = div(s,2)
+        len = s
+        n_len = len>>1
+        nb_r = 1
+        rootO = flag_inv ? par.root_one[inddim] : par.root_one_conj[inddim];
 #    prec= precision(real(rootO[1]))
 #    setprecision(prec+32) do
          while n_len != 0
             start = 1
             suite = start+n_len
-            for i=1:nb_r
+            for i in 1:nb_r
                  deb = 1
-                for j=deb:nb_r:s_div2
-                    if NDIMS == 1
+                for j in deb:nb_r:s_div2
+                    if NUMDIMS == 1
                         signal[start], signal[suite] = (signal[start] + signal[suite]), 
                         (signal[start] - signal[suite])*rootO[j]
                     else
-                        s_start = selectdim(signal, NUMDIM, start)
-                        s_suite = selectdim(signal, NUMDIM, suite)
+                        s_start = selectdim(signal, dim, start)
+                        s_suite = selectdim(signal, dim, suite)
                         s_sum = s_start+s_suite
                         s_diff = (s_start-s_suite)*rootO[j]
                         s_start .= s_sum
@@ -148,23 +180,24 @@ function fftbig!(
 # else 
 #     signal[:,par.tab_permut]
 # end       
-    signal .= 
-    if NDIMS == 1 
-        signal[par.tab_permut]
-    else
-        permutselecteddim(signal, NUMDIM, par.tab_permut)
-    end       
+        signal .= 
+        if NUMDIMS == 1 
+            signal[par.tab_permut[inddim]]
+        else
+            permuteselecteddim(signal, dim, par.tab_permut[inddim])
+        end       
 
-    if flag_inv
-        signal ./= s
+        if flag_inv
+            signal ./= s
+        end
     end
     return signal
 end
 function fftbig(
-    par::PrepareFftBig{T, NDIMS, NUMDIM},
+    par::PrepareFftBig{T, NUMDIMS, DIMS},
     signal;
     flag_inv=false
-) where{T, NDIMS, NUMDIM}
+) where{T, NUMDIMS, DIMS}
     fl = flag_inv
     return fftbig!(
         par::PrepareFftBig,
@@ -176,22 +209,22 @@ fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
 fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
 fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
 function fftgen(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
-) where {T, NDIMS, NUMDIM}
-    return fft(t, (NUMDIM,))
+) where {T, NUMDIMS, DIMS}
+    return fft(t, DIMS)
 end
 function fftgen!(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
-) where {T, NDIMS, NUMDIM}
-    return fft!(t, (NUMDIM,))
+) where {T, NUMDIMS, DIMS}
+    return fft!(t, DIMS)
 end
 function fftgen(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Float64}
-) where {T, NDIMS, NUMDIM}
-    return fft(t, (NUMDIM,))
+) where {T, NUMDIMS, DIMS}
+    return fft(t, DIMS)
 end
 fftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig(p, t)
@@ -200,22 +233,22 @@ ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (1,))
 ifftgen!(_::Any, t::Array{Complex{Float64}}) = ifft!(t, (1,))
 ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
 function ifftgen(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
-) where {T, NDIMS, NUMDIM}
+) where {T,NUMDIMS, DIMS}
     return ifft(t, (NUMDIM,))
 end
 function ifftgen!(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
-) where {T, NDIMS, NUMDIM}
-    return ifft!(t, (NUMDIM,))
+) where {T, NUMDIMS, DIMS}
+    return ifft!(t, DIMS)
 end
 function ifftgen(
-    _::PrepareFftBig{T, NDIMS, NUMDIM}, 
+    _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Float64}
-) where {T, NDIMS, NUMDIM}
-    return ifft(t, (NUMDIM,))
+) where {T, NUMDIMS, DIMS}
+    return ifft(t, DIMS)
 end
 ifftgen(p::PrepareFftBig, t::Array{T}) where {T}  = fftbig(p, t, flag_inv = true)
 ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T}  = fftbig(p, t, flag_inv = true)

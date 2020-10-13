@@ -134,14 +134,14 @@ function compute_elfield!(
     if ndims == 1
         e .= real(ifftgen(meshx.pfft, -1im .* fftgen(meshx.pfft, rho) ./ modes))
     elseif ndims == 2
-    #     buf = real(ifftgen(
-    # meshx.pfft, 
-    # -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(rho,(2,1))) ./ modes
-    # ))
-    #     e .= real(ifftgen(
-    # meshx.pfft, 
-    # -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(buf,(2,1))) ./ modes
-    # ))
+        buf = real(ifftgen(
+    meshx.pfft, 
+    -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(rho,(2,1))) ./ modes
+    ))
+        e .= real(ifftgen(
+    meshx.pfft, 
+    -1im .* fftgen(meshx.pfft, Base.PermutedDimsArray(buf,(2,1))) ./ modes
+    ))
     else
         println("not yet implemented")
     end

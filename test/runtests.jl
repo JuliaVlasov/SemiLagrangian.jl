@@ -14,3 +14,4 @@ include("test_bspline.jl")
 include("test_rotation_2d.jl")
 # include("test_lapack.jl")
 
+include("test_mesh.jl")

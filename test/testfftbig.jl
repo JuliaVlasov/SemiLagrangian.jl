@@ -324,5 +324,49 @@ end
 @testset "multi-dimension test" begin
     @time testfftbigmult((3,32,5,16), BigFloat, 15413;dims=(2,4) )
     @time testfftbigmult((3,32,16,8), BigFloat, 44444, dims=(2,3,4))
+    @time testfftbigmult((4,32,16,8), BigFloat, 44544, dims=(1,2,3,4))
+end
+
+function testfftallbig( s, T::DataType, seed_val)
+
+    Random.seed!(seed_val)
+    tab = zeros(Complex{T}, s)
+    tab .= rand(T, s)
+    dims = ntuple(x->x,size(s,1))
+    if T == Float64
+        tabfftref = fft(tab,dims)
+    else
+        tab2 = zeros(Complex{Float64}, s)
+        tab2 .= tab
+        tabfftref = fft(tab2,dims)
+    end
+
+    tab_test = copy(tab)
+
+    p = PrepareFftBig(s[collect(dims)], one(T), dims=dims )
+
+    tab_test2 = fftgenall(p, tab_test)
+
+    @test isapprox(tabfftref, tab_test2, atol=1e-15, rtol=1e-15)
+
+    fftgenall!(p, tab_test)
+
+    @test isapprox(tabfftref, tab_test, atol=1e-15, rtol=1e-15)
+
+    tol = (T == BigFloat) ? 1e-50 : 1e-15
+
+    tab_test3 = ifftgenall(p, tab_test)
+    @test isapprox(tab, tab_test3, atol=tol, rtol=tol)
+
+    ifftgenall!(p, tab_test)
+
+    @test isapprox(tab, tab_test, atol=tol, rtol=tol)
+
+end
+
+@testset "all-dimension test" begin
+    @time testfftallbig((4,32,4,16), BigFloat, 15416)
+    @time testfftallbig((4,32,16,8), BigFloat, 44488)
+    @time testfftallbig((8,32,16,8), BigFloat, 44588)
 end
 

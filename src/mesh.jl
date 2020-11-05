@@ -1,6 +1,9 @@
 
 #import Statistics: mean
 # export UniformMesh
+
+include("fftbig.jl")
+
 """
 
     UniformMesh(start, stop, length)
@@ -50,7 +53,6 @@ function vec_k_fft(mesh::UniformMesh{T}) where{T}
     midx = div(mesh.length,2)
     k = 2T(pi) / (mesh.stop - mesh.start)
     res =  k * vcat(0:midx-1, -midx:-1)
-    res[1] = 1
     return res
 end
 
@@ -144,15 +146,29 @@ end
 function compute_charge!(
     rho::Array{T,N},
     t_mesh_v::NTuple{N,UniformMesh{T}},
-    fvx::Array{T,N2},
+    f::Array{T,N2},
+    tuple_v
 ) where {T, N, N2}
-    @assert N2 == 2N "N2=$N2 must the double of N=$N"
     dv = prod(step, t_mesh_v)
-    tuplebegin = ntuple(x -> x, N)
-    rho .= dv * reshape(sum(fvx, dims = tuplebegin), tuplebegin)
+    rho .= dv * reshape(sum(f, dims = tuple_v), size(rho))
     rho .-= sum(rho)/prod(size(rho))
     missing
 end
+function compute_charge_vx!(
+    rho::Array{T,N},
+    t_mesh_v::NTuple{N,UniformMesh{T}},
+    fvx::Array{T,N2},
+) where {T, N, N2}
+    return compute_charge!(rho,t_mesh_v,fvx,ntuple(x -> x, N))
+end
+function compute_charge_xv!(
+    rho::Array{T,N},
+    t_mesh_v::NTuple{N,UniformMesh{T}},
+    fxv::Array{T,N2},
+) where {T, N, N2}
+    return compute_charge!(rho,t_mesh_v,fxv,ntuple(x -> N+x, N))
+end
+compute_charge!(rho,t_mesh_v,fvx)=compute_charge_vx!(rho,t_mesh_v,fvx)
 # function selectdim(A, d::NTuple{N,Int}, i::NTuple{N,Int}) where{N}
 #     if N == 0
 #         A
@@ -198,19 +214,73 @@ function compute_e!(
     e .= real(ifft(-1im .* fft(rho) ./ modes))
 
 end
+# todo à optimiser
 function compute_elfield!(
     e::NTuple{N,Array{T, N}},
     t_mesh_x::NTuple{N,UniformMesh{T}},
     rho::Array{T, N},
     pfft
 ) where {T <: AbstractFloat, N}
+    res = compute_elfield(t_mesh_x, rho, pfft)
+    for i=1:N
+        e[ind] .= res[i]
+    end
+end
+function compute_elfieldother(
+    t_mesh_x::NTuple{N,UniformMesh{T}},
+    rho::Array{T, N},
+    pfft
+) where {T <: AbstractFloat, N}
 
-    fct_k(ind,v)= im*v[ind]/sum(v.^2)
+    fct_k(v)= im/sum(v.^2)
+
+    v_k = vec_k_fft.(t_mesh_x)
+    sz = length.(t_mesh_x)
+
+    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
+    buf[1] = 0im
+   
+#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
+
+    return ntuple( 
+    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
+    N
+)
+end
+
+function compute_elfield(
+    t_mesh_x::NTuple{N,UniformMesh{T}},
+    rho::Array{T, N},
+    pfft
+) where {T <: AbstractFloat, N}
+
+    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
 
     v_k = vec_k_fft.(t_mesh_x)
 
-    return ntuple( x -> real(ifftgen(
-    pfft,
-    fct_k.(x, Iterators.product(vec_k_fft.(t_mesh_x))) .* fftgen(pfft, rho)
-)), N)
+    buf = fftgenall(pfft, rho)
+
+    println("buf[1]=$(buf[1])")
+ 
+    array_k = collect(Iterators.product(v_k...))
+
+#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
+
+    return ntuple( 
+        x -> real(ifftgenall(pfft, fct_k.(x, array_k) .* buf )),
+        N
+    )
+
+end
+function compute_elfield!(
+    t_e::Ntuple{N,Array{T,N}}
+    t_mesh_x::NTuple{N,UniformMesh{T}},
+    rho::Array{T, N},
+    pfft
+) where {T <: AbstractFloat, N}
+    res = compute_elfield(t_mesh_x,rho,pfft)
+    for i=1:N
+        t_e[i] .= res[i]
+    end
+    t_e
 end

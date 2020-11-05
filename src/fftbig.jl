@@ -201,6 +201,9 @@ end
 fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
 fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
 fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
+fftgenall(_::Any, t::Array{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
+fftgenall!(_::Any, t::Array{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
+fftgenall(_::Any, t::Array{Float64}) = fft(t, ntuple(x->x,ndims(t)))
 function fftgen(
     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
@@ -219,17 +222,29 @@ function fftgen(
 ) where {T, NUMDIMS, DIMS}
     return fft(t, DIMS)
 end
+fftgenall(p::PrepareFftBig,t::Array{Float64})=fftgen(p, t)
+fftgenall(p::PrepareFftBig,t::Array{Complex{Float64}})=fftgen(p, t)
+fftgenall!(p::PrepareFftBig,t::Array{Complex{Float64}})=fftgen!(p, t)
+
 fftgen(p::PrepareFftBig, t::Array{T}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig(p, t)
 fftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T<:AbstractFloat} = fftbig!(p, t)
+fftgenall(p::PrepareFftBig,t::Array{T}) where {T} =fftgen(p, t)
+fftgenall(p::PrepareFftBig,t::Array{Complex{T}}) where {T}=fftgen(p, t)
+fftgenall!(p::PrepareFftBig,t::Array{Complex{T}}) where {T}=fftgen!(p, t)
+
 ifftgen(_::Any, t::Array{Complex{Float64}}) = ifft(t, (1,))
 ifftgen!(_::Any, t::Array{Complex{Float64}}) = ifft!(t, (1,))
 ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
+ifftgenall(_::Any, t::Array{Complex{Float64}}) = ifft(t, ntuple(x->x,ndims(t)))
+ifftgenall!(_::Any, t::Array{Complex{Float64}}) = ifft(t, ntuple(x->x,ndims(t)))
+ifftgenall(_::Any, t::Array{Float64}) = ifft(t, ntuple(x->x,ndims(t)))
+
 function ifftgen(
     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
 ) where {T,NUMDIMS, DIMS}
-    return ifft(t, (NUMDIM,))
+    return ifft(t, DIMS)
 end
 function ifftgen!(
     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
@@ -243,6 +258,14 @@ function ifftgen(
 ) where {T, NUMDIMS, DIMS}
     return ifft(t, DIMS)
 end
+ifftgenall(p::PrepareFftBig,t::Array{Float64})=ifftgen(p, t)
+ifftgenall(p::PrepareFftBig,t::Array{Complex{Float64}})=ifftgen(p, t)
+ifftgenall!(p::PrepareFftBig,t::Array{Complex{Float64}})=ifftgen!(p, t)
+
 ifftgen(p::PrepareFftBig, t::Array{T}) where {T}  = fftbig(p, t, flag_inv = true)
 ifftgen(p::PrepareFftBig, t::Array{Complex{T}}) where {T}  = fftbig(p, t, flag_inv = true)
 ifftgen!(p::PrepareFftBig, t::Array{Complex{T}}) where {T}  = fftbig!(p, t, flag_inv = true)
+ifftgenall(p::PrepareFftBig,t::Array{T}) where {T} =ifftgen(p, t)
+ifftgenall(p::PrepareFftBig,t::Array{Complex{T}}) where {T}=ifftgen(p, t)
+ifftgenall!(p::PrepareFftBig,t::Array{Complex{T}}) where {T}=ifftgen!(p, t)
+

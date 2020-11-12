@@ -15,4 +15,5 @@ include("test_bspline.jl")
 # include("test_lapack.jl")
 
 include("test_mesh.jl")
+include("test_advection.jl")
 include("test_poisson.jl")

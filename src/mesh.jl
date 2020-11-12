@@ -2,7 +2,6 @@
 #import Statistics: mean
 # export UniformMesh
 
-include("fftbig.jl")
 
 """
 
@@ -164,8 +163,8 @@ end
 function compute_charge_xv!(
     rho::Array{T,N},
     t_mesh_v::NTuple{N,UniformMesh{T}},
-    fxv::Array{T,N2},
-) where {T, N, N2}
+    fxv,
+) where {T, N}
     return compute_charge!(rho,t_mesh_v,fxv,ntuple(x -> N+x, N))
 end
 compute_charge!(rho,t_mesh_v,fvx)=compute_charge_vx!(rho,t_mesh_v,fvx)
@@ -190,97 +189,5 @@ compute_charge!(rho,t_mesh_v,fvx)=compute_charge_vx!(rho,t_mesh_v,fvx)
 #     return PermutedDimsArray(pa.parent, totuple(tovector(newperm)[tovector(perm)]))
 # end
 
-"""
 
-    compute_e!( e, mesh, ρ)
 
-    ∇.e = - ρ
-
-Inplace computation of electric field. Fields e and rho are
-already allocated.
-
-"""
-function compute_e!(
-    e::Vector{T},
-    meshx::UniformMesh{T},
-    rho::Vector{T},
-) where {T}
-
-    nx = meshx.length
-    k = 2π / (meshx.stop - meshx.start)
-    modes = zeros(Float64, nx)
-    modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
-    modes[1] = 1.0
-    e .= real(ifft(-1im .* fft(rho) ./ modes))
-
-end
-# todo à optimiser
-function compute_elfield!(
-    e::NTuple{N,Array{T, N}},
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-    res = compute_elfield(t_mesh_x, rho, pfft)
-    for i=1:N
-        e[ind] .= res[i]
-    end
-end
-function compute_elfieldother(
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(v)= im/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-    sz = length.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
-    buf[1] = 0im
-   
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-    return ntuple( 
-    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
-    N
-)
-end
-
-function compute_elfield(
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho)
-
-    println("buf[1]=$(buf[1])")
- 
-    array_k = collect(Iterators.product(v_k...))
-
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-    return ntuple( 
-        x -> real(ifftgenall(pfft, fct_k.(x, array_k) .* buf )),
-        N
-    )
-
-end
-function compute_elfield!(
-    t_e::Ntuple{N,Array{T,N}}
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-    res = compute_elfield(t_mesh_x,rho,pfft)
-    for i=1:N
-        t_e[i] .= res[i]
-    end
-    t_e
-end

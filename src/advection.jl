@@ -5,6 +5,14 @@ include("mesh.jl")
 
 abstract type InterpolationType{T, iscirc} end
 
+#TODO ne plus avoir cette fonction
+function get_kl_ku(order)
+    ku = div(order,2)
+    kl = order-1-ku
+    return kl, ku
+end
+
+
 """
     Advection{T, Nsp, Nv, Nsum}
     Advection(
@@ -25,8 +33,8 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
 
 # Arguments
-- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}`: tuple of space meshes (one per space dimension)
-- `t_mesh_v::NTuple{Nv, UniformMesh{T}}`: tuple of velocity meshes (one per velocity dimension)
+- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
+- `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes (one per velocity dimension)
 - `t_interp_sp::NTuple{Nsp, InterpolationType{T}}` : tuple of space interpolations (one per space dimension)
 - `t_interp_v::NTuple{Nv, InterpolationType{T}}` : tuple of velocity interpolations(one per velocity dimension)
 - `dt_base::T` : time delta for one advection series
@@ -34,6 +42,16 @@ Immutable structure that contains constant parameters for multidimensional advec
 # Keywords
 - `tab_coef=[1//2, 1//1, 1//2]` : coefficient table for one advection series, the
     coefficients at odd indexes is for space advection series, the coefficients at even indexes is for velocity advection series
+
+# Implementation
+- sizeall : tuple of the sizes of all dimensions (space before velocity)
+- sizeitr : tuple of iterators of indexes of each dimension
+- t_mesh_sp : tuple of space meshes
+- t_mesh_v : tuple of velocity meshes
+- t_interp_sp : tuple of space interpolation types
+- t_interp_v : tuple of velocity interpolation types
+- dt_base::T : time unit of an advection series
+- tab_coef : coefficient table
 
 # Throws
 - `ArgumentError` : `Nsp` must less or equal to `Nv`.
@@ -57,8 +75,8 @@ struct Advection{T,Nsp,Nv,Nsum}
     tab_coef=[1//2, 1//1, 1//2],
 ) where{T, Nsp, Nv}
         Nsp <= Nv || thrown(ArgumentError("Nsp=$Nsp must less or equal to Nv=$Nv"))
-        sizeall=length.((adv.t_mesh_sp..., adv.t_mesh_v...))
-        Nsum = Nsp + nv
+        sizeall=length.((t_mesh_sp..., t_mesh_v...))
+        Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         return new{T, Nsp, Nv, Nsum}(
     sizeall,
@@ -81,7 +99,7 @@ sizeall(adv)=adv.sizeall
 """
     sizeitr(adv::Advection)
 
-Return a tuple of ierator from one to the sizes of each dimensions
+Return a tuple of iterators from one to the sizes of each dimensions
 
 # Argument
 - `adv::Advection` : Advection structure.
@@ -89,7 +107,43 @@ Return a tuple of ierator from one to the sizes of each dimensions
 sizeitr(adv)=adv.sizeitr
 
 # 
+"""
+    AdvectionData{T,Nsp,Nv,Nsum}
+    AdvectionData(
+    adv::Advection{T,Nsp,Nv,Nsum}, 
+    data::Array{T,Nsum},
+    parext; 
+    isthread=false)
 
+Mutable structure that contains variable parameters of advection series
+
+# Type parameters
+- `T::DataType` : type of data
+- `Nsp` : number of space dimensions
+- `Nv` : number of velocity dimensions
+- `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+
+# Arguments
+- `adv::Advection{T,Nsp,Nv,Nsum}` : link to the constant data of this advection
+- `data::Array{T,Nsum}` : Initial data of this advection
+- `parext` : external data of this advection to compute alpha of each interpolations
+
+# Keywords
+- `isthread::Bool=false` : if false only one thread is using else all possible threads are using
+
+# Implementation
+- adv : link to the constant data of this advection
+- state_coef : state that is the index of tab_coef, it is from one to lenth(tab_coef)
+- state_dim : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
+- data : it is the working buffer
+- t_buf : tuple of buffer that is used to get the linear data for interpolation, one buffer per thread
+- parext : external data of this advection to compute alpha of each interpolations
+
+# Methods to define
+- `init!(self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
+- `getalpha(self::AdvectionData, ind)` : return the alpha number that is used for interpolation. 
+
+"""
 mutable struct AdvectionData{T,Nsp,Nv,Nsum}
     adv::Advection{T,Nsp,Nv,Nsum}
     state_coef # from 1 to length(adv.tab_coef)
@@ -102,7 +156,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
     adv::Advection{T,Nsp,Nv,Nsum}, 
     data::Array{T,Nsum},
     parext; 
-    isthread=false
+    isthread::Bool=false
 ) where{T,Nsp,Nv,Nsum}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))

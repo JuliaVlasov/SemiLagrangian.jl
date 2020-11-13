@@ -161,7 +161,6 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
         nbthr = isthread ? Threads.nthread() : 1
-        t_mesh = getallmesh(adv)
         t_buf = ntuple(x -> Array{T,2}(undef, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         copyto!(datanew, data)
@@ -208,8 +207,8 @@ Function called at the end of advection function to update internal state of Adv
 """
 function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     ret = true
-    if self.state_dims == [Nv,Nsp][self.state_coef%2+1]
-        self.state_dims = 1
+    if self.state_dim == [Nv,Nsp][self.state_coef%2+1]
+        self.state_dim = 1
         if self.state_coef == size(self.adv.tab_coef,1)
             self.state_coef = 1
             ret = false
@@ -217,7 +216,7 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
             self.state_coef += 1
         end
     else
-        self.state_dims += 1
+        self.state_dim += 1
     end
     return ret
  end

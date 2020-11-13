@@ -173,6 +173,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
     end
 end
 getext(self)=self.parext
+getdata(self)=self.data
 getcur_t(self) = self.adv.tab_coef[self.state_coef] * self.adv.dt_base
 getstate_dim(self)=self.state_dim
 isvelocitystate(self::AdvectionData)=self.state_coef%2 == 0
@@ -221,26 +222,18 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     return ret
  end
 """
-    advection!(f, v, dt)
+    advection!(self::AdvectionData)
 
-Advection of a 2d function `f` discretized on a 2d `mesh`
-along the input axis at velocity `v`. This function is
-created from `Advector` callable type.
+Advection function of a multidimensional function `f` discretized on `mesh`
 
-```julia
-mesh = UniformMesh( -π, π, 64 )
-advection! = Advection( mesh, BsplineOld(3), :periodic )
+# Argument
+- `self::AdvectionData` : mutable structure of variables data
 
-f = exp.( - mesh.points .^ 2 )
-
-dt = 0.5
-v  = ones( Float64, mesh.length)
-
-advection!( f, v, dt )
-
+# Return value
+- `true` : means that the advection series must continue
+- `false` : means that the advection series is ended.
 """
-addlgn(x)=(:,x...)
-function advection!(self::AdvectionData{T, N2, N}) where{T,N2, N}
+function advection!(self::AdvectionData)
     f = self.data
     tabbuf = getbufslgn(self)
     interp = getinterp(self)

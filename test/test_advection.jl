@@ -1,5 +1,5 @@
 include("../src/advection.jl")
-include("../src/Lagrange.jl")
+include("../src/lagrange.jl")
 
 using Test
 

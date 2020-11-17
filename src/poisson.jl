@@ -3,144 +3,48 @@ include("fftbig.jl")
 include("advection.jl")
 
 """
+    compute_charge!( rho, mesh_v, fvx)
 
-    compute_e!( e, mesh, ρ)
+ Compute charge density
 
-    ∇.e = - ρ
+ ρ(x,t) = ∫ f(x,v,t) dv
 
-Inplace computation of electric field. Fields e and rho are
-already allocated.
+ # Arguments
+ - `rho::Array{T,Nsp}` : result table correctly sized, it is he output
+ - `t_mesh_v::NTuple{Nv,UniformMesh{T}}` : velocity meshes
+ - `f::Array{T,Nsum}` : input data
 
 """
-function compute_e!(
-    e::Vector{T},
-    meshx::UniformMesh{T},
-    rho::Vector{T},
-) where {T}
-
-    nx = meshx.length
-    k = 2π / (meshx.stop - meshx.start)
-    modes = zeros(Float64, nx)
-    modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
-    modes[1] = 1.0
-    e .= real(ifft(-1im .* fft(rho) ./ modes))
-
-end
-function compute_elfieldother(
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(v)= im/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-    sz = length.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
-    buf[1] = 0im
-   
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-    return ntuple( 
-    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
-    N
-)
-end
-
-function compute_elfield(
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho)
-
-    println("buf[1]=$(buf[1])")
- 
-    array_k = collect(Iterators.product(v_k...))
-
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-    return ntuple( 
-        x -> real(ifftgenall(pfft, fct_k.(x, array_k) .* buf )),
-        N
-    )
-
-end
-# todo à optimiser
-function compute_elfield!(
-    e::NTuple{N,Array{Complex{T}, N}},
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho)
-
-    println("buf[1]=$(buf[1])")
- 
-    array_k = collect(Iterators.product(v_k...))
-
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-    for i=1:N
-        e[i] .= fct_k.(i, array_k) .* buf
-        ifftgenall!(pfft, e[i])
-        e[i] .= real(e[i])
-    end 
-
+function compute_charge!(
+    rho::Array{T,Nsp},
+    t_mesh_v::NTuple{Nv,UniformMesh{T}},
+    f::Array{T,Nsum}
+) where {T, Nsp, Nv, Nsum}
+    Nsp+Nv == Nsum || thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum")) 
+    dv = prod(step, t_mesh_v)
+    rho .= dv * reshape(sum(f, dims = ntuple(x -> Nsp+x, Nv)), size(rho))
+    rho .-= sum(rho)/prod(size(rho))
+    missing
 end
 
 
+"""
+    PoissonConst{T, Nsp, Nv}
+    PoissonConst(adv::Advection{T, Nsp, Nv, Nsum}; isfftbig=true)
 
+Constant data for the computation of poisson coefficients
 
+# Arguments
+- `adv::Advection{T, Nsp, Nv, Nsum}` : Advection constant data
+- `isfftbig=true`: if true compute the fttbig structure
 
-function compute_elfieldother!(
-    t_e::NTuple{N,Array{Complex{T},N}},
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-println("trace OK")
-    res = compute_elfieldother(t_mesh_x,rho,pfft)
-    for i=1:N
-        t_e[i] .= res[i]
-    end
-    t_e
-end
-function compute_elfieldother2!(
-    t_e::NTuple{N,Array{Complex{T},N}},
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
-
-    fct_k(v)= im/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-    sz = length.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
-    buf[1] = 0im
-   
-#    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-    for i=1:N
-        t_e[i] .= reshape(v_k[i],tupleshape(i,N,sz[i])) .* buf
-        t_e[i] .= real(ifftgenall(pfft,t_e[i]))
-    end
-    t_e
-end
-
-struct PoissonConst{T,Nsp,Nv}
+# Implementation
+- `adv` : Advection constant data
+- `v_k' : vector of vector of fourier coefficents for integration for each space dimension
+- `fctv_k` : Array of space dimensions of the inverse of the norm of fourier coefficients
+- `pfftbig` : Fourier data for space dimensions
+"""
+struct PoissonConst{T, Nsp, Nv}
     adv
     v_k
     fctv_k
@@ -154,60 +58,81 @@ struct PoissonConst{T,Nsp,Nv}
         v_k = vec_k_fft.(adv.t_mesh_sp)
         sz = length.(adv.t_mesh_sp)
         fctv_k = fct_k.(collect(Iterators.product(v_k...)))
+        fctv_k[1] = 0
         pfftbig = if isfftbig
-            PrepareFftBig(sz, T, numdims=N, ntuple(x->x,N))
+            PrepareFftBig(sz, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
         else
             missing
         end
         return new{T,Nsp,Nv}(adv, v_k, fctv_k, pfftbig)
     end
 end
+"""
+    PoissonVar{T, Nsp, Nv}
+    PoissonVar(pc::PoissonConst{T, Nsp, Nv})
 
-struct PoissonVar{T, Nsp, Nv}
+mutable structure of variable data for the poisson computation
+
+# Arguments
+- `pc::PoissonConst{T, Nsp, Nv}` : poisson constant data
+
+# Implementation
+- `pc::PoissonConst{T, Nsp, Nv}` : poisson constant data
+- `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
+- `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
+"""
+mutable struct PoissonVar{T, Nsp, Nv}
     pc::PoissonConst{T, Nsp, Nv}
     rho::Array{T, Nsp}
-    t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}
-    pfftbig
+    t_elfield
     bufcur
-    function PoissonEq(
-        pc::PoissonConst{T, Nsp, Nv}
-) where{T, Nsp, Nv}
-        sz = length.(pc.t_mesh_x)
+    function PoissonVar(pc::PoissonConst{T, Nsp, Nv}) where{T, Nsp, Nv}
+        sz = length.(pc.adv.t_mesh_sp)
         rho = Array{T, Nsp}(undef, sz)
-        t_elfield = ntuple( x-> Array{T, N}(undef, sz), N)
-        return new{T, Nsp, Nv}(rho, t_elfield, t_mesh_x, pfftbig, bufcur)
+        return new{T, Nsp, Nv}(pc, rho, missing, missing)
     end
 end
+"""
+    init!(self::AdvectionData{T, Nsp, Nv, Nsum})
 
+Implementation of the interface function that is called at the begining of each advection
+    This is implementation for Vlasov-Poisson equation
+
+"""
 function init!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
     state_dim = getstate_dim(self)
-    if state_dim == 1 && isvelocitystate(self)
-        data = getdata(self)
-        dv = prod(step, pv.pc.adv.t_mesh_v)
-        dp.rho .= dv * reshape(sum(data, dims = ntuple(x->x+Nsp,Nv) ), size(dp.rho))
-        dp.rho .-= sum(rho)/length(rho)
-
-        buf = fftgenall(pfft, dp.rho) .* pv.pc.fctv_k
-        buf[1] = 0im
-       
-    #    println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-    
-        pv.t_elfield = ntuple( 
+    if isvelocitystate(self)
+        if self.state_dim == 1
+            pfft = pv.pc.pfftbig
+            sz = size(pv.rho)
+            compute_charge!(pv.rho, pv.pc.adv.t_mesh_v, getdata(self))
+            buf = fftgenall(pfft, pv.rho) .* pv.pc.fctv_k
+            buf[1] = 0im
+            pv.t_elfield = ntuple( 
     x -> real(ifftgenall(pfft, reshape(pv.pc.v_k[x],tupleshape(x,Nsp,sz[x])) .* buf )),
     Nsp
 )
+        end
+        bufcur = pv.t_elfield[state_dim]
+    else
+        mesh = self.adv.t_mesh_sp[state_dim]
+        bufcur = getcur_t(self)/step(mesh)*mesh.points
     end
 end
+"""
+    getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) 
 
+Implementation of the interface function that is called before each interpolation in advection
+
+"""
 function getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
     state_dim = getstate_dim(self)
     if isvelocitystate(self)
-        return pv.t_elfield[state_dim][ind[1:Nsp]...]
+        return pv.bufcur[ind[1:Nsp]...]
     else
-        mesh = pv.adv.t_mesh_v[state_dim]
-        return (getcur_t(self) / mesh.step) * mesh.points[ind[state_dim+Nsp]]
+        return bufcur[ind[state_dim+Nsp]]
     end
 end
     

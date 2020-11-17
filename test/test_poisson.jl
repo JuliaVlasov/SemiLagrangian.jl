@@ -1,181 +1,87 @@
 
 include("../src/poisson.jl")
+include("../src/lagrange.jl")
 
 using Test
-@testset "test compute_elfield!" begin
- 
-    t_debx = Float64.([big"-1"//1,-10//1,-3//1, -1//1])
-    t_endx = Float64.([big"3"//1, 6//1,5//1,1//1])
-    t_szx = [16, 32, 128, 64]
-    t_stepx = (t_endx - t_debx) ./ t_szx
-    tt_meshx = UniformMesh.(t_debx,t_endx,t_szx; endpoint=false)
-    t_meshx = totuple(tt_meshx)
 
-    # t_debv =Float64.([big"-3"//1,-9//1,1//1, -1//1])
-    # t_endv = Float64.([big"1"//1, 7//1,5//1,3//1])
-    # t_szv = [4, 8, 4, 4]
-    # t_stepv = (t_endv - t_debv) ./ t_szv
-    # tt_meshv = UniformMesh.(t_debv,t_endv,t_szv; endpoint=false)
-    # t_meshv = totuple(tt_meshv)
+function compute_elfield(
+    t_mesh_x::NTuple{N,UniformMesh{T}},
+    rho::Array{T, N},
+    pfft
+) where {T <: AbstractFloat, N}
 
-    rho = rand(totuple(t_szx)...)
-    rho .-= sum(rho)/length(rho)
-    println("size(rho)=$(size(rho))")
+    fct_k(v)= im/sum(v.^2)
 
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
+    v_k = vec_k_fft.(t_mesh_x)
+    sz = length.(t_mesh_x)
 
-    v_k = vec_k_fft.(t_meshx)
+    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
+    buf[1] = 0im
 
-    pfft = PrepareFftBig(length.(t_meshx),Float64;numdims=4,dims=ntuple(x->x,4))
+    return ntuple( 
+    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
+    N
+)
+end
 
-#     buf = fftgen(pfft, rho)
+function initmesh(t_deb, t_end, t_size)
+    t_step = (t_end - t_deb) ./ t_size
+    return totuple(UniformMesh.(t_deb,t_end,t_size; endpoint=false)), t_step
+end
 
-#     array_k = collect(Iterators.product(v_k...))
+
+function test_poisson(T::DataType, isfft=true)
     
-#     println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
+    t_debsp = T.([-1//1,-10//1,-3//1])
+    t_endsp = T.([3//1, 6//1,5//1])
+    t_szsp = (8, 4, 16)
+    Nsp = 3
+    t_debv = T.([-3//1, -9//1, 1//1, -1//1])
+    t_endv = T.([ 1//1, 7//1, 5//1, 3//1])
+    t_szv = (4, 8, 4, 4)
+    base_dt = one(T)/80
 
-     N = 4
+    t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
+    t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
-#     e_ref = ntuple( 
-#     x -> real(ifftgen(pfft, fct_k.(x, array_k) .* buf )),
-#     N
-# )
-    @time e = compute_elfield(t_meshx, rho, pfft )
-    @time e_other = compute_elfieldother(t_meshx, rho, pfft )
-    @time e2 = compute_elfield(t_meshx, rho, missing )
-    @time e2_other = compute_elfieldother(t_meshx, rho, missing )
+    interp = Lagrange(T,3)
+    adv = Advection(t_meshsp, t_meshv, ntuple(x->interp,3), ntuple(x->interp,4), base_dt)
 
-    for i=1:N
-        @test isapprox(e_other[i], e[i], rtol=1e-10, atol=1e-10)
-        @test isapprox(e2_other[i], e2[i], rtol=1e-10, atol=1e-10)
-        @test isapprox(e2[i], e[i], rtol=1e-10, atol=1e-10)
+    tab = rand(T, t_szsp..., t_szv...)
+
+    pc = PoissonConst(adv; isfftbig=isfft)
+
+    pvar = PoissonVar(pc)
+
+    advdata = AdvectionData(adv, tab, pvar)
+
+    advdata.state_coef = 2
+    advdata.state_dim = 1
+    init!(advdata)
+    rhoref = zeros(T, t_szsp)
+    compute_charge!(rhoref, t_meshv, tab)
+
+    @test rhoref == pvar.rho
+
+    pfft = if isfft 
+                PrepareFftBig(t_szsp, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
+    else
+        missing
     end
 
-end
-@testset "test compute_elfield! BigFloat" begin
- 
-    t_debx = BigFloat.([big"-1"//1,-10//1,-3//1, -1//1])
-    t_endx = BigFloat.([big"3"//1, 6//1,5//1,1//1])
-    t_szx = [16, 8, 32, 8]
-    t_stepx = (t_endx - t_debx) ./ t_szx
-    tt_meshx = UniformMesh.(t_debx,t_endx,t_szx; endpoint=false)
-    t_meshx = totuple(tt_meshx)
+    refelfield = compute_elfield(t_meshsp, rhoref, pfft)
 
-    # t_debv =Float64.([big"-3"//1,-9//1,1//1, -1//1])
-    # t_endv = Float64.([big"1"//1, 7//1,5//1,3//1])
-    # t_szv = [4, 8, 4, 4]
-    # t_stepv = (t_endv - t_debv) ./ t_szv
-    # tt_meshv = UniformMesh.(t_debv,t_endv,t_szv; endpoint=false)
-    # t_meshv = totuple(tt_meshv)
-    T = BigFloat
-    rho = rand(BigFloat, totuple(t_szx)...)
-    rho .-= sum(rho)/length(rho)
-    println("size(rho)=$(size(rho))")
-
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
-
-    v_k = vec_k_fft.(t_meshx)
-
-    pfft = PrepareFftBig(length.(t_meshx),BigFloat;numdims=4,dims=ntuple(x->x,4))
-
-#     buf = fftgen(pfft, rho)
-
-#     array_k = collect(Iterators.product(v_k...))
-    
-#     println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-     N = 4
-
-#     e_ref = ntuple( 
-#     x -> real(ifftgen(pfft, fct_k.(x, array_k) .* buf )),
-#     N
-# )
-    Base.GC.gc(false)
-    @time e = compute_elfield(t_meshx, rho, pfft )
-    Base.GC.gc(false)
-    @time e_other = compute_elfieldother(t_meshx, rho, pfft )
-
-    e_mem = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfield!(e_mem, t_meshx, rho, pfft )
-    e_memother = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfieldother!(e_memother, t_meshx, rho, pfft )
-    e_memother2 = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfieldother2!(e_memother2, t_meshx, rho, pfft )
-
-    for i=1:N
-        @test isapprox(e_other[i], e[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_mem[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_memother[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_memother2[i], rtol=1e-40, atol=1e-40)
-    end
-
-end
-@testset "test Poisson BigFloat" begin
-    T = BigFloat
-    t_debx = T.([big"-1"//1,-10//1,-3//1, -1//1])
-    t_endx = T.([big"3"//1, 6//1,5//1,1//1])
-    t_szx = [16, 8, 32, 8]
-    t_stepx = (t_endx - t_debx) ./ t_szx
-    tt_meshx = UniformMesh.(t_debx,t_endx,t_szx; endpoint=false)
-    t_meshx = totuple(tt_meshx)
-
-    t_debv = T.([big"-3"//1,-9//1,1//1, -1//1])
-    t_endv = T.([big"1"//1, 7//1,5//1,3//1])
-    t_szv = [4, 8, 4, 4]
-    t_stepv = (t_endv - t_debv) ./ t_szv
-    tt_meshv = UniformMesh.(t_debv,t_endv,t_szv; endpoint=false)
-    t_meshv = totuple(tt_meshv)
-    interp=Lagrange(BigFloat,3)
-    adv = Advection(t_meshx, t_meshv, ntuple(x->interp,4),ntuple(x->interp,4),one(T)/80)
-    tab = rand(T, sizeall(adv))
-
-    rho = rand(BigFloat, totuple(t_szx)...)
-    rho .-= sum(rho)/length(rho)
-    println("size(rho)=$(size(rho))")
-
-    fct_k(ind,v)= v[ind] == 0 ? 0im : im*v[ind]/sum(v.^2)
-
-    v_k = vec_k_fft.(t_meshx)
-
-    pfft = PrepareFftBig(length.(t_meshx),BigFloat;numdims=4,dims=ntuple(x->x,4))
-
-#     buf = fftgen(pfft, rho)
-
-#     array_k = collect(Iterators.product(v_k...))
-    
-#     println("size(buf)=$(size(buf)) size(array_k)=$(size(array_k))")
-
-     N = 4
-
-#     e_ref = ntuple( 
-#     x -> real(ifftgen(pfft, fct_k.(x, array_k) .* buf )),
-#     N
-# )
-    Base.GC.gc(false)
-    @time e = compute_elfield(t_meshx, rho, pfft )
-    Base.GC.gc(false)
-    @time e_other = compute_elfieldother(t_meshx, rho, pfft )
-
-    e_mem = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfield!(e_mem, t_meshx, rho, pfft )
-    e_memother = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfieldother!(e_memother, t_meshx, rho, pfft )
-    e_memother2 = ntuple(x-> zeros(Complex{T},totuple(t_szx)...), N)
-    Base.GC.gc(false)
-    @time compute_elfieldother2!(e_memother2, t_meshx, rho, pfft )
-
-    for i=1:N
-        @test isapprox(e_other[i], e[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_mem[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_memother[i], rtol=1e-40, atol=1e-40)
-        @test isapprox(e_other[i], e_memother2[i], rtol=1e-40, atol=1e-40)
+    for i=1:Nsp
+        @test refelfield[i] == pvar.t_elfield[i]
     end
 
 end
 
+@testset "Poisson Float64" begin
+    test_poisson(Float64, true)
+    test_poisson(Float64, false)
+end
+@testset "Poisson Float64" begin
+    test_poisson(BigFloat)
+end
 

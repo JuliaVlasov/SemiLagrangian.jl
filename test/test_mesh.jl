@@ -39,6 +39,19 @@ using Test
     
 end
 
+function test_vec_k_fft(vbeg::T, vend::T, len) where{T}
+    mid=div(len,2)
+    ref = circshift((-mid):(mid-1), mid)
+    ref *= 2T(pi)/(vend-vbeg)
+    @test ref == vec_k_fft(UniformMesh(vbeg, vend, len; endpoint=false))
+end 
+
+
+@testset "test vec_k_fft" begin
+    test_vec_k_fft(-1.0, 1.0, 64)
+    test_vec_k_fft(-big"1.0", big"1.0", 64)
+end
+
 @testset "test compute_ee" begin
     t_deb =[big"-1"//1,-10//1,-3//1, -1//1]
     t_end = [big"3"//1, 6//1,5//1,1//1]
@@ -51,6 +64,7 @@ end
     resref = prod(step, t_mesh) * sum(t.^2)
     @test resref == compute_ee(t_mesh, t)
 end
+
 
 
 @testset "test compute_ke" begin

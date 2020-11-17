@@ -173,9 +173,11 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
 end
 getext(self)=self.parext
 getdata(self)=self.data
-getcur_t(self) = self.adv.tab_coef[self.state_coef] * self.adv.dt_base
+getcur_t(adv::Advection, state_coef::Int)=adv.tab_coef[state_coef] * adv.dt_base
+getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_coef)
 getstate_dim(self)=self.state_dim
-isvelocitystate(self::AdvectionData)=self.state_coef%2 == 0
+isvelocitystate(state_coef::Int)=state_coef%2 == 0
+isvelocitystate(self::AdvectionData)=isvelocitystate(self.state_coef)
 function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where{T,Nsp,Nv,Nsum}
     return isvelocitystate(self)*Nsp+self.state_dim
 end

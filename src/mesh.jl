@@ -57,22 +57,27 @@ end
 
 # export compute_charge!
 
+# convert a vector to a tuple
 totuple(v)=Tuple(x for x in v)
+# convert a tuple to a vector
 tovector(t)=[x for x in t]
 
+# construct a tuple of size nb, with ones except at index ind the value sz
 tupleshape(ind::Int, nb::Int, sz::Int)=Tuple(((x==ind) ? sz : 1) for x in 1:nb)
+
+# construct an array with nb dims, mesh.points on dim=ind, the other dims have a size of one
 function tupleshape(ind::Int, nb::Int, mesh::UniformMesh{T}) where{T}
     return reshape(mesh.points, tupleshape(ind, nb, mesh.length))
 end
-function myproduct(t::NTuple{N,Vector{T}}) where{N,T}
-    res =  Array{Tuple{},N}(undef,totuple(ones(Int,N)))
-    res[1] = ()
-    fct(a,b)=(a...,b)
-    for (ind, tt) in enumerate(t)
-        res = fct.(res,reshape(tt,tupleshape(ind,N,length(tt))))
-    end
-    res
-end
+# function myproduct(t::NTuple{N,Vector{T}}) where{N,T}
+#     res =  Array{Tuple{},N}(undef,totuple(ones(Int,N)))
+#     res[1] = ()
+#     fct(a,b)=(a...,b)
+#     for (ind, tt) in enumerate(t)
+#         res = fct.(res,reshape(tt,tupleshape(ind,N,length(tt))))
+#     end
+#     res
+# end
 function dotprod(t_mesh::NTuple{N, UniformMesh{T}}) where{N,T}
 #    res = ones(T,totuple(ones(Int,N))) # array of N dimensions with only one one.
     res = ones(T,ntuple(x->1,N)) # array of N dimensions with only one one.
@@ -97,6 +102,16 @@ function compute_ee(t_mesh_x::NTuple{N,UniformMesh}, elfield::Array{T,N}) where 
     dx = prod(step, t_mesh_x)
     return dx * sum(elfield.^2)
 end
+function compute_ee(
+    t_mesh_sp::NTuple{N,UniformMesh}, 
+    t_elf::NTuple{N,Array{T,N}}
+) where {T,N}
+    res = zero(T)
+    for i=1:N
+        res += compute_ee(t_mesh_sp, t_elf[i])
+    end
+    res
+end
 """
 kinetic Energie 
 1/2∫∫ v^2 f(x,v,t) dv dx
@@ -108,7 +123,7 @@ function compute_ke( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) 
     sum_x .= sum(fvx, dims = 2)[:,1]
     return dx * dv * sum( mesh_v.points .^ 2 .* sum_x)
 end
-function compute_ke( 
+function compute_ke_vx( 
     t_mesh_v::NTuple{N, UniformMesh}, 
     t_mesh_x::NTuple{N, UniformMesh}, 
     fvx::Array{T,N2}
@@ -119,6 +134,20 @@ function compute_ke(
     sum_x = Array{T,N}(undef,size(fvx)[1:N])
     sum_x .= reshape(sum(fvx, dims = totuple((N+1):N2)), size(fvx)[1:N] )
     return dx * dv * sum( dotprod(t_mesh_v) .^ 2 .* sum_x)
+end
+function compute_ke( 
+    t_mesh_sp::NTuple{Nsp, UniformMesh}, 
+    t_mesh_v::NTuple{Nv, UniformMesh}, 
+    f::Array{T,Nsum}
+) where {T, Nsp, Nv, Nsum}
+    Nsum == Nsp+Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
+    szsp=length.(t_mesh_sp)
+    szv=length.(t_mesh_v)
+    dsp = prod(step, t_mesh_sp)
+    dv = prod(step, t_mesh_v)
+    sum_sp = Array{T,Nv}(undef,szv)
+    sum_sp .= reshape(sum(f, dims = ntuple(x->x,Nsp)), szv )
+    return dsp * dv * sum( dotprod(t_mesh_v) .^ 2 .* sum_sp)
 end
 
 # function compute_etot( mesh_v::UniformMesh, mesh_x::UniformMesh, fvx::Array{T,2}) where {T}
@@ -142,32 +171,32 @@ end
 #     rho .= dv .* vec(sum(fvx, dims = 1))
 #     rho .= rho .- mean(rho)
 # end
-function compute_charge!(
-    rho::Array{T,N},
-    t_mesh_v::NTuple{N,UniformMesh{T}},
-    f::Array{T,N2},
-    tuple_v
-) where {T, N, N2}
-    dv = prod(step, t_mesh_v)
-    rho .= dv * reshape(sum(f, dims = tuple_v), size(rho))
-    rho .-= sum(rho)/prod(size(rho))
-    missing
-end
-function compute_charge_vx!(
-    rho::Array{T,N},
-    t_mesh_v::NTuple{N,UniformMesh{T}},
-    fvx::Array{T,N2},
-) where {T, N, N2}
-    return compute_charge!(rho,t_mesh_v,fvx,ntuple(x -> x, N))
-end
-function compute_charge_xv!(
-    rho::Array{T,N},
-    t_mesh_v::NTuple{N,UniformMesh{T}},
-    fxv,
-) where {T, N}
-    return compute_charge!(rho,t_mesh_v,fxv,ntuple(x -> N+x, N))
-end
-compute_charge!(rho,t_mesh_v,fvx)=compute_charge_vx!(rho,t_mesh_v,fvx)
+# function compute_charge!(
+#     rho::Array{T,N},
+#     t_mesh_v::NTuple{N,UniformMesh{T}},
+#     f::Array{T,N2},
+#     tuple_v
+# ) where {T, N, N2}
+#     dv = prod(step, t_mesh_v)
+#     rho .= dv * reshape(sum(f, dims = tuple_v), size(rho))
+#     rho .-= sum(rho)/prod(size(rho))
+#     missing
+# end
+# function compute_charge_vx!(
+#     rho::Array{T,N},
+#     t_mesh_v::NTuple{N,UniformMesh{T}},
+#     fvx::Array{T,N2},
+# ) where {T, N, N2}
+#     return compute_charge!(rho,t_mesh_v,fvx,ntuple(x -> x, N))
+# end
+# function compute_charge_xv!(
+#     rho::Array{T,N},
+#     t_mesh_v::NTuple{N,UniformMesh{T}},
+#     fxv,
+# ) where {T, N}
+#     return compute_charge!(rho,t_mesh_v,fxv,ntuple(x -> N+x, N))
+# end
+# compute_charge!(rho,t_mesh_v,fvx)=compute_charge_vx!(rho,t_mesh_v,fvx)
 # function selectdim(A, d::NTuple{N,Int}, i::NTuple{N,Int}) where{N}
 #     if N == 0
 #         A

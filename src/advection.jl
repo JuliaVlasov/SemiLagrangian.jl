@@ -5,7 +5,7 @@ include("mesh.jl")
 
 abstract type InterpolationType{T, iscirc} end
 
-#TODO ne plus avoir cette fonction
+# TODO ne plus avoir cette fonction
 function get_kl_ku(order)
     ku = div(order,2)
     kl = order-1-ku
@@ -66,6 +66,7 @@ struct Advection{T,Nsp,Nv,Nsum}
     t_interp_v::NTuple{Nv, InterpolationType{T, true}}
     dt_base::T
     tab_coef
+    v_square
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
@@ -78,12 +79,14 @@ struct Advection{T,Nsp,Nv,Nsum}
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
+        v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
         return new{T, Nsp, Nv, Nsum}(
     sizeall,
     sizeitr,
     t_mesh_sp, t_mesh_v, 
     t_interp_sp, t_interp_v,
     dt_base, tab_coef,
+    v_square
 )
     end
 end
@@ -256,3 +259,48 @@ function advection!(self::AdvectionData)
     end
     return nextstate!(self)
 end
+"""
+    compute_ke(t_mesh_sp, t_mesh_v, f)
+
+kinetic Energie
+
+1/2∫∫ v^2 f(x,v,t) dv dx
+
+# Arguments
+- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes
+- `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes
+- `f::Array{T,Nsum}` : function data.
+"""
+function compute_ke( 
+    t_mesh_sp::NTuple{Nsp, UniformMesh{T}}, 
+    t_mesh_v::NTuple{Nv, UniformMesh{T}}, 
+    f::Array{T,Nsum}
+) where {T, Nsp, Nv, Nsum}
+    Nsum == Nsp+Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
+    szv=length.(t_mesh_v)
+    dsp = prod(step, t_mesh_sp)
+    dv = prod(step, t_mesh_v)
+    sum_sp = Array{T,Nv}(undef,szv)
+    sum_sp .= reshape(sum(f, dims = ntuple(x->x, Nsp)), szv )
+    return  (dsp * dv / 2) * sum( dotprod(t_mesh_v) .^ 2 .* sum_sp)
+end
+"""
+    compute_ke(t_mesh_sp, t_mesh_v, f)
+
+kinetic Energie
+
+1/2∫∫ v^2 f(x,v,t) dv dx
+
+# Arguments
+- `self::AdvectionData` : mutable structure of variables data.
+"""
+function compute_ke(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
+    Nsum == Nsp+Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
+    adv=self.adv
+    szv=length.(adv.t_mesh_v)
+    dsp = prod(step, adv.t_mesh_sp)
+    dv = prod(step, adv.t_mesh_v)
+    sum_sp = reshape(sum(getdata(self), dims = ntuple(x->x, Nsp)), szv )
+    return (dsp * dv / 2) * sum(adv.v_square .* sum_sp)
+end  
+

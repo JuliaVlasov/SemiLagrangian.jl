@@ -75,13 +75,30 @@ function test_poisson(T::DataType, isfft=true)
         @test refelfield[i] == pvar.t_elfield[i]
     end
 
+    @test compute_ee(t_meshsp, refelfield)== compute_ee(advdata)
+
+end
+@testset "test compute_ee" begin
+    t_deb =[big"-1"//1,-10//1,-3//1, -1//1]
+    t_end = [big"3"//1, 6//1,5//1,1//1]
+    t_sz = [4, 4, 8, 16]
+    t_step = (t_end - t_deb) ./ t_sz
+    tt_mesh = UniformMesh.(t_deb,t_end,t_sz; endpoint=false)
+    t_mesh = totuple(tt_mesh)
+    N=4
+    t = ntuple( x->rationalize.(BigInt, rand(Float64,totuple(t_sz))), N)
+    
+    resref = sum( map( x->prod(step, t_mesh) * sum(x.^2), t ) )
+
+    @test resref == compute_ee(t_mesh, t)
+
 end
 
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
     test_poisson(Float64, false)
 end
-@testset "Poisson Float64" begin
+@testset "Poisson BigFloat" begin
     test_poisson(BigFloat)
 end
 

@@ -26,11 +26,17 @@ function test_adv(T::DataType)
     t_szv = (4, 8, 4, 4)
     base_dt = one(T)/80
 
+    Nsum = 7
+
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
     interp = Lagrange(T,3)
-    adv = Advection(t_meshsp, t_meshv, ntuple(x->interp,3),ntuple(x->interp,4), base_dt)
+    adv = Advection(
+    t_meshsp, t_meshv, 
+    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),4), 
+    base_dt
+)
 
     sref = (t_szsp..., t_szv...)
     @test sref == sizeall(adv)
@@ -40,32 +46,55 @@ function test_adv(T::DataType)
 
     tab = rand(T, sizeall(adv))
 
-    advd = AdvectionData(adv, tab, missing)
+    advd = AdvectionData(adv, tab, "missing")
+
 
     @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
 
     @test advd.state_coef == 1
     @test advd.state_dim == 1
+
+    @test advd.parext == getext(advd)
+    @test advd.parext == "missing"
+    @test advd.data == getdata(advd)
+    @test base_dt * adv.tab_coef[2] == getcur_t(adv, 2)
+    @test 1 == getstate_dim(advd)
+
     @test !isvelocitystate(advd)
     @test getcur_t(advd) == base_dt * advd.adv.tab_coef[1]
+
+
+    @test addcolon(3,(1,2,3,4,5)) == (1, 2, :, 3, 4, 5)
+
+
 
     t_coef =[1,1,1,2,2,2,2,3,3,3,1]
     t_dim = [1,2,3,1,2,3,4,1,2,3,1]
     t_indice = [1,2,3,4,5,6,7,1,2,3,1]
     t_v=[false,false,false,true,true,true,true,false,false,false,false]
+    t_result=[true,true,true,true,true,true,true,true,true,false,true]
 
-
-    i=1
-    @test advd.state_coef == t_coef[i] && advd.state_dim == t_dim[i] && t_indice[i] == _getcurrentindice(advd) && isvelocitystate(advd) == t_v[i]
 
     
-    i = 2    
-    while nextstate!(advd)
-        @test advd.state_coef == t_coef[i] && advd.state_dim == t_dim[i] && t_indice[i] == _getcurrentindice(advd) && isvelocitystate(advd) == t_v[i]
-        i += 1
-    end
-    @test advd.state_coef == t_coef[i] && advd.state_dim == t_dim[i] && t_indice[i] == _getcurrentindice(advd) && isvelocitystate(advd) == t_v[i]
+ 
+    for i=1:length(t_coef) 
+        @test advd.state_coef == t_coef[i] 
+        @test advd.state_dim == t_dim[i] 
+        @test t_indice[i] == _getcurrentindice(advd) 
+        @test isvelocitystate(advd) == t_v[i]
+        @test advd.state_dim == getstate_dim(advd)
+        @test getcur_t(advd) == base_dt * adv.tab_coef[t_coef[i]]
+        @test getbufslgn(advd) == advd.t_buf[t_indice[i]]
+        t = isvelocitystate(advd) ? adv.t_interp_v : adv.t_interp_sp
+        @test t[t_dim[i]] == getinterp(advd)
 
+        x = t_indice[i]
+        @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
+        
+        ret = nextstate!(advd)
+        @test ret == t_result[i]
+    end
+ 
     
 
 end
@@ -110,7 +139,7 @@ function test_ke(T::DataType)
     dv = prod(step, t_meshv)
     sum_sp = Array{T,Nv}(undef,szv)
     sum_sp .= reshape(sum(fxv, dims = ntuple(x->x,Nsp)), szv )
-    refres =  (dx * dv / 2) * sum( dotprod(t_meshv) .^ 2 .* sum_sp)
+    refres =  (dx * dv ) * sum( dotprod(t_meshv) .^ 2 .* sum_sp)
 
     @test refres == compute_ke(t_meshsp, t_meshv, fxv)
 end

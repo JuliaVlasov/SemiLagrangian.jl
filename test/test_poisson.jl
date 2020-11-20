@@ -64,7 +64,7 @@ function test_poisson(T::DataType, isfft=true)
     @test rhoref == pvar.rho
 
     pfft = if isfft 
-                PrepareFftBig(t_szsp, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
+            PrepareFftBig(t_szsp, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
     else
         missing
     end

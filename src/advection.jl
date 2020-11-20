@@ -152,7 +152,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
     state_coef # from 1 to length(adv.tab_coef)
     state_dim # from 1 to N
     data::Array{T,Nsum}
-    t_buf::NTuple{Nsum, Array{T}}
+    t_buf::NTuple{Nsum, Array{T,2}}
     parext
     isthread   
     function AdvectionData(
@@ -164,7 +164,8 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
         nbthr = isthread ? Threads.nthread() : 1
-        t_buf = ntuple(x -> Array{T,2}(undef, s[x], nbthr), Nsum)
+#        t_buf = ntuple(x -> Array{T,2}(undef, s[x], nbthr), Nsum)
+        t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         copyto!(datanew, data)
         return new{T,Nsp, Nv, Nsum}(
@@ -192,10 +193,10 @@ end
        
 # TODO precalculer dans Avection
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
-function getitr(self)
+function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
     ind = _getcurrentindice(self)
-    indtup = vcat(1:(ind-1),(ind+1):N2)
-    return addcolon.(ind, Iterator.product(sizeitr(adv)[indtup]))
+    indtup = vcat(1:(ind-1),(ind+1):Nsum)
+    return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
 end
 
 """
@@ -242,10 +243,16 @@ function advection!(self::AdvectionData)
     tabbuf = getbufslgn(self)
     interp = getinterp(self)
     init!(self)
-    if isthread
+    if !self.isthread
         buf=tabbuf[:,1]
+        fl=false
         for ind in getitr(self)
+#            println("ind=$ind")
             alpha = getalpha(self, ind)
+            if fl
+                println("ind=$ind alpha=$alpha")
+                fl=false
+            end
             interpolate!(buf, f[ind...], alpha, interp)
             f[ind...] .= buf
         end
@@ -282,7 +289,7 @@ function compute_ke(
     dv = prod(step, t_mesh_v)
     sum_sp = Array{T,Nv}(undef,szv)
     sum_sp .= reshape(sum(f, dims = ntuple(x->x, Nsp)), szv )
-    return  (dsp * dv / 2) * sum( dotprod(t_mesh_v) .^ 2 .* sum_sp)
+    return  (dsp * dv ) * sum( dotprod(t_mesh_v) .^ 2 .* sum_sp)
 end
 """
     compute_ke(t_mesh_sp, t_mesh_v, f)
@@ -301,6 +308,6 @@ function compute_ke(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Ns
     dsp = prod(step, adv.t_mesh_sp)
     dv = prod(step, adv.t_mesh_v)
     sum_sp = reshape(sum(getdata(self), dims = ntuple(x->x, Nsp)), szv )
-    return (dsp * dv / 2) * sum(adv.v_square .* sum_sp)
+    return (dsp * dv ) * sum(adv.v_square .* sum_sp)
 end  
 

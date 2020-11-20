@@ -31,6 +31,11 @@ using Test
     @time @test result == dotprod(t_mesh)
     @time @test result == dotprodother(t_mesh)
 
+    t_v = points.(t_mesh)
+    @time @test result == dotprod(t_v)
+    @time @test result == dotprodother(t_v)
+
+
     @test prod(t_step) == prod(step, t_mesh)
 
     @test totuple(t_sz) == length.(t_mesh)

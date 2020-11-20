@@ -27,6 +27,22 @@ function compute_charge!(
     missing
 end
 """
+    compute_charge!( self::AdvectionData)
+
+ Compute charge density
+
+ ρ(x,t) = ∫ f(x,v,t) dv
+
+ # Argument
+ - `self::AdvectionData` : mutable structure of variables data.
+"""
+function compute_charge!(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
+    Nsp+Nv == Nsum || thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum"))
+    pvar = getext(self)
+    compute_charge!(pvar.rho, self.adv.t_mesh_v, self.data)
+    missing
+end
+"""
     PoissonConst{T, Nsp, Nv}
     PoissonConst(adv::Advection{T, Nsp, Nv, Nsum}; isfftbig=true)
 
@@ -91,33 +107,61 @@ mutable struct PoissonVar{T, Nsp, Nv}
     end
 end
 """
+
+    compute_elfield!( self:AdvectionData)
+
+computation of electric field
+    ∇.e = - ρ
+
+
+
+# Argument
+ - `self::AdvectionData` : mutable structure of variables data.
+
+"""
+function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+    pv::PoissonVar{T, Nsp, Nv} = getext(self)
+    sz = size(pv.rho)
+    pfft = pv.pc.pfftbig
+    buf = fftgenall(pfft, pv.rho) .* pv.pc.fctv_k
+    buf[1] = 0im
+    pv.t_elfield = ntuple(
+    x -> real(ifftgenall(pfft, reshape(pv.pc.v_k[x],tupleshape(x,Nsp,sz[x])) .* buf )),
+    Nsp
+)
+    missing
+end
+
+"""
     init!(self::AdvectionData{T, Nsp, Nv, Nsum})
 
 Implementation of the interface function that is called at the begining of each advection
     This is implementation for Vlasov-Poisson equation
 
 """
+# TODO premier parametre de type PoissonVar
 function init!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
     state_dim = getstate_dim(self)
+    mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
         if self.state_dim == 1
-            pfft = pv.pc.pfftbig
-            sz = size(pv.rho)
-            compute_charge!(pv.rho, pv.pc.adv.t_mesh_v, getdata(self))
-            buf = fftgenall(pfft, pv.rho) .* pv.pc.fctv_k
-            buf[1] = 0im
-            pv.t_elfield = ntuple( 
-    x -> real(ifftgenall(pfft, reshape(pv.pc.v_k[x],tupleshape(x,Nsp,sz[x])) .* buf )),
-    Nsp
-)
+            compute_charge!(self)
+            compute_elfield!(self)
         end
-        bufcur = pv.t_elfield[state_dim]
+#        println("v trace init plus")
+        pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]
     else
-        mesh = self.adv.t_mesh_sp[state_dim]
-        bufcur = getcur_t(self)/step(mesh)*mesh.points
+        mesh_sp = self.adv.t_mesh_sp[state_dim]
+#        println("sp trace init moins")
+       pv.bufcur = (-getcur_t(self)/step(mesh_sp))*mesh_v.points
     end
 end
+function getpoissonvar(adv::Advection)
+    pc = PoissonConst(adv)
+    return PoissonVar(pc)
+end
+
 """
     getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) 
 
@@ -127,11 +171,13 @@ Implementation of the interface function that is called before each interpolatio
 function getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
     state_dim = getstate_dim(self)
-    if isvelocitystate(self)
-        return pv.bufcur[ind[1:Nsp]...]
+    alpha = if isvelocitystate(self)
+        pv.bufcur[ind[1:Nsp]...]
     else
-        return bufcur[ind[state_dim+Nsp]]
+        pv.bufcur[ind[self.state_dim+Nsp]]
     end
+#    println("ind=$ind alpha=$alpha")
+    return alpha
 end
     
 """

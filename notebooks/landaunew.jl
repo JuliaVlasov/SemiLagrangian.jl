@@ -21,6 +21,7 @@ using LinearAlgebra
 # +
 import Base.Threads: @spawn, @sync, nthreads, threadid
 include("../src/advection.jl")
+include("../src/poisson.jl")
 include("../src/spline.jl")
 include("../src/bspline.jl")
 include("../src/bsplinelu.jl")
@@ -31,13 +32,13 @@ include("../src/interpolation.jl")
 
 
 
-function landau( 
+function landau_old( 
     dt::T, 
     epsilon::T,
     nbdt, 
     tabcoef::Vector{T},
-    mesh_x::UniformMesh{T,ndims}, 
-    mesh_v::UniformMesh{T,ndims}, 
+    mesh_x::UniformMesh{T}, 
+    mesh_v::UniformMesh{T}, 
     interp_x::InterpolationType{T, true},
     interp_v::InterpolationType{T, true}
 ) where{T,ndims}
@@ -141,24 +142,75 @@ function landau(
     end
     println("diff=$(maxall-minall)")
 end
+
+function trace_energy(advd::AdvectionData, t)
+
+    if t == 0
+        println("#time\tel-energy\tkinetic-energy\tglobal-energy")
+    end
+
+    compute_charge!(advd)
+    compute_elfield!(advd)
+    elenergy = Float64(compute_ee(advd))
+    kinenergy = Float64(compute_ke(advd))
+    energyall = elenergy + kinenergy
+    println("$t\t$elenergy\t$kinenergy\t$energyall")
+end
+
+
+function landau(advd::AdvectionData, nbdt)
+
+    dt = advd.adv.dt_base
+    trace_energy(advd, 0.0)
+    for i=1:nbdt
+        while advection!(advd)
+        end
+        trace_energy(advd, Float64(i*dt))
+    end
+    println("#  end")
+end
     
 
-eps    = big"0.001"
+epsilon = big"0.5"
 nbdt = 50
 dt = big"0.1"
-tabcoef=[big"0.5", big"1."]
 
 
-xmin, xmax, nx =  big"0.", 4big(pi),  64
+
+spmin, spmax, nsp =  big"0.", 4big(pi),  64
 vmin, vmax, nv = -big"6.", big"6.", 128
 
-mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false, isfft=true )
+mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
 mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
 
 
-interp=Lagrange(BigFloat,51)
+interp=Lagrange(BigFloat,21)
 
-landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
+T = BigFloat
+
+println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
+println("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
+println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
+println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
+println("# type=$T precision = $(precision(T))")
+
+adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt)
+
+fct_sp(x)=epsilon * cos(x/2) + 1
+fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
+lgn_sp = fct_sp.(mesh_sp.points)
+lgn_v = fct_v.(mesh_v.points)
+
+data = dotprod((lgn_sp, lgn_v))
+
+pvar = getpoissonvar(adv)
+
+advdata = AdvectionData(adv, data, pvar)
+
+landau(advdata, nbdt)
+
+
+# landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
 
 
 

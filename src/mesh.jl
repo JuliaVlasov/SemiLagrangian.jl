@@ -66,10 +66,26 @@ tovector(t)=[x for x in t]
 tupleshape(ind::Int, nb::Int, sz::Int)=Tuple(((x==ind) ? sz : 1) for x in 1:nb)
 
 # construct an array with nb dims, mesh.points on dim=ind, the other dims have a size of one
+function tupleshape(ind::Int, nb::Int, v::Vector{T}) where{T}
+    return reshape(v, tupleshape(ind, nb, length(v)))
+end
+function dotprod(t_v::NTuple{N, Vector{T}}) where{N,T}
+    #    res = ones(T,totuple(ones(Int,N))) # array of N dimensions with only one one.
+    res = ones(T,ntuple(x->1,N)) # array of N dimensions with only one one.
+    for (ind, v) in enumerate(t_v)
+        res = res .* tupleshape(ind, N, v)
+    end
+    return res
+end
+function dotprodother(t_v::NTuple{N, Vector{T}}) where{N,T}
+    return prod.(Iterators.product(t_v...))
+end
+
+# TODO supprimer les fonctions suivantes et les remplacer par les precedentes 
+# motivation : ORTHOGONALITE !!!!
 function tupleshape(ind::Int, nb::Int, mesh::UniformMesh{T}) where{T}
     return reshape(mesh.points, tupleshape(ind, nb, mesh.length))
 end
-
 function dotprod(t_mesh::NTuple{N, UniformMesh{T}}) where{N,T}
 #    res = ones(T,totuple(ones(Int,N))) # array of N dimensions with only one one.
     res = ones(T,ntuple(x->1,N)) # array of N dimensions with only one one.
@@ -81,5 +97,5 @@ end
 function dotprodother(t_mesh::NTuple{N, UniformMesh{T}}) where{N,T}
     return prod.(Iterators.product(points.(t_mesh)...))
 end
-
+    
 

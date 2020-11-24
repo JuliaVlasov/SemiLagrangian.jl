@@ -2,7 +2,6 @@
 include("fftbig.jl")
 include("advection.jl")
 
-
 """
     compute_charge!( rho, mesh_v, fvx)
 
@@ -139,6 +138,8 @@ function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, 
     missing
 end
 
+
+
 """
     init!(self::AdvectionData{T, Nsp, Nv, Nsum})
 
@@ -153,11 +154,8 @@ function init!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
         if self.state_dim == 1
-            global cl_obs
-            clockbegin(cl_obs, 3)
             compute_charge!(self)
             compute_elfield!(self)
-            clockend(cl_obs, 3)
         end
 #        println("v trace init plus")
         pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]

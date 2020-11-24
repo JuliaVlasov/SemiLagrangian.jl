@@ -2,6 +2,10 @@
 #import Statistics: mean
 # export UniformMesh
 
+include("clockobs.jl")
+
+cl_obs = ClockObs(5)
+
 
 """
 

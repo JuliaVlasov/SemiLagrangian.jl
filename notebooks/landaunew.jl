@@ -148,17 +148,24 @@ function trace_energy(advd::AdvectionData, t)
     if t == 0
         println("#time\tel-energy\tkinetic-energy\tglobal-energy")
     end
-
+    global cl_obs
+    clockbegin(cl_obs,4)
     compute_charge!(advd)
     compute_elfield!(advd)
+    clockend(cl_obs,4)
+    clockbegin(cl_obs,5)
     elenergy = Float64(compute_ee(advd))
     kinenergy = Float64(compute_ke(advd))
+    clockend(cl_obs,5)
     energyall = elenergy + kinenergy
     println("$t\t$elenergy\t$kinenergy\t$energyall")
 end
 
 
 function landau(advd::AdvectionData, nbdt)
+
+    global cl_obs
+    clockreset(cl_obs)
 
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)
@@ -168,6 +175,7 @@ function landau(advd::AdvectionData, nbdt)
         trace_energy(advd, Float64(i*dt))
     end
     println("#  end")
+    printall(cl_obs)
 end
     
 
@@ -205,7 +213,8 @@ data = dotprod((lgn_sp, lgn_v))
 
 pvar = getpoissonvar(adv)
 
-advdata = AdvectionData(adv, data, pvar)
+advdata = AdvectionData(adv, data, pvar; isthread=true)
+# advdata = AdvectionData(adv, data, pvar)
 
 landau(advdata, nbdt)
 

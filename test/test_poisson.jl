@@ -71,11 +71,15 @@ function test_poisson(T::DataType, isfft=true)
 
     refelfield = compute_elfield(t_meshsp, rhoref, pfft)
 
+#    prec = (T==BigFloat) ? 1e-70 : 1e-15
+
     for i=1:Nsp
-        @test refelfield[i] == pvar.t_elfield[i]
+#        @test isapprox(refelfield[i], pvar.t_elfield[i], atol=prec, rtol=prec)
+        @test isapprox(refelfield[i], pvar.t_elfield[i])
     end
 
-    @test compute_ee(t_meshsp, refelfield)== compute_ee(advdata)
+#    @test isapprox(compute_ee(t_meshsp, refelfield), compute_ee(advdata), atol=prec, rtol=prec)
+    @test isapprox(compute_ee(t_meshsp, refelfield), compute_ee(advdata))
 
 end
 @testset "test compute_ee" begin

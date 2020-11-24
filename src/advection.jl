@@ -147,31 +147,30 @@ Mutable structure that contains variable parameters of advection series
 - `getalpha(self::AdvectionData, ind)` : return the alpha number that is used for interpolation. 
 
 """
-mutable struct AdvectionData{T,Nsp,Nv,Nsum}
+mutable struct AdvectionData{T,Nsp,Nv,Nsum,isthr}
     adv::Advection{T,Nsp,Nv,Nsum}
     state_coef # from 1 to length(adv.tab_coef)
     state_dim # from 1 to N
     data::Array{T,Nsum}
     t_buf::NTuple{Nsum, Array{T,2}}
     parext
-    isthread   
     function AdvectionData(
     adv::Advection{T,Nsp,Nv,Nsum}, 
     data::Array{T,Nsum},
     parext; 
     isthread::Bool=false
-) where{T,Nsp,Nv,Nsum}
+) where{T,Nsp,Nv,Nsum,isthr}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
-        nbthr = isthread ? Threads.nthread() : 1
+        nbthr = isthread ? Threads.nthreads() : 1
 #        t_buf = ntuple(x -> Array{T,2}(undef, s[x], nbthr), Nsum)
         t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         copyto!(datanew, data)
-        return new{T,Nsp, Nv, Nsum}(
+        return new{T,Nsp, Nv, Nsum, isthread}(
     adv, 1, 1,  
     datanew, t_buf, 
-    parext, isthread
+    parext
 )
     end
 end
@@ -198,6 +197,7 @@ function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
     indtup = vcat(1:(ind-1),(ind+1):Nsum)
     return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
 end
+getitrbis(self)=getitr(self)
 
 """
     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
@@ -238,32 +238,52 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 - `true` : means that the advection series must continue
 - `false` : means that the advection series is ended.
 """
-function advection!(self::AdvectionData)
+function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv, Nsum, isthr}
     f = self.data
     tabbuf = getbufslgn(self)
+#    tabbuf = ntuple(x->zeros(T, size(self.data)[_getcurrentindice(self)]), Threads.nthreads())
+#    tabbuf = zeros(T,size(self.data)[_getcurrentindice(self)], Threads.nthreads())
     interp = getinterp(self)
     init!(self)
-    if !self.isthread
-        buf=tabbuf[:,1]
-        fl=false
-        for ind in getitr(self)
-#            println("ind=$ind")
-            alpha = getalpha(self, ind)
-            if fl
-                println("ind=$ind alpha=$alpha")
-                fl=false
-            end
-            interpolate!(buf, f[ind...], alpha, interp)
-            f[ind...] .= buf
-        end
-    else
+    global cl_obs
+    clockbegin(cl_obs,_getcurrentindice(self))
+#     if !self.isthread
+# #        fl=true
+#         buf = tabbuf[:,1]
+#         for ind in getitr(self)
+#             println("ind=$ind")
+# #            buf=tabbuf[:,1]
+#             alpha = getalpha(self, ind)
+#             interpolate!(buf, f[ind...], alpha, interp)
+#             f[ind...] .= buf
+#         end
+#     end
+#    else
+#        Threads.@threads :static for ind in getitr(self)
+    if isthr
         Threads.@threads for ind in getitr(self)
             alpha = getalpha(self, ind)
-            buf=tabbuf[:,Threads.getthreadid()]
+            bufth = tabbuf[:,Threads.threadid()]
+            # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
+            # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
+            interpolate!(bufth, f[ind...], alpha, interp)
+            f[ind...] .= bufth
+            # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+        end
+    else
+        buf=tabbuf[:,1]
+        f=self.data
+        println("trace")
+        for ind in getitrbis(self)
+            alpha = getalpha(self, ind)
             interpolate!(buf, f[ind...], alpha, interp)
             f[ind...] .= buf
         end
+        @assert false "ON est passé par là"
     end
+#    end
+    clockend(cl_obs,_getcurrentindice(self))
+
     return nextstate!(self)
 end
 """

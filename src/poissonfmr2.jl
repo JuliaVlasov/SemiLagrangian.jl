@@ -61,6 +61,7 @@ Constant data for the computation of poisson coefficients
 """
 struct PoissonConst{T, Nsp, Nv}
     adv
+    v_k
     fctv_k
     pfftbig
     function PoissonConst(
@@ -71,15 +72,14 @@ struct PoissonConst{T, Nsp, Nv}
         fct_k(v) = im / sum(v .^ 2)
         v_k = vec_k_fft.(adv.t_mesh_sp)
         sz = length.(adv.t_mesh_sp)
-        fctv_k_gen = fct_k.(collect(Iterators.product(v_k...)))
-        fctv_k_gen[1] = 0
-        fctv_k = ntuple(x->reshape(v_k[x],tupleshape(x,Nsp,sz[x])) .* fctv_k_gen, Nsp)
+        fctv_k = fct_k.(collect(Iterators.product(v_k...)))
+        fctv_k[1] = 0
         pfftbig = if isfftbig
             PrepareFftBig(sz, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
         else
             missing
         end
-        return new{T,Nsp,Nv}(adv, fctv_k, pfftbig)
+        return new{T,Nsp,Nv}(adv, v_k, fctv_k, pfftbig)
     end
 end
 """
@@ -122,18 +122,19 @@ computation of electric field
 """
 function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
-
-#    ICI Revenir en arriere (au dernier commit) et y aller plus progressivement
-
-    
     sz = size(pv.rho)
     pfft = pv.pc.pfftbig
+    toto = ntuple(x->pv.pc.fctv_k,Nsp)
+    v_k = ntuple(x->reshape(pv.pc.v_k[x],tupleshape(x,Nsp,sz[x])), Nsp)
+#    buf = fftgenall(pfft, pv.rho) .* pv.pc.fctv_k
     buf = fftgenall(pfft, pv.rho)
-    for i=1:Nsp
-        size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
-    end
-    pv.t_elfield = ntuple(
-    x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
+    buf[1] = 0im
+#    pv.t_elfield = ntuple(
+#    x -> real(ifftgenall(pfft, v_k[x] .* (buf .* toto[x]) )),
+#    Nsp
+# )
+pv.t_elfield = ntuple(
+    x -> real(ifftgenall(pfft, buf .* (v_k[x] .* toto[x]) )),
     Nsp
 )
     missing
@@ -153,11 +154,8 @@ function init!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
         if self.state_dim == 1
-            global cl_obs
-            clockbegin(cl_obs, 3)
             compute_charge!(self)
             compute_elfield!(self)
-            clockend(cl_obs, 3)
         end
 #        println("v trace init plus")
         pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]

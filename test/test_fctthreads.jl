@@ -41,7 +41,7 @@ function test_fctthreads()
     endall(ft)
 end
 function test_thrthreads()
-    nb = Threads.nthreads()-1
+    nb = Threads.nthreads()
 
     data = zeros(Int64,nb)
     fill!(data,4423)

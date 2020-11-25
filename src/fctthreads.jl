@@ -24,7 +24,7 @@ function _launchonethread(ft::FctThreads{N}, ind) where{N}
         if ft.isend[ind]
             break
         end
-        ft.fct(ft.data, ind, N)
+        ft.fct(ft, ind, N)
         Base.release(ft.semend[ind])
     end
 end

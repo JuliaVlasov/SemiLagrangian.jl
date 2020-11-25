@@ -12,6 +12,11 @@ function get_kl_ku(order)
     return kl, ku
 end
 
+addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
+function _getitr(ind, sizeitr, Nsum)
+    indtup = vcat(1:(ind-1),(ind+1):Nsum)
+    return addcolon.(ind, Iterators.product(sizeitr[indtup]...))
+end
 
 """
     Advection{T, Nsp, Nv, Nsum}
@@ -67,6 +72,7 @@ struct Advection{T,Nsp,Nv,Nsum}
     dt_base::T
     tab_coef
     v_square
+    itr
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
@@ -80,13 +86,15 @@ struct Advection{T,Nsp,Nv,Nsum}
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
+        itr = ntuple(x->_getitr(x, sizeitr, Nsum),Nsum)
         return new{T, Nsp, Nv, Nsum}(
     sizeall,
     sizeitr,
     t_mesh_sp, t_mesh_v, 
     t_interp_sp, t_interp_v,
     dt_base, tab_coef,
-    v_square
+    v_square,
+    itr
 )
     end
 end
@@ -108,6 +116,7 @@ Return a tuple of iterators from one to the sizes of each dimensions
 - `adv::Advection` : Advection structure.
 """
 sizeitr(adv)=adv.sizeitr
+
 
 # 
 """
@@ -196,12 +205,12 @@ end
        
 # TODO precalculer dans Avection
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
-function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
-    ind = _getcurrentindice(self)
-    indtup = vcat(1:(ind-1),(ind+1):Nsum)
-    return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
-end
-getitrbis(self)=getitr(self)
+# function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
+#     ind = _getcurrentindice(self)
+#     indtup = vcat(1:(ind-1),(ind+1):Nsum)
+#     return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
+# end
+getitr(self)=self.adv.itr[_getcurrentindice(self)]
 
 """
     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})

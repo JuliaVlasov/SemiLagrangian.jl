@@ -8,7 +8,8 @@ cl_obs=ClockObs(2)
 
 nball=0
 
-function fct(tab, ind, nb)
+function fct(ft, ind, nb)
+    data = ft.data
     m = ind-1
     for (i, n) in enumerate(tab)
         if i%nb == m       
@@ -16,6 +17,9 @@ function fct(tab, ind, nb)
             global nball
             nball += 1
         end
+    end
+    if Threads.threadid() == 1
+        waitall(ft)
     end
 end
 
@@ -34,7 +38,6 @@ function test_fctthreads()
     clockbegin(cl_obs,1)
     for i = 1:10
         postall(ft)
-        waitall(ft)
     end
     clockend(cl_obs,1)
 

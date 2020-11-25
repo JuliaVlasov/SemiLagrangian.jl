@@ -225,12 +225,14 @@ function landau(advd::AdvectionData, nbdt)
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)
     printall(cl_obs)
+    clockreset(cl_obs)
     for i=1:nbdt
         while advection!(advd)
         end
         printall(cl_obs)
         trace_energy(advd, Float64(i*dt))
         printall(cl_obs)
+        clockreset(cl_obs)
     end
     println("#  end")
     printall(cl_obs)

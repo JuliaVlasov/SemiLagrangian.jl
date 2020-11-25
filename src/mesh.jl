@@ -4,7 +4,7 @@
 
 include("clockobs.jl")
 
-cl_obs = ClockObs(5)
+cl_obs = ClockObs(6)
 
 
 """

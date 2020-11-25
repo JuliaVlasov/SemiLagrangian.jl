@@ -181,6 +181,10 @@ getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_coef)
 getstate_dim(self)=self.state_dim
 isvelocitystate(state_coef::Int)=state_coef%2 == 0
 isvelocitystate(self::AdvectionData)=isvelocitystate(self.state_coef)
+function trans1(ind, n) 
+    1 < ind <= n || thrown(ArgumentException("ind=$ind n=$n we must have 1 < ind <= n"))
+    return ntuple(x-> (x == ind) ? 1 : ((x == 1) ? ind : x) , n)
+end
 function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where{T,Nsp,Nv,Nsum}
     return isvelocitystate(self)*Nsp+self.state_dim
 end

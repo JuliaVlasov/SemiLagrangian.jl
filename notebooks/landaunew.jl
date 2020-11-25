@@ -155,8 +155,10 @@ function trace_energy(advd::AdvectionData, t)
     clockend(cl_obs,4)
     clockbegin(cl_obs,5)
     elenergy = Float64(compute_ee(advd))
-    kinenergy = Float64(compute_ke(advd))
     clockend(cl_obs,5)
+    clockbegin(cl_obs,6)
+    kinenergy = Float64(compute_ke(advd))
+    clockend(cl_obs,6)
     energyall = elenergy + kinenergy
     println("$t\t$elenergy\t$kinenergy\t$energyall")
 end
@@ -222,10 +224,13 @@ function landau(advd::AdvectionData, nbdt)
 
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)
+    printall(cl_obs)
     for i=1:nbdt
         while advection!(advd)
         end
+        printall(cl_obs)
         trace_energy(advd, Float64(i*dt))
+        printall(cl_obs)
     end
     println("#  end")
     printall(cl_obs)

@@ -17,6 +17,19 @@ end
     @test kl == 2 && ku == 3
 end
 
+@testset "test splitvec" begin
+
+    v = collect(1:53)
+    t = splitvec(5,v)
+    @test t[1] == collect(1:11)
+    @test t[2] == collect(12:22)
+    @test t[3] == collect(23:33)
+    @test t[4] == collect(34:43)
+    @test t[5] == collect(44:53)
+
+
+end
+
 function test_adv(T::DataType)
     t_debsp = T.([-1,-10,-3])
     t_endsp = T.([3, 6, 5])

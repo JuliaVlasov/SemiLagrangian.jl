@@ -12,10 +12,21 @@ function get_kl_ku(order)
     return kl, ku
 end
 
+function splitvec(nb, v)
+    lgtot = length(v)
+    lg, r = divrem(lgtot,nb)
+    
+    return vcat(map(x -> v[((x-1)*(lg+1)+1):x*(lg+1)], 1:r), map(x->v[((x-1)*lg+r+1):(x*lg+r)], (r+1):nb) )
+end
+
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
 function _getitr(ind, sizeitr, Nsum)
     indtup = vcat(1:(ind-1),(ind+1):Nsum)
     return addcolon.(ind, Iterators.product(sizeitr[indtup]...))
+ end
+function _getitr(ind, sizeitr, Nsum, nbth)
+    itr = _getitr(ind, sizeitr, Nsum)
+    return splitvec(nbth, itr)
 end
 
 """

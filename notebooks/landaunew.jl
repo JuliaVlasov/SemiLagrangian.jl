@@ -171,65 +171,11 @@ function landau(advd::AdvectionData, nbdt)
 
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)
-    for i=1:nbdt
-        while advection!(advd)
-        end
-        trace_energy(advd, Float64(i*dt))
-    end
-    println("#  end")
-    printall(cl_obs)
-end
-    
-function landau1_1()
-    epsilon = big"0.5"
-    nbdt = 50
-    dt = big"0.1"
-
-    spmin, spmax, nsp =  big"0.", 4big(pi),  64
-    vmin, vmax, nv = -big"6.", big"6.", 128
-
-    mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
-    mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
-
-    interp=Lagrange(BigFloat,21)
-
-    T = BigFloat
-
-    println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
-    println("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
-    println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
-    println("# type=$T precision = $(precision(T))")
-
-    adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt)
-
-    fct_sp(x)=epsilon * cos(x/2) + 1
-    fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
-    lgn_sp = fct_sp.(mesh_sp.points)
-    lgn_v = fct_v.(mesh_v.points)
-
-    data = dotprod((lgn_sp, lgn_v))
-
-    pvar = getpoissonvar(adv)
-
-    advdata = AdvectionData(adv, data, pvar; isthread=true)
-    # advdata = AdvectionData(adv, data, pvar)
-
-    landau(advdata, nbdt)
-end
-function landau(advd::AdvectionData, nbdt)
-
-    global cl_obs
-    clockreset(cl_obs)
-
-    dt = advd.adv.dt_base
-    trace_energy(advd, 0.0)
     printall(cl_obs)
     clockreset(cl_obs)
     for i=1:nbdt
         while advection!(advd)
         end
-        printall(cl_obs)
         trace_energy(advd, Float64(i*dt))
         printall(cl_obs)
         clockreset(cl_obs)
@@ -237,23 +183,23 @@ function landau(advd::AdvectionData, nbdt)
     println("#  end")
     printall(cl_obs)
 end
-function landau1_1()
-    epsilon = big"0.5"
+function landau1_1(T::DataType)
+    epsilon = T(0.5)
     nbdt = 50
-    dt = big"0.1"
+    dt = T(big"0.1")
 
 
 
-    spmin, spmax, nsp =  big"0.", 4big(pi),  64
-    vmin, vmax, nv = -big"6.", big"6.", 128
+    spmin, spmax, nsp =  T(0), T(4big(pi)),  64
+    vmin, vmax, nv = -T(6), T(6.), 128
 
     mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
     mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
 
 
-    interp=Lagrange(BigFloat,21)
+    interp=Lagrange(T,21)
 
-    T = BigFloat
+    
 
     println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
     println("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
@@ -277,26 +223,24 @@ function landau1_1()
 
     landau(advdata, nbdt)
 end   
-function landau2_2()
-    epsilon = big"0.5"
+function landau2_2(T::DataType)
+    epsilon = T(0.5)
     nbdt = 50
-    dt = big"0.1"
+    dt = T(big"0.1")
 
-    sp1min, sp1max, nsp1 =  big"0.", 4big(pi),  32
-    v1min, v1max, nv1 = -big"6.", big"6.", 32
+    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  32
+    v1min, v1max, nv1 = -T(6.), T(6.), 32
 
     mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
     mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )
 
-    sp2min, sp2max, nsp2 =  big"0.", 4big(pi),  32
-    v2min, v2max, nv2 = -big"6.", big"6.", 32
+    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  32
+    v2min, v2max, nv2 = -T(6.), T(6.), 32
 
     mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)
     mesh2_v = UniformMesh( v2min, v2max, nv2, endpoint = false )
 
-    interp=Lagrange(BigFloat,31)
-
-    T = BigFloat
+    interp=Lagrange(T,31)
 
     println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
     println("# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
@@ -316,6 +260,8 @@ function landau2_2()
     lgn2_v = fct_v.(mesh2_v.points)
 
     data = dotprod((lgn1_sp, lgn2_sp, lgn1_v, lgn2_v))
+    
+    println("typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
     pvar = getpoissonvar(adv)
 
@@ -325,7 +271,8 @@ function landau2_2()
     landau(advdata, nbdt)
 end
 # landau1_1()
-landau2_2()
+#landau2_2(BigFloat)
+landau2_2(Float64)
 # landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
 
 

@@ -74,7 +74,7 @@ struct PoissonConst{T, Nsp, Nv}
         fctv_k_gen = fct_k.(collect(Iterators.product(v_k...)))
         fctv_k_gen[1] = 0
         fctv_k = ntuple(x->reshape(v_k[x],tupleshape(x,Nsp,sz[x])) .* fctv_k_gen, Nsp)
-        pfftbig = if isfftbig
+        pfftbig = if isfftbig && T != Float64
             PrepareFftBig(sz, T; numdims=Nsp, dims=ntuple(x->x,Nsp))
         else
             missing
@@ -129,9 +129,9 @@ function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, 
     sz = size(pv.rho)
     pfft = pv.pc.pfftbig
     buf = fftgenall(pfft, pv.rho)
-    for i=1:Nsp
-        size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
-    end
+    # for i=1:Nsp
+    #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
+    # end
     pv.t_elfield = ntuple(
     x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
     Nsp

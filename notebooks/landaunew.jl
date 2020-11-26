@@ -229,12 +229,12 @@ function landau2_2(T::DataType, isthread)
     dt = T(big"0.1")
 
     sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  64
-    v1min, v1max, nv1 = -T(6.), T(6.), 64
+    v1min, v1max, nv1 = -T(6.), T(6.), 32
 
     mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
     mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )
 
-    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  32
+    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  64
     v2min, v2max, nv2 = -T(6.), T(6.), 32
 
     mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)

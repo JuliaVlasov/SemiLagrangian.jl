@@ -171,17 +171,17 @@ function landau(advd::AdvectionData, nbdt)
 
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)
-    printall(cl_obs)
+#    printall(cl_obs)
     clockreset(cl_obs)
     for i=1:nbdt
         while advection!(advd)
         end
         trace_energy(advd, Float64(i*dt))
-        printall(cl_obs)
+#        printall(cl_obs)
         clockreset(cl_obs)
     end
     println("#  end")
-    printall(cl_obs)
+# printall(cl_obs)
 end
 function landau1_1(T::DataType)
     epsilon = T(0.5)
@@ -228,8 +228,8 @@ function landau2_2(T::DataType, isthread)
     nbdt = 50
     dt = T(big"0.1")
 
-    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  32
-    v1min, v1max, nv1 = -T(6.), T(6.), 32
+    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  64
+    v1min, v1max, nv1 = -T(6.), T(6.), 64
 
     mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
     mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )

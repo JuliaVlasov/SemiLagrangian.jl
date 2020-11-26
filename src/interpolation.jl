@@ -12,7 +12,7 @@ return the interpolation polynomial for the given values of a function a a speci
 # Returns :
 - No return
 """
-function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {T, iscirc}
+@inline function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {T, iscirc}
  
     decint = convert(Int, floor(dec))
     decfloat = dec - decint

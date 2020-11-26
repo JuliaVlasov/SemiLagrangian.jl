@@ -17,7 +17,7 @@ end
     @test kl == 2 && ku == 3
 end
 
-@testset "test splitvec" begin
+@testset "test tools" begin
 
     v = collect(1:53)
     t = splitvec(5,v)
@@ -26,6 +26,9 @@ end
     @test t[3] == collect(23:33)
     @test t[4] == collect(34:43)
     @test t[5] == collect(44:53)
+
+    @test transperm(1,2,5) == [2,1,3,4,5]
+    @test transperm(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
 
 
 end

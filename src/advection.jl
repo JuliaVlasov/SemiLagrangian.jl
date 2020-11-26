@@ -19,16 +19,29 @@ function splitvec(nb, v)
     return vcat(map(x -> v[((x-1)*(lg+1)+1):x*(lg+1)], 1:r), map(x->v[((x-1)*lg+r+1):(x*lg+r)], (r+1):nb) )
 end
 
+function transperm(a,b,n)
+    p = collect(1:n)
+    p[a],p[b] = b, a
+    return p
+end
+
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
 function _getitr(ind, sizeitr, Nsum)
     indtup = vcat(1:(ind-1),(ind+1):Nsum)
     return addcolon.(ind, Iterators.product(sizeitr[indtup]...))
- end
+end
 function _getitr(ind, sizeitr, Nsum, nbth)
     itr = _getitr(ind, sizeitr, Nsum)
     return splitvec(nbth, itr)
 end
-
+function _getitr0(ind, sizeitr, Nsum)
+    indtup = transperm(1,ind,Nsum)[2:Nsum]
+    return addcolon.(1, Iterators.product(sizeitr[indtup]...))
+end
+function _getitr0(ind, sizeitr, Nsum, nbth)
+    itr = _getitr0(ind, sizeitr, Nsum)
+    return splitvec(nbth, itr)
+end
 """
     Advection{T, Nsp, Nv, Nsum}
     Advection(
@@ -84,6 +97,7 @@ struct Advection{T,Nsp,Nv,Nsum}
     tab_coef
     v_square
     itr
+    itrth
     nbth
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
@@ -99,7 +113,8 @@ struct Advection{T,Nsp,Nv,Nsum}
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
         nbth=Threads.nthreads()
-        itr = ntuple(x->_getitr(x, sizeitr, Nsum, nbth),Nsum)
+        itr = ntuple(x->_getitr(x, sizeitr, Nsum),Nsum)
+        itrth = ntuple(x->_getitr(x, sizeitr, Nsum, nbth),Nsum)
         return new{T, Nsp, Nv, Nsum}(
     sizeall,
     sizeitr,
@@ -108,6 +123,7 @@ struct Advection{T,Nsp,Nv,Nsum}
     dt_base, tab_coef,
     v_square,
     itr,
+    itrth,
     nbth
 )
     end
@@ -232,6 +248,7 @@ addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
 #     return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
 # end
 getitr(self)=self.adv.itr[_getcurrentindice(self)]
+getitr(self, indth)=self.adv.itrth[_getcurrentindice(self)][indth]
 
 """
     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
@@ -294,6 +311,10 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
 #     end
 #    else
 #        Threads.@threads :static for ind in getitr(self)
+    #f = self.data 
+    curind =  _getcurrentindice(self)
+    p = transperm(1, curind, Nsum)
+    f = curind != 1 ? permutedims(self.data, p) : self.data
     if isthr
         # Threads.@threads for ind in getitr(self)
         #     alpha = getalpha(self, ind)
@@ -304,30 +325,32 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
         #     f[ind...] .= bufth
         #     # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
         # end
-        itr = getitr(self)
         nbth = self.adv.nbth
         Threads.@threads for i=1:nbth
             bufth = view(tabbuf, :, i)
-            for ind in itr[i]
-                alpha = getalpha(self, ind)
+            @inbounds for indth in getitr(self,i)
+                alpha = getalpha(self, indth)
                 # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
                 # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
-                lgn = view(f, ind...)
-                interpolate!(bufth, lgn, alpha, interp)
-                lgn .= bufth
+                lgnth = view(f, indth[p]...)
+                interpolate!(bufth, lgnth, alpha, interp)
+                lgnth .= bufth
                 # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
             end
         end
     else
-        buf=tabbuf[:,1]
+        buf=view(tabbuf, :, 1)
         f=self.data
         println("trace")
-        for ind in getitrbis(self)
+        for ind in getitr(self)
             alpha = getalpha(self, ind)
-            interpolate!(buf, f[ind...], alpha, interp)
-            f[ind...] .= buf
+            lgn = view(f, ind[p]...)
+            interpolate!(buf, lgn, alpha, interp)
+            lgn .= buf
         end
-        @assert false "ON est passé par là"
+    end
+    if curind != 1
+        permutedims!(self.data, f, p)
     end
 #    end
     clockend(cl_obs,_getcurrentindice(self))

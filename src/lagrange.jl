@@ -31,7 +31,7 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
     return result
 end
 
-function get_origin(order)
+@inline function get_origin(order)
     v, _ = get_kl_ku(order)
     return -(v+1)
 end
@@ -69,11 +69,11 @@ struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
     end
     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
-get_order(lag::Lagrange)= size(lag.lagpol,1)-1
-get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
-get_precal(lag::Lagrange,decf)=[fct(decf) for fct in lag.lagpol]
-sol(lag::Lagrange,b)=b
-isbspline(_::Lagrange)=false
+@inline get_order(lag::Lagrange)= size(lag.lagpol,1)-1
+@inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
+@inline get_precal(lag::Lagrange,decf)=[fct(decf) for fct in lag.lagpol]
+@inline sol(lag::Lagrange,b)=b
+@inline isbspline(_::Lagrange)=false
 # """
 #     polinterpol(
 #     lag::Lagrange, 

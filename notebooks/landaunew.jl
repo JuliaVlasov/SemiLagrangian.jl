@@ -223,7 +223,7 @@ function landau1_1(T::DataType)
 
     landau(advdata, nbdt)
 end   
-function landau2_2(T::DataType)
+function landau2_2(T::DataType, isthread)
     epsilon = T(0.5)
     nbdt = 50
     dt = T(big"0.1")
@@ -265,14 +265,14 @@ function landau2_2(T::DataType)
 
     pvar = getpoissonvar(adv)
 
-    advdata = AdvectionData(adv, data, pvar; isthread=true)
+    advdata = AdvectionData(adv, data, pvar; isthread=isthread)
     # advdata = AdvectionData(adv, data, pvar)
 
     landau(advdata, nbdt)
 end
 # landau1_1()
 #landau2_2(BigFloat)
-landau2_2(Float64)
+landau2_2(Float64, true)
 # landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
 
 

@@ -154,10 +154,10 @@ function init!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     if isvelocitystate(self)
         if self.state_dim == 1
             global cl_obs
-            clockbegin(cl_obs, 3)
+            clockbegin(cl_obs, 5)
             compute_charge!(self)
             compute_elfield!(self)
-            clockend(cl_obs, 3)
+            clockend(cl_obs, 5)
         end
 #        println("v trace init plus")
         pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]

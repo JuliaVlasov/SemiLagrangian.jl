@@ -149,16 +149,16 @@ function trace_energy(advd::AdvectionData, t)
         println("#time\tel-energy\tkinetic-energy\tglobal-energy")
     end
     global cl_obs
-    clockbegin(cl_obs,4)
+    clockbegin(cl_obs,6)
     compute_charge!(advd)
     compute_elfield!(advd)
-    clockend(cl_obs,4)
-    clockbegin(cl_obs,5)
-    elenergy = Float64(compute_ee(advd))
-    clockend(cl_obs,5)
-    clockbegin(cl_obs,6)
-    kinenergy = Float64(compute_ke(advd))
     clockend(cl_obs,6)
+    clockbegin(cl_obs,7)
+    elenergy = Float64(compute_ee(advd))
+    clockend(cl_obs,7)
+    clockbegin(cl_obs,8)
+    kinenergy = Float64(compute_ke(advd))
+    clockend(cl_obs,8)
     energyall = elenergy + kinenergy
     println("$t\t$elenergy\t$kinenergy\t$energyall")
 end

@@ -84,6 +84,7 @@ struct Advection{T,Nsp,Nv,Nsum}
     tab_coef
     v_square
     itr
+    nbth
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
@@ -97,7 +98,8 @@ struct Advection{T,Nsp,Nv,Nsum}
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
-        itr = ntuple(x->_getitr(x, sizeitr, Nsum),Nsum)
+        nbth=Threads.nthreads()
+        itr = ntuple(x->_getitr(x, sizeitr, Nsum, nbth),Nsum)
         return new{T, Nsp, Nv, Nsum}(
     sizeall,
     sizeitr,
@@ -105,7 +107,8 @@ struct Advection{T,Nsp,Nv,Nsum}
     t_interp_sp, t_interp_v,
     dt_base, tab_coef,
     v_square,
-    itr
+    itr,
+    nbth
 )
     end
 end
@@ -174,6 +177,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,isthr}
     data::Array{T,Nsum}
     t_buf::NTuple{Nsum, Array{T,2}}
     parext
+#    itrdataind
     function AdvectionData(
     adv::Advection{T,Nsp,Nv,Nsum}, 
     data::Array{T,Nsum},
@@ -187,6 +191,12 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,isthr}
         t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         copyto!(datanew, data)
+        # println("trace1")
+
+        # getview(d,ind)=(view(d,ind...), ind)
+        # itrdataind = map( x-> getview.((datanew,), adv.itr[x]), 1:adv.nbth)
+        # println("trace2")
+
         return new{T,Nsp, Nv, Nsum, isthread}(
     adv, 1, 1,  
     datanew, t_buf, 
@@ -285,14 +295,28 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
 #    else
 #        Threads.@threads :static for ind in getitr(self)
     if isthr
-        Threads.@threads for ind in getitr(self)
-            alpha = getalpha(self, ind)
-            bufth = tabbuf[:,Threads.threadid()]
-            # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
-            # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
-            interpolate!(bufth, f[ind...], alpha, interp)
-            f[ind...] .= bufth
-            # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+        # Threads.@threads for ind in getitr(self)
+        #     alpha = getalpha(self, ind)
+        #     bufth = tabbuf[:,Threads.threadid()]
+        #     # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
+        #     # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
+        #     interpolate!(bufth, f[ind...], alpha, interp)
+        #     f[ind...] .= bufth
+        #     # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+        # end
+        itr = getitr(self)
+        nbth = self.adv.nbth
+        Threads.@threads for i=1:nbth
+            bufth = view(tabbuf, :, i)
+            for ind in itr[i]
+                alpha = getalpha(self, ind)
+                # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
+                # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
+                lgn = view(f, ind...)
+                interpolate!(bufth, lgn, alpha, interp)
+                lgn .= bufth
+                # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+            end
         end
     else
         buf=tabbuf[:,1]

@@ -25,9 +25,11 @@ function transperm(a,b,n)
     return p
 end
 
+oneitr(t)=map(x->x:x,t)
+
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
-function _getitr(ind, sizeitr, Nsum)
-    indtup = vcat(1:(ind-1),(ind+1):Nsum)
+function _getitr(ind, sizeitr, nb)
+    indtup = vcat(1:(ind-1),(ind+1):nb)
     return addcolon.(ind, Iterators.product(sizeitr[indtup]...))
 end
 function _getitr(ind, sizeitr, Nsum, nbth)
@@ -42,6 +44,8 @@ function _getitr0(ind, sizeitr, Nsum, nbth)
     itr = _getitr0(ind, sizeitr, Nsum)
     return splitvec(nbth, itr)
 end
+
+
 """
     Advection{T, Nsp, Nv, Nsum}
     Advection(
@@ -239,6 +243,9 @@ function getinterp(self::AdvectionData)
     t = isvelocitystate(self) ? self.adv.t_interp_v : self.adv.t_interp_sp
     return t[self.state_dim]
 end
+function getindsplit(self::AdvectionData{T,Nsp, Nv, Nsum}) where{T,Nsp,Nv,Nsum}
+    return isvelocitystate(self) ? Nsp : Nv
+end
        
 # TODO precalculer dans Avection
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
@@ -249,6 +256,38 @@ addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
 # end
 getitr(self)=self.adv.itr[_getcurrentindice(self)]
 getitr(self, indth)=self.adv.itrth[_getcurrentindice(self)][indth]
+
+function getitrfirst(self::AdvectionData{T,Nsp, Nv, Nsum}) where{T,Nsp,Nv,Nsum}
+    szitr = sizeitr(self.adv)
+    if isvelocitystate(self)
+        return collect(Iterators.product(szitr[1:Nsp]...))
+    else
+        return szitr[_getcurrentindice(self)+Nsp]
+    end
+end
+function getitrsecond(self::AdvectionData{T,Nsp, Nv, Nsum}, indfirst) where{T,Nsp,Nv,Nsum}
+    szitr = sizeitr(self.adv)
+    ind = _getcurrentindice(self)
+#    println("szitr=$szitr ind=$ind indfirst=$indfirst")
+    tupbegin = if isvelocitystate(self)
+        oneitr(indfirst)
+    else
+        indtup = vcat(1:(ind-1),(ind+1):Nsp)
+        szitr[indtup]
+    end
+    tupend = if isvelocitystate(self)
+        indtup = vcat(Nsp+1:(ind-1),(ind+1):Nsum)
+        szitr[indtup]
+    else
+        ind2=ind+Nsp
+#        println("szitr=$szitr ind2=$ind2 indfirst=$indfirst")
+        res=(szitr[Nsp+1:ind2-1]...,(indfirst:indfirst,)...,szitr[ind2+1:Nsum]...)
+#        println("res=$res")
+        res
+    end
+#    println("tupbegin=$tupbegin tupend=$tupend")
+    return addcolon.(ind, Iterators.product((tupbegin...,tupend...)...))
+end
 
 """
     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
@@ -296,8 +335,8 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
 #    tabbuf = zeros(T,size(self.data)[_getcurrentindice(self)], Threads.nthreads())
     interp = getinterp(self)
     init!(self)
-    global cl_obs
-    clockbegin(cl_obs,_getcurrentindice(self))
+#    global cl_obs
+#    clockbegin(cl_obs,_getcurrentindice(self))
 #     if !self.isthread
 # #        fl=true
 #         buf = tabbuf[:,1]
@@ -313,8 +352,8 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
 #        Threads.@threads :static for ind in getitr(self)
     #f = self.data 
     curind =  _getcurrentindice(self)
-    p = transperm(1, curind, Nsum)
-    f = curind != 1 ? permutedims(self.data, p) : self.data
+    # p = transperm(1, curind, Nsum)
+    # f = curind != 1 ? permutedims(self.data, p) : self.data
     if isthr
         # Threads.@threads for ind in getitr(self)
         #     alpha = getalpha(self, ind)
@@ -325,35 +364,52 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, isthr}) where{T,Nsp, Nv
         #     f[ind...] .= bufth
         #     # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
         # end
-        nbth = self.adv.nbth
-        Threads.@threads for i=1:nbth
-            bufth = view(tabbuf, :, i)
-            @inbounds for indth in getitr(self,i)
-                alpha = getalpha(self, indth)
-                # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
-                # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
-                lgnth = view(f, indth[p]...)
-                interpolate!(bufth, lgnth, alpha, interp)
-                lgnth .= bufth
-                # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+#         nbth = self.adv.nbth
+#         Threads.@threads for i=1:nbth
+#             bufth = view(tabbuf, :, i)
+#             for indth in getitr(self,i)
+#                 alpha = getalpha(self, indth)
+#                 # println("av ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid())")
+#                 # @assert size(buf) == size(f333[ind...]) "PB TAILLE !!!!"
+# #                lgnth = view(f, indth[p]...)
+#                 lgnth = view(f, indth...)
+#                 interpolate!(bufth, lgnth, alpha, interp)
+#                 lgnth .= bufth
+#                 # println("ap ind=$ind alpha=$alpha norm(lgn)=$(norm(f333[ind...])) thrid=$(Threads.threadid()) norm(buf)=$(norm(buf))")
+#             end
+#         end
+        f=self.data
+
+#        println("trace : $(_getcurrentindice(self))")
+
+        Threads.@threads   for indfirst in getitrfirst(self)
+#        for indfirst in getitrfirst(self)
+            local decint, precal = getprecal(self, indfirst)
+            local buf=view(tabbuf, :, Threads.threadid())
+           for ind in getitrsecond(self,indfirst)
+                local lgn = view(f,ind...)
+                interpolate!(buf, lgn, decint, precal, interp)
+                lgn .= buf
             end
         end
     else
         buf=view(tabbuf, :, 1)
         f=self.data
-        println("trace")
-        for ind in getitr(self)
-            alpha = getalpha(self, ind)
-            lgn = view(f, ind[p]...)
-            interpolate!(buf, lgn, alpha, interp)
-            lgn .= buf
+#        println("trace")
+        for indfirst in getitrfirst(self)
+            local decint, precal = getprecal(self, indfirst)
+            for ind in getitrsecond(self,indfirst)
+                local lgn = view(f,ind...)
+                interpolate!(buf, lgn, decint, precal, interp)
+                lgn .= buf
+            end
         end
     end
-    if curind != 1
-        permutedims!(self.data, f, p)
-    end
+    # if curind != 1
+    #     permutedims!(self.data, f, p)
+    # end
 #    end
-    clockend(cl_obs,_getcurrentindice(self))
+#    clockend(cl_obs,_getcurrentindice(self))
 
     return nextstate!(self)
 end

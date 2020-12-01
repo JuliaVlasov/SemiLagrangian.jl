@@ -12,7 +12,7 @@ return the interpolation polynomial for the given values of a function a a speci
 # Returns :
 - No return
 """
-@inline function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {T, iscirc}
+function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {T, iscirc}
  
     decint = convert(Int, floor(dec))
     decfloat = dec - decint
@@ -61,4 +61,57 @@ return the interpolation polynomial for the given values of a function a a speci
         end
     end
     
+end
+function interpolbid!(lgnout, lgnin, coef)
+    lg = length(lgnout)
+    order = length(coef)-1
+    mid = div(order+1,2)
+    for i=1:lg
+        indbeg = i-mid
+ #       indend = i+order-mid
+        indend = indbeg+order
+        lgnout[i] = sum(lgnin[modone.(indbeg:indend,lg)] .* coef)
+    end
+end
+function interpolbid2!(lgnout, lgnin, decint, coef, interp::InterpolationType{T,true}) where{T}
+ #   fi = sol(interp,lgnin)
+    lg = length(lgnout)
+#    clockbegin(cl_obs,2)
+#    order = interp.order
+    order = size(coef,1)-1
+#    clockend(cl_obs,2)
+
+#    order = size(coef,1)-1
+    mid = div(order+1,2)
+    for i=1:lg
+        indbeg = i-mid
+ #       indend = i+order-mid
+        indend = indbeg+order
+        lgnout[i] = sum(lgnin[modone.(indbeg:indend,lg)] .* coef)
+    end
+end
+
+function interpolate!( fp, fi, decint, precal, interp::InterpolationType{T,true}) where {T}
+ 
+
+   # println("dec=$dec decint=$decint decfloat=$decfloat")
+
+    res = sol(interp,fi)
+#    println("size res=$(size(res))")
+ #   order=get_order(interp)
+    order = size(precal,1)-1
+    # TODO : pas tres normal le +isbspline, a analyser
+    #  mais pour l'intant ca fonctionne
+    origin=get_origin(order) +isbspline(interp)
+    lg = length(fi)
+         # println("trace iscirc=true")
+    # global cl_obs
+    # clockbegin(cl_obs, 1)
+         for i=1:lg
+            indbeg=i+origin+decint
+            indend=indbeg+order
+            fp[i] = sum(fi[modone.(indbeg:indend, lg)] .* precal)
+        end
+  #  clockend(cl_obs, 1)
+   
 end

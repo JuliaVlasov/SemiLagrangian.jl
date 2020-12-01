@@ -60,18 +60,19 @@ Lagrange Polynomials coefficients
 # get_order(lag::Lagrange)= size(lag.coef,1)-1
 
 struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
+    order
     lagpol
     function Lagrange(T::DataType, order; iscirc::Bool=true) 
         type = order <= 10 ? Int64 : BigInt 
         origin = get_origin(order)
-        lagpol = [_getpolylagrange( i, order, origin, type) for i=0:order]
-        new{T, iscirc}(lagpol) 
+        lagpol = collect([_getpolylagrange( i, order, origin, type) for i=0:order])
+        new{T, iscirc}(order, lagpol) 
     end
     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
-@inline get_order(lag::Lagrange)= size(lag.lagpol,1)-1
+@inline get_order(lag::Lagrange{T,iscirc}) where{T, iscirc}= lag.order
 @inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
-@inline get_precal(lag::Lagrange,decf)=[fct(decf) for fct in lag.lagpol]
+@inline get_precal(lag::Lagrange{T},decf) where{T}=[T(fct(decf)) for fct in lag.lagpol]
 @inline sol(lag::Lagrange,b)=b
 @inline isbspline(_::Lagrange)=false
 # """

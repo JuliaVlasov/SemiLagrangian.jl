@@ -37,12 +37,12 @@ function test_adv(T::DataType)
     t_debsp = T.([-1,-10,-3])
     t_endsp = T.([3, 6, 5])
     t_szsp = (16, 8, 32)
-    t_debv = T.([-3,-9,1,-1])
-    t_endv = T.([1, 7, 1, 3])
-    t_szv = (4, 8, 4, 4)
+    t_debv = T.([-3,-9,1])
+    t_endv = T.([1, 7, 1])
+    t_szv = (4, 8, 4)
     base_dt = one(T)/80
 
-    Nsum = 7
+    Nsum = 6
 
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
@@ -50,7 +50,7 @@ function test_adv(T::DataType)
     interp = Lagrange(T,3)
     adv = Advection(
     t_meshsp, t_meshv, 
-    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),4), 
+    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),3), 
     base_dt
 )
 
@@ -84,11 +84,17 @@ function test_adv(T::DataType)
 
 
 
-    t_coef =[1,1,1,2,2,2,2,3,3,3,1]
-    t_dim = [1,2,3,1,2,3,4,1,2,3,1]
-    t_indice = [1,2,3,4,5,6,7,1,2,3,1]
-    t_v=[false,false,false,true,true,true,true,false,false,false,false]
-    t_result=[true,true,true,true,true,true,true,true,true,false,true]
+    t_coef =[1,1,1,2,2,2,3,3,3,1]
+    t_dim = [1,2,3,1,2,3,1,2,3,1]
+    t_indice = [1,2,3,4,5,6,1,2,3,1]
+    t_v=[false,false,false,true,true,true,false,false,false,false]
+    t_result=[true,true,true,true,true,true,true,true,false,true]
+    resfirst=[4,4,4,(4,1,1),(4,1,1),(4,1,1),4,4,4,4]
+    ressecond=[
+    (:, 3, 1, 4, 1, 1), (3, :, 1, 1, 4, 1), (3, 1, :, 1, 1, 4),
+    (4, 1, 1, :, 3, 1), (4, 1, 1, 3, :, 1), (4, 1, 1, 3, 1, :),
+    (:, 3, 1, 4, 1, 1), (3, :, 1, 1, 4, 1), (3, 1, :, 1, 1, 4), (:, 3, 1, 4, 1, 1), 
+]
 
 
     
@@ -103,6 +109,17 @@ function test_adv(T::DataType)
         @test getbufslgn(advd) == advd.t_buf[t_indice[i]]
         t = isvelocitystate(advd) ? adv.t_interp_v : adv.t_interp_sp
         @test t[t_dim[i]] == getinterp(advd)
+
+        itrfirst = getitrfirst(advd)
+        (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
+
+        @test resfirst[i] == res
+
+        itrsecond = getitrsecond(advd,res)
+
+        (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
+
+        @test ressecond[i] == res2
 
         x = t_indice[i]
         @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)

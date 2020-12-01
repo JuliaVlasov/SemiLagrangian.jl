@@ -223,24 +223,23 @@ function landau1_1(T::DataType)
 
     landau(advdata, nbdt)
 end   
-function landau2_2(T::DataType, isthread)
+function landau2_2(T::DataType, nbdt, isthread)
     epsilon = T(0.5)
-    nbdt = 50
     dt = T(big"0.1")
 
-    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  32
-    v1min, v1max, nv1 = -T(6.), T(6.), 32
+    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  64
+    v1min, v1max, nv1 = -T(6.), T(6.), 64
 
     mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
     mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )
 
-    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  32
-    v2min, v2max, nv2 = -T(6.), T(6.), 32
+    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  64
+    v2min, v2max, nv2 = -T(6.), T(6.), 64
 
     mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)
     mesh2_v = UniformMesh( v2min, v2max, nv2, endpoint = false )
 
-    interp=Lagrange(T,31)
+    interp=Lagrange(T,51)
 
     println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
     println("# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
@@ -270,63 +269,4 @@ function landau2_2(T::DataType, isthread)
 
     landau(advdata, nbdt)
 end
-# landau1_1()
-#landau2_2(BigFloat)
-landau2_2(Float64, true)
-# landau(dt, eps, nbdt, tabcoef, mesh_x, mesh_v, interp, interp)
-
-
-
-
-# ex  = zeros(Float64, nx)
-# rho = zeros(Float64, nx)
-
-
-# # +
-# tspan  = LinRange(0, 30, 600)
-# dt = 0.05
-
-# transpose!(fvx,fxv)
-# compute_charge!(rho, mesh_v, fvx)
-# compute_elfield!(ex, mesh_x, rho)
-
-# p = plot(layout=(1,2))
-# scatter!(p[1,1], x, rho, label=:computed, title="rho")
-# plot!(p[1,1], x, eps * cos.( kx .* x), label=:true)
-# scatter!(p[1,2], x , ex, label=:computed, title="Ex")
-# plot!(p[1,2], x , eps * sin.(kx .* x) / kx, label=:true)
-
-# # +
-# function simulation( fxv, tspan, mesh_x, mesh_v, interpolation )
-    
-#     fvx = zeros(Float64, (nv, nx))
-#     transpose!(fvx, fxv)
-    
-#     E = Float64[]
-
-#     @showprogress 1 for t in tspan
-
-#         advection_x!(fxv, v, 0.5dt)
-#         transpose!(fvx, fxv)
-#         compute_charge!(rho, mesh_v, fvx)
-#         compute_e!(ex, mesh_x, rho)
-#         push!(E, 0.5 * log(sum(ex .* ex) * mesh_x.step))
-#         advection_v!(fvx, ex, dt)
-#         transpose!(fxv, fvx)
-#         advection_x!(fxv, v, 0.5dt)
-
-#     end
-#     return E
-# end
-
-# plot(tspan, E)
-
-# eps    = 0.001
-# kx     = 0.5
-# degree = 3
-
-# xmin, xmax, nx =  0., 2π/kx, 32
-# vmin, vmax, nv = -6., 6., 64
-
-# mesh_x = UniformMesh( xmin, xmax, nx, endpoint = false )
-# mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
+landau2_2(BigFloat, 1000, true)

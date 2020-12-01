@@ -248,6 +248,11 @@ function landau2_2(T::DataType, nbdt, isthread)
     println("# v2 : from $(Float64(mesh2_v.start)) to $(Float64(mesh2_v.stop))")
     println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
     println("# type=$T precision = $(precision(T))")
+    if isthread
+        println("# nb threads : $(Threads.nthreads())")
+    else
+        println("# monothread version")
+    end
 
     adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), (interp,interp,), (interp,interp,), dt)
 

@@ -62,34 +62,7 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
     end
     
 end
-function interpolbid!(lgnout, lgnin, coef)
-    lg = length(lgnout)
-    order = length(coef)-1
-    mid = div(order+1,2)
-    for i=1:lg
-        indbeg = i-mid
- #       indend = i+order-mid
-        indend = indbeg+order
-        lgnout[i] = sum(lgnin[modone.(indbeg:indend,lg)] .* coef)
-    end
-end
-function interpolbid2!(lgnout, lgnin, decint, coef, interp::InterpolationType{T,true}) where{T}
- #   fi = sol(interp,lgnin)
-    lg = length(lgnout)
-#    clockbegin(cl_obs,2)
-#    order = interp.order
-    order = size(coef,1)-1
-#    clockend(cl_obs,2)
 
-#    order = size(coef,1)-1
-    mid = div(order+1,2)
-    for i=1:lg
-        indbeg = i-mid
- #       indend = i+order-mid
-        indend = indbeg+order
-        lgnout[i] = sum(lgnin[modone.(indbeg:indend,lg)] .* coef)
-    end
-end
 
 function interpolate!( fp, fi, decint, precal, interp::InterpolationType{T,true}) where {T}
  

@@ -13,8 +13,17 @@ function mkcoef(alpha, order)
     mid = div(order+1,2)
     return map(i -> (i+alpha)*a[i+mid+1], -mid:order-mid)
 end
-
-
+function interpolbid!(lgnout, lgnin, coef)
+    lg = length(lgnout)
+    order = length(coef)-1
+    mid = div(order+1,2)
+    for i=1:lg
+        indbeg = i-mid
+ #       indend = i+order-mid
+        indend = indbeg+order
+        lgnout[i] = sum(lgnin[modone.(indbeg:indend,lg)] .* coef)
+    end
+end
 
 
 function advbid!(bigbuf, order)
@@ -22,6 +31,7 @@ function advbid!(bigbuf, order)
     buf=Vector{T}(undef,size(bigbuf,1))
     coef = mkcoef(rand(), order)
     println("length(coef)=$(length(coef))")
+    println("size=$(size(bigbuf,2))")
     for i=1:size(bigbuf,2)
         f = view(bigbuf,:,i)
         interpolbid!(buf,f,coef)
@@ -39,7 +49,8 @@ function advbid2!(bigbuf, interp::InterpolationType{T,true}) where{T}
     decfloat = alpha - decint
     precal = get_precal(interp,decfloat)
      println("length(precal)=$(length(precal)), typeof(precal)=$(typeof(precal))")
-    for i=1:size(bigbuf,2)
+     println("size=$(size(bigbuf,2))")
+     for i=1:size(bigbuf,2)
         f = view(bigbuf,:,i)
         interpolbid2!(buf,f,decint,precal,interp)
         f .= buf
@@ -52,7 +63,6 @@ function advbid!(bigbuf, interp::InterpolationType{T}) where{T}
     decfloat = alpha - decint
     precal = get_precal(interp, decfloat)
     println("length(precal)=$(length(precal))")
-
     for i=1:size(bigbuf,2)
         f = view(bigbuf,:,i)
         interpolate!(buf,f,decint,precal,interp)
@@ -113,37 +123,37 @@ end
 # end
 
 T = BigFloat
-@time bigbuf = rand(T, 32, 32^3)
+@time bigbuf = rand(T, 64, 32^3*3)
 
 @time for i= 1:1
     advbid!(bigbuf, 29)
 end
 
 
-interp = Lagrange(T, 29)
-println("interp=$(get_type(interp))")
+# interp = Lagrange(T, 29)
+# println("interp=$(get_type(interp))")
 
 
-@time for i= 1:1
-    advbid2!(bigbuf, interp)
-end
-
-
-
-@time for i= 1:1
-    advbid!(bigbuf, interp)
-end
-@time for i= 1:1
-    advbidth!(bigbuf, interp)
-end
-@time for i= 1:1
-    advbidth2!(bigbuf, interp)
-end
-
-# printall(cl_obs)
 # @time for i= 1:1
-#     advbidth!(bigbuf, 29)
+#     advbid2!(bigbuf, interp)
 # end
+
+
+
+# @time for i= 1:1
+#     advbid!(bigbuf, interp)
+# end
+# @time for i= 1:1
+#     advbidth!(bigbuf, interp)
+# end
+# @time for i= 1:1
+#     advbidth2!(bigbuf, interp)
+# end
+
+# # printall(cl_obs)
+# # @time for i= 1:1
+# #     advbidth!(bigbuf, 29)
+# # end
 
 
 

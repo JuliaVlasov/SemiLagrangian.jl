@@ -1,1 +1,1 @@
-/Users/ymocquar/.julia//packages/MPI/b7MVG/bin/mpiexecjl --project=~/IdeaProject/JuliaVlasov/SemiLagrangian.jl -n $1 julia $2
+/Users/ymocquar/.julia//packages/MPI/b7MVG/bin/mpiexecjl --project=. -n $1 julia $2

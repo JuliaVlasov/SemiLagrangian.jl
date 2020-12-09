@@ -29,6 +29,8 @@ include("../src/bsplinefft.jl")
 include("../src/lagrange.jl")
 include("../src/interpolation.jl")
 
+using MPI
+
 
 
 
@@ -143,7 +145,7 @@ function landau_old(
     println("diff=$(maxall-minall)")
 end
 
-function trace_energy(advd::AdvectionData, t)
+function trace_energy(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t) where{T,Nsp,Nv,Nsum,timeopt}
 
     if t == 0
         println("#time\tel-energy\tkinetic-energy\tglobal-energy")
@@ -154,13 +156,15 @@ function trace_energy(advd::AdvectionData, t)
     compute_elfield!(advd)
     clockend(cl_obs,6)
     clockbegin(cl_obs,7)
-    elenergy = Float64(compute_ee(advd))
+    elenergy = compute_ee(advd)
     clockend(cl_obs,7)
     clockbegin(cl_obs,8)
-    kinenergy = Float64(compute_ke(advd))
+    kinenergy = compute_ke(advd)
     clockend(cl_obs,8)
     energyall = elenergy + kinenergy
-    println("$t\t$elenergy\t$kinenergy\t$energyall")
+    if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        println("$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))")
+    end
 end
 
 
@@ -223,38 +227,39 @@ function landau1_1(T::DataType)
 
     landau(advdata, nbdt)
 end   
-function landau2_2(T::DataType, nbdt, isthread)
+function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
     epsilon = T(0.5)
-    dt = T(big"0.1")
+    dt = T(dt)
 
-    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  64
-    v1min, v1max, nv1 = -T(6.), T(6.), 64
+    sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  sz[1]
+    v1min, v1max, nv1 = -T(6.), T(6.), sz[3]
 
     mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
     mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )
 
-    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  64
-    v2min, v2max, nv2 = -T(6.), T(6.), 64
+    sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  sz[2]
+    v2min, v2max, nv2 = -T(6.), T(6.), sz[4]
 
     mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)
     mesh2_v = UniformMesh( v2min, v2max, nv2, endpoint = false )
 
     interp=Lagrange(T,51)
 
-    println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
+    println("# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
     println("# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
     println("# sp2 : from $(Float64(mesh2_sp.start)) to $(Float64(mesh2_sp.stop))")
     println("# v1 : from $(Float64(mesh1_v.start)) to $(Float64(mesh1_v.stop))")
     println("# v2 : from $(Float64(mesh2_v.start)) to $(Float64(mesh2_v.stop))")
     println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
     println("# type=$T precision = $(precision(T))")
-    if isthread
+    println("timeopt=$timeopt")
+    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
         println("# nb threads : $(Threads.nthreads())")
     else
         println("# monothread version")
     end
 
-    adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), (interp,interp,), (interp,interp,), dt)
+    adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), (interp,interp,), (interp,interp,), dt, timeopt=timeopt)
 
     fct_sp(x)=epsilon * cos(x/2) + 1
     fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
@@ -269,9 +274,14 @@ function landau2_2(T::DataType, nbdt, isthread)
 
     pvar = getpoissonvar(adv)
 
-    advdata = AdvectionData(adv, data, pvar; isthread=isthread)
+    advdata = AdvectionData(adv, data, pvar)
     # advdata = AdvectionData(adv, data, pvar)
 
     landau(advdata, nbdt)
 end
-landau2_2(BigFloat, 1000, true)
+# landau2_2(Float64, 50, NoTimeOpt)
+# landau2_2(Float64, 50, SimpleThreadsOpt)
+# landau2_2(Float64, 50, SplitThreadsOpt)
+MPI.Init()
+landau2_2(Float64, 50, MPIOpt)
+

@@ -6,6 +6,8 @@ fft:
 =#
 # function that reverse the order of the pos lowest bits
 using FFTW
+using DoubleFloats
+
 function _reverse_num(num, pos)
     result = 0
     pos_m1 = pos-1
@@ -198,12 +200,16 @@ function fftbig(
         flag_inv=fl
     )
 end
+
 fftgen(_::Any, t::Array{Complex{Float64}}) = fft(t, (1,))
 fftgen!(_::Any, t::Array{Complex{Float64}}) = fft!(t, (1,))
 fftgen(_::Any, t::Array{Float64}) = fft(t, (1,))
 fftgenall(_::Any, t::Array{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
 fftgenall!(_::Any, t::Array{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
 fftgenall(_::Any, t::Array{Float64}) = fft(t, ntuple(x->x,ndims(t)))
+
+
+
 function fftgen(
     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
     t::Array{Complex{Float64}}
@@ -239,6 +245,7 @@ ifftgen(_::Any, t::Array{Float64}) = ifft(t, (1,))
 ifftgenall(_::Any, t::Array{Complex{Float64}}) = ifft(t, ntuple(x->x,ndims(t)))
 ifftgenall!(_::Any, t::Array{Complex{Float64}}) = ifft(t, ntuple(x->x,ndims(t)))
 ifftgenall(_::Any, t::Array{Float64}) = ifft(t, ntuple(x->x,ndims(t)))
+
 
 function ifftgen(
     _::PrepareFftBig{T, NUMDIMS, DIMS}, 

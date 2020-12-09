@@ -110,19 +110,19 @@ function test_adv(T::DataType)
         t = isvelocitystate(advd) ? adv.t_interp_v : adv.t_interp_sp
         @test t[t_dim[i]] == getinterp(advd)
 
-        itrfirst = getitrfirst(advd)
-        (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
+        # itrfirst = getitrfirst(advd)
+        # (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
 
-        @test resfirst[i] == res
+        # @test resfirst[i] == res
 
-        itrsecond = getitrsecond(advd,res)
+        # itrsecond = getitrsecond(advd,res)
 
-        (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
+        # (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
 
-        @test ressecond[i] == res2
+        # @test ressecond[i] == res2
 
         x = t_indice[i]
-        @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
+    #    @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
         
         ret = nextstate!(advd)
         @test ret == t_result[i]
@@ -140,6 +140,11 @@ end
 @testset "test Advection BigFloat" begin
 
     test_adv(BigFloat)
+
+end
+@testset "test Advection Double64" begin
+
+    test_adv(Double64)
 
 end
 function test_ke(T::DataType)

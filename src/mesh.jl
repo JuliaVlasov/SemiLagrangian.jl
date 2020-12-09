@@ -6,6 +6,8 @@ include("clockobs.jl")
 
 cl_obs = ClockObs(8)
 
+using DoubleFloats
+
 
 """
 

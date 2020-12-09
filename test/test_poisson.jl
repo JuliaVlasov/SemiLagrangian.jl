@@ -36,20 +36,26 @@ function test_poisson(T::DataType, isfft=true)
     t_endsp = T.([3//1, 6//1,5//1])
     t_szsp = (8, 4, 16)
     Nsp = 3
-    t_debv = T.([-3//1, -9//1, 1//1, -1//1])
-    t_endv = T.([ 1//1, 7//1, 5//1, 3//1])
-    t_szv = (4, 8, 4, 4)
+    t_debv = T.([-3//1, -9//1, 1//1])
+    t_endv = T.([ 1//1, 7//1, 5//1])
+    t_szv = (4, 8, 4)
     base_dt = one(T)/80
 
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
     interp = Lagrange(T,3)
-    adv = Advection(t_meshsp, t_meshv, ntuple(x->interp,3), ntuple(x->interp,4), base_dt)
+    adv = Advection(t_meshsp, t_meshv, ntuple(x->interp,3), ntuple(x->interp,3), base_dt)
 
     tab = rand(T, t_szsp..., t_szv...)
 
     pc = PoissonConst(adv; isfftbig=isfft)
+
+#    println("t_perms=$(pc.t_perms)")
+    @test pc.t_perms == (
+    [1, 2, 3, 6, 5, 4], [2, 1, 3, 4, 6, 5], [3, 2, 1, 4, 5, 6], # space states
+    [4, 5, 6, 1, 2, 3], [5, 4, 6, 1, 2, 3], [6, 5, 4, 1, 2, 3]  # velocity states
+)
 
     pvar = PoissonVar(pc)
 
@@ -57,7 +63,7 @@ function test_poisson(T::DataType, isfft=true)
 
     advdata.state_coef = 2
     advdata.state_dim = 1
-    init!(advdata)
+    initcoef!(pvar, advdata)
     rhoref = zeros(T, t_szsp)
     compute_charge!(rhoref, t_meshv, tab)
 
@@ -82,6 +88,73 @@ function test_poisson(T::DataType, isfft=true)
     @test isapprox(compute_ee(t_meshsp, refelfield), compute_ee(advdata))
 
 end
+
+function test_itr(T::DataType)
+    t_debsp = T.([-1,-10,-3])
+    t_endsp = T.([3, 6, 5])
+    t_szsp = (16, 8, 32)
+    t_debv = T.([-3,-9,1])
+    t_endv = T.([1, 7, 1])
+    t_szv = (4, 8, 4)
+    base_dt = one(T)/80
+
+    Nsum = 6
+
+    t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
+    t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
+
+    interp = Lagrange(T,3)
+    adv = Advection(
+    t_meshsp, t_meshv, 
+    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),3), 
+    base_dt
+)
+
+    sref = (t_szsp..., t_szv...)
+
+    refitr = ntuple(x-> 1:sref[x],size(sref,1))
+
+    tab = rand(T, sizeall(adv))
+
+    advd = AdvectionData(adv, tab, "missing")
+
+    pc = PoissonConst(adv)
+
+
+    resfirst=[4,4,4,(4,1,1),(4,1,1),(4,1,1),4,4,4,4]
+    ressecond=[
+        (:, 3, 1, 1, 1, 4), (:, 3, 1, 1, 1, 4), (:, 3, 1, 1, 1, 4),
+        (:, 3, 1, 4, 1, 1), (:, 3, 1, 4, 1, 1), (:, 3, 1, 4, 1, 1),
+        (:, 3, 1, 1, 1, 4), (:, 3, 1, 1, 1, 4), (:, 3, 1, 1, 1, 4), (:, 3, 1, 1, 1, 4),
+]
+    resitrfirst=[1:4,1:8,1:4,Iterators.product(1:16,1:8,1:32),Iterators.product(1:16,1:8,1:32),Iterators.product(1:16,1:8,1:32),
+    1:4,1:8,1:4,1:4]
+
+    for i=1:length(resfirst) 
+ 
+        itrfirst = getitrfirst(pc, advd)
+        @test itrfirst == resitrfirst[i]
+
+        (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
+
+        @test resfirst[i] == res
+
+     
+
+        itrsecond = getitrsecond(pc, advd,res)
+
+        (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
+
+        @test ressecond[i] == res2
+
+        
+        nextstate!(advd)
+     end
+ 
+    
+
+end
+
 @testset "test compute_ee" begin
     t_deb =[big"-1"//1,-10//1,-3//1, -1//1]
     t_end = [big"3"//1, 6//1,5//1,1//1]
@@ -101,8 +174,17 @@ end
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
     test_poisson(Float64, false)
+    test_itr(Float64)
 end
+
+
 @testset "Poisson BigFloat" begin
     test_poisson(BigFloat)
+    test_itr(BigFloat)
+end
+
+@testset "Poisson Double64" begin
+    test_poisson(Double64)
+    test_itr(Double64)
 end
 

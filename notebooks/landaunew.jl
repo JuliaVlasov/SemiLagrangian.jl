@@ -80,12 +80,12 @@ function landau_old(
     end
     elf = Array{T,ndims}(undef, nxtp)
     rho = Array{T, ndims}(undef, nxtp)
-    println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nx size_v=$nv")
-    println("# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
-    println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    println("# interpolation : $(get_type(interp_x)) order=$(get_order(interp_x))")
-    println("# type=$T precision = $(precision(T))")
-    println("#time\tel-energy\tkinetic-energy\tglobal-energy")
+    printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nx size_v=$nv")
+    printout(advd, "# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
+    printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
+    printout(advd, "# interpolation : $(get_type(interp_x)) order=$(get_order(interp_x))")
+    printout(advd, "# type=$T precision = $(precision(T))")
+    printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
 
  #   transpose!(fvx, fxv)
     permutedims!(fvx, fxv, perm)
@@ -94,7 +94,7 @@ function landau_old(
     elenergy = Float64(compute_ee(mesh_x, elf))
     kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
     energyall = elenergy + kinenergy
-    println("$(Float64(0.))\t$elenergy\t$kinenergy\t$energyall")
+    printout(advd, "$(Float64(0.))\t$elenergy\t$kinenergy\t$energyall")
 
     minall=10000000
     maxall=0
@@ -137,18 +137,23 @@ function landau_old(
             elenergy = Float64(compute_ee(mesh_x, elf))
             kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
             energyall = elenergy + kinenergy
-            println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+            printout(advd, "$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
         end
         minall=min(energyall,minall)
         maxall=max(energyall,maxall)
     end
-    println("diff=$(maxall-minall)")
+    printout(advd, "diff=$(maxall-minall)")
+end
+function printout(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, str) where {T,Nsp,Nv,Nsum,timeopt}
+    if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        println(str)
+    end
 end
 
 function trace_energy(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t) where{T,Nsp,Nv,Nsum,timeopt}
 
     if t == 0
-        println("#time\tel-energy\tkinetic-energy\tglobal-energy")
+        printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
     end
     global cl_obs
     clockbegin(cl_obs,6)
@@ -245,19 +250,6 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
 
     interp=Lagrange(T,51)
 
-    println("# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
-    println("# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
-    println("# sp2 : from $(Float64(mesh2_sp.start)) to $(Float64(mesh2_sp.stop))")
-    println("# v1 : from $(Float64(mesh1_v.start)) to $(Float64(mesh1_v.stop))")
-    println("# v2 : from $(Float64(mesh2_v.start)) to $(Float64(mesh2_v.stop))")
-    println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
-    println("# type=$T precision = $(precision(T))")
-    println("timeopt=$timeopt")
-    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
-        println("# nb threads : $(Threads.nthreads())")
-    else
-        println("# monothread version")
-    end
 
     adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), (interp,interp,), (interp,interp,), dt, timeopt=timeopt)
 
@@ -270,18 +262,31 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
 
     data = dotprod((lgn1_sp, lgn2_sp, lgn1_v, lgn2_v))
     
-    println("typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
     pvar = getpoissonvar(adv)
 
-    advdata = AdvectionData(adv, data, pvar)
+    advd = AdvectionData(adv, data, pvar)
     # advdata = AdvectionData(adv, data, pvar)
+    printout(advd, "# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
+    printout(advd, "# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
+    printout(advd, "# sp2 : from $(Float64(mesh2_sp.start)) to $(Float64(mesh2_sp.stop))")
+    printout(advd, "# v1 : from $(Float64(mesh1_v.start)) to $(Float64(mesh1_v.stop))")
+    printout(advd, "# v2 : from $(Float64(mesh2_v.start)) to $(Float64(mesh2_v.stop))")
+    printout(advd, "# interpolation : $(get_type(interp)) order=$(get_order(interp))")
+    printout(advd, "# type=$T precision = $(precision(T))")
+    printout(advd, "# timeopt=$timeopt")
+    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
+        printout(advd, "# nb threads : $(Threads.nthreads())")
+    else
+        printout(advd, "# monothread version")
+    end
+    printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
-    landau(advdata, nbdt)
+    landau(advd, nbdt)
 end
 # landau2_2(Float64, 50, NoTimeOpt)
 # landau2_2(Float64, 50, SimpleThreadsOpt)
 # landau2_2(Float64, 50, SplitThreadsOpt)
 MPI.Init()
-landau2_2(Float64, 50, MPIOpt)
+landau2_2(Float64, 50, MPIOpt, sz=(32,32,32,32))
 

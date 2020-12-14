@@ -29,9 +29,6 @@ include("../src/bsplinefft.jl")
 include("../src/lagrange.jl")
 include("../src/interpolation.jl")
 
-using MPI
-
-
 
 
 function landau_old( 
@@ -145,7 +142,7 @@ function landau_old(
     printout(advd, "diff=$(maxall-minall)")
 end
 function printout(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, str) where {T,Nsp,Nv,Nsum,timeopt}
-    if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    if timeopt != MPIOpt || advd.adv.mpid.ind == 1
         println(str)
     end
 end
@@ -167,9 +164,7 @@ function trace_energy(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t) where{T,Nsp
     kinenergy = compute_ke(advd)
     clockend(cl_obs,8)
     energyall = elenergy + kinenergy
-    if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 0
-        println("$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))")
-    end
+    printout(advd, "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))")
 end
 
 
@@ -210,11 +205,11 @@ function landau1_1(T::DataType)
 
     
 
-    println("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
-    println("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
-    println("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    println("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
-    println("# type=$T precision = $(precision(T))")
+    printout("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
+    printout("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
+    printout("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
+    printout("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
+    printout("# type=$T precision = $(precision(T))")
 
     adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt)
 
@@ -277,6 +272,8 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
         printout(advd, "# nb threads : $(Threads.nthreads())")
+    elseif timeopt == MPIOpt
+        printout(advd,"# nb process : $(adv.mpid.nb)")
     else
         printout(advd, "# monothread version")
     end
@@ -287,6 +284,7 @@ end
 # landau2_2(Float64, 50, NoTimeOpt)
 # landau2_2(Float64, 50, SimpleThreadsOpt)
 # landau2_2(Float64, 50, SplitThreadsOpt)
-MPI.Init()
-landau2_2(Float64, 50, MPIOpt, sz=(32,32,32,32))
+# landau2_2(Float64, 50, MPIOpt, sz=(32,32,32,32))
+# landau2_2(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
+landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
 

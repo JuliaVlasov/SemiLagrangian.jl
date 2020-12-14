@@ -2,8 +2,7 @@
 
 
 include("mesh.jl")
-
-using MPI
+include("mpiinterface.jl")
 
 abstract type InterpolationType{T, iscirc} end
 
@@ -109,6 +108,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     tab_coef
     v_square
     nbsplit
+    mpid
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
@@ -123,10 +123,11 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
-        nbsplit = if timeopt == SplitThreadsOpt
+        mpid = timeopt == MPIOpt ? MPIData() : missing        
+        nbsplit = if timeopt == MPIOpt
+            mpid.nb
+        elseif timeopt == SplitThreadsOpt
             Threads.nthreads()
-        elseif timeopt == MPIOpt
-            MPI.Comm_size(MPI.COMM_WORLD)
         else
             1
         end
@@ -138,6 +139,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     dt_base, tab_coef,
     v_square,
     nbsplit,
+    mpid
 )
     end
 end
@@ -321,7 +323,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
         local buf=view(tabbuf, :, 1)
         for indfirst in getitrfirst(extdata, self)
             local decint, precal = getprecal(extdata, self, indfirst)
-            for ind in getitrsecond(extdata, self,indfirst)
+            for ind in getitrsecond(extdata, self, indfirst)
                 local lgn = view(f,ind...)
                 interpolate!(buf, lgn, decint, precal, interp)
                 lgn .= buf

@@ -2,7 +2,6 @@
 include("fftbig.jl")
 include("advection.jl")
 
-using MPI
 
 
 """
@@ -264,25 +263,7 @@ end
 function copydata!(pv::PoissonVar{T, Nsp, Nv}, advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}, f) where{T, Nsp, Nv, Nsum, timeopt}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
         t_split = gett_split(pv.pc, advd)
-        comm = MPI.COMM_WORLD
-        MPI.Barrier(comm)
-        if isbitstype(T)
-            # for Float64 or Double64 ... per example
-            for i=1:advd.adv.nbsplit
-                vbcast = selectdim(f, Nsum, t_split[i])
-                MPI.Bcast!(vbcast, i-1, comm)
-            end
-        else
-            # for BigFloat ... per example
-            for i=0:advd.adv.nbsplit
-                vbcast = selectdim(f, Nsum, t_split[i])
-                bufr = MPI.bcast(vbcast, i-1, comm)
-                if i != id
-                    copy!(vbcast, bufr)
-                end
-            end
-        end
-        MPI.Barrier(comm)
+        mpibroadcast(advd.adv.mpid, t_split, f)
     end
     p = getperm(pv.pc, advd)
     pinv = invperm(p)
@@ -329,10 +310,10 @@ function getprecal(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, N
 end
 
 
-function getitrfirst(pc::PoissonConst, self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
-    itrfirst = pc.t_itrfirst[_getcurrentindice(self)]
+function getitrfirst(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
+    itrfirst = pc.t_itrfirst[_getcurrentindice(advd)]
     if pc.adv.nbsplit != 1
-        ind = timeopt == MPIOpt ? MPI.Comm_rank(MPI.COMM_WORLD)+1 : Threads.threadid()
+        ind = timeopt == MPIOpt ? advd.adv.mpid.ind : Threads.threadid()
         return itrfirst[ind]
     else
 #        println("trace good itrfirst=$itrfirst")

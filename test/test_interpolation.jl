@@ -31,6 +31,21 @@ function test_interp(interp::InterpolationType{Rational{BigInt}, iscirc}, dec,  
         end
         res = zeros(Rational{BigInt}, sz)
         interpolate!(res, deb, dec, interp)
+        if iscirc
+            res2 = zeros(Rational{BigInt}, sz)
+            decint = convert(Int, floor(dec))
+            decfloat = dec - decint
+            precal = get_precal(interp,decfloat)
+            # println("outside : precal=$precal decint=$decint decfloat=$decfloat")
+            # println("order=$(get_order(interp)) order from precal=$(size(precal,1)-1)")   
+            interpolate!(res2, deb, decint, precal, interp)
+            println("norm=$(float(norm(res2-ref,Inf)))")
+            if isbspline(interp)
+                @test res2 == ref
+            else
+                @test size(filter( x->x==0,res2-ref),1)==120
+            end
+        end
         println("norm=$(float(norm(res-ref,Inf)))")
         diff = res-ref
         # for i=1:sz
@@ -43,6 +58,7 @@ function test_interp(interp::InterpolationType{Rational{BigInt}, iscirc}, dec,  
         else
             @test size(filter( x->x==0,res-ref),1)==120
         end
+
     end
 end
 function test_interp(interp, sz)

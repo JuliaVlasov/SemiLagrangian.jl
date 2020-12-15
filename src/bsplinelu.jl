@@ -223,7 +223,7 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where{T}
             && la.isLU == lb.isLU && la.band == lb.band 
             && (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols)))
 end
-function sol(spA::LuSpline{T}, b::Vector{T}) where{T}
+function sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}
     szb = size(spA.band,2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
     begrow = n-spA.ku
@@ -277,7 +277,7 @@ struct B_SplineLU{T,iscirc} <: B_Spline{T,iscirc}
     B_SplineLU(o, n, t::DataType ; kwargs... )=B_SplineLU(o, n, one(t) ; kwargs... )
 end
 
-sol(bsp::B_SplineLU{T}, b::Vector{T}) where{T}=sol(bsp.ls, b)[1]
+sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where{T}=sol(bsp.ls, b)[1]
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 get_order(bsp::B_SplineLU{T}) where{T}=get_order(bsp.ls)
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline

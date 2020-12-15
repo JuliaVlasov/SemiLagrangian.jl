@@ -27,6 +27,7 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
     origin=get_origin(order) +isbspline(interp)
     if iscirc
         precal = get_precal(interp, decfloat)
+#        println("inside : precal=$precal decint=$decint decfloat=$decfloat")
     else
         allprecal = [get_precal(interp, decfloat+i) for i=origin:(origin+order)]
         # if isbspline(interp)
@@ -83,7 +84,7 @@ function interpolate!( fp, fi, decint, precal, interp::InterpolationType{T,true}
          for i=1:lg
             indbeg=i+origin+decint
             indend=indbeg+order
-            fp[i] = sum(fi[modone.(indbeg:indend, lg)] .* precal)
+            fp[i] = sum(res[modone.(indbeg:indend, lg)] .* precal)
         end
   #  clockend(cl_obs, 1)
    

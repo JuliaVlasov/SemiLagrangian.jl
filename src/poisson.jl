@@ -137,8 +137,8 @@ struct PoissonConst{T, Nsp, Nv}
         return new{T,Nsp,Nv}(adv, fctv_k, pfftbig, t_perms, tt_split, t_itrfirst, t_itrsecond)
     end
 end
-getperm(pc,advd)=pc.t_perms[_getcurrentindice(advd)]
-gett_split(pc, advd)=pc.tt_split[_getcurrentindice(advd)]
+getperm(pc::PoissonConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
+gett_split(pc::PoissonConst, advd::AdvectionData)=pc.tt_split[_getcurrentindice(advd)]
 
 """
     PoissonVar{T, Nsp, Nv}
@@ -159,14 +159,15 @@ mutable struct PoissonVar{T, Nsp, Nv}
     rho::Array{T, Nsp}
     t_elfield
     bufcur
-    t_itrfirst
-    t_itrsecond
     function PoissonVar(pc::PoissonConst{T, Nsp, Nv}) where{T, Nsp, Nv}
         sz = length.(pc.adv.t_mesh_sp)
         rho = Array{T, Nsp}(undef, sz)
-        return new{T, Nsp, Nv}(pc, rho, missing, missing, missing, missing)
+        return new{T, Nsp, Nv}(pc, rho, missing, missing)
     end
 end
+getperm(pvar::PoissonVar,advd::AdvectionData)=getperm(pvar.pc,advd)
+gett_split(pvar::PoissonVar,advd::AdvectionData)=gett_split(pvar.pc,advd)
+
 """
 
     compute_elfield!( self:AdvectionData)
@@ -247,59 +248,6 @@ function getpoissonvar(adv::Advection)
     pc = PoissonConst(adv)
     return PoissonVar(pc)
 end
-
-function getdata(pv::PoissonVar{T, Nsp, Nv}, advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
-    p = getperm(pv.pc,advd)
-    if p == 1:Nsum
-        # the case of identity permutation no copy is needed
-        f = self.data
-    else
-        ptr = pointer(advd.bufdata)
-        f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p])
-        permutedims!(f, advd.data, p)
-    end
-    return f
-end
-function copydata!(pv::PoissonVar{T, Nsp, Nv}, advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}, f) where{T, Nsp, Nv, Nsum, timeopt}
-    if timeopt == MPIOpt && advd.adv.nbsplit != 1
-        t_split = gett_split(pv.pc, advd)
-        mpibroadcast(advd.adv.mpid, t_split, f)
-    end
-    p = getperm(pv.pc, advd)
-    pinv = invperm(p)
-
-    if f != advd.data
-        permutedims!(advd.data, f, pinv)
-    end
-end
-
-
-
-
-
-#Obsolete now
-"""
-    getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) 
-
-Implementation of the interface function that is called before each interpolation in advection
-
-"""
-function getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind, indthread) where{T, Nsp, Nv, Nsum}
-    pv::PoissonVar{T, Nsp, Nv} = getext(self)
-    state_dim = getstate_dim(self)
-    alpha = if isvelocitystate(self)
-        if indthread <= 0
-            pv.bufcur[ind[1:Nsp]...]
-        else
-            pv.bufcur[ind[1:(Nsp-1)]...,((indthread-1)*self.adv.szsplit + ind[Nsp],)...]
-        end
-    else
-        pv.bufcur[ind[self.state_dim+Nsp]]
-    end
-#    println("ind=$ind alpha=$alpha")
-    return alpha
-end
-getalpha(self::AdvectionData, ind)=getalpha(self,ind,0)
 
 function getprecal(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
 #    alpha = isvelocitystate(self) ? pv.bufcur[ind...] : pv.bufcur[ind]

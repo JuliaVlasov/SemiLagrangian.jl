@@ -227,7 +227,7 @@ function landau1_1(T::DataType)
 
     landau(advdata, nbdt)
 end   
-function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
+function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", interp=Lagrange(T, 31))
     epsilon = T(0.5)
     dt = T(dt)
 
@@ -243,9 +243,7 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1")
     mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)
     mesh2_v = UniformMesh( v2min, v2max, nv2, endpoint = false )
 
-    interp=Lagrange(T,51)
-
-
+ 
     adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), (interp,interp,), (interp,interp,), dt, timeopt=timeopt)
 
     fct_sp(x)=epsilon * cos(x/2) + 1
@@ -286,5 +284,7 @@ end
 # landau2_2(Float64, 50, SplitThreadsOpt)
 # landau2_2(Float64, 50, MPIOpt, sz=(32,32,32,32))
 # landau2_2(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
-landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
+# landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
+T=Float64
+landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
 

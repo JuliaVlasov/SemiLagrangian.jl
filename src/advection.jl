@@ -297,7 +297,32 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
         self.state_dim += 1
     end
     return ret
- end
+end
+getperm(_::Any,advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum} = (1:Nsum)
+function getdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+    p = getperm(getext(advd),advd)
+    if p == 1:Nsum
+        # the case of identity permutation no copy is needed
+        f = advd.data
+    else
+        ptr = pointer(advd.bufdata)
+        f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p])
+        permutedims!(f, advd.data, p)
+    end
+    return f
+end
+function copydata!(advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}, f) where{T, Nsp, Nv, Nsum, timeopt}
+    if timeopt == MPIOpt && advd.adv.nbsplit != 1
+        t_split = gett_split(getext(advd), advd)
+        mpibroadcast(advd.adv.mpid, t_split, f)
+    end
+    p = getperm(getext(advd), advd)
+    pinv = invperm(p)
+
+    if f != advd.data
+        permutedims!(advd.data, f, pinv)
+    end
+end
 """
     advection!(self::AdvectionData)
 
@@ -318,7 +343,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     extdata = getext(self)
     initcoef!(extdata, self)
     curind =  _getcurrentindice(self)
-    f = getdata(extdata, self)
+    f = getdata(self)
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
         for indfirst in getitrfirst(extdata, self)
@@ -352,7 +377,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
             end
         end
     end
-    copydata!(extdata, self, f)
+    copydata!(self, f)
 
     return nextstate!(self)
 end

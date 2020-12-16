@@ -3,6 +3,7 @@ include("../src/poisson.jl")
 include("../src/lagrange.jl")
 
 using Test
+# using DoubleFloats
 
 function compute_elfield(
     t_mesh_x::NTuple{N,UniformMesh{T}},
@@ -183,8 +184,8 @@ end
     test_itr(BigFloat)
 end
 
-@testset "Poisson Double64" begin
-    test_poisson(Double64)
-    test_itr(Double64)
-end
+# @testset "Poisson Double64" begin
+#     test_poisson(Double64)
+#     test_itr(Double64)
+# end
 

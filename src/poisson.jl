@@ -230,11 +230,11 @@ function initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, N
     mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
         if self.state_dim == 1
-            global cl_obs
-            clockbegin(cl_obs, 5)
+            # global cl_obs
+            # clockbegin(cl_obs, 5)
             compute_charge!(self)
             compute_elfield!(self)
-            clockend(cl_obs, 5)
+            # clockend(cl_obs, 5)
         end
 #        println("v trace init plus")
         pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]

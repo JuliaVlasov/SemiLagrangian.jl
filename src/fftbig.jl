@@ -6,7 +6,7 @@ fft:
 =#
 # function that reverse the order of the pos lowest bits
 using FFTW
-using DoubleFloats
+
 
 function _reverse_num(num, pos)
     result = 0

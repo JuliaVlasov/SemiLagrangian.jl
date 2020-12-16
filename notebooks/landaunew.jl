@@ -152,17 +152,17 @@ function trace_energy(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t) where{T,Nsp
     if t == 0
         printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
     end
-    global cl_obs
-    clockbegin(cl_obs,6)
+    # global cl_obs
+    # clockbegin(cl_obs,6)
     compute_charge!(advd)
     compute_elfield!(advd)
-    clockend(cl_obs,6)
-    clockbegin(cl_obs,7)
+    # clockend(cl_obs,6)
+    # clockbegin(cl_obs,7)
     elenergy = compute_ee(advd)
-    clockend(cl_obs,7)
-    clockbegin(cl_obs,8)
+    # clockend(cl_obs,7)
+    # clockbegin(cl_obs,8)
     kinenergy = compute_ke(advd)
-    clockend(cl_obs,8)
+    # clockend(cl_obs,8)
     energyall = elenergy + kinenergy
     printout(advd, "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))")
 end
@@ -170,8 +170,8 @@ end
 
 function landau(advd::AdvectionData, nbdt)
 
-    global cl_obs
-    clockreset(cl_obs)
+    # global cl_obs
+    # clockreset(cl_obs)
 
     dt = advd.adv.dt_base
     trace_energy(advd, 0.0)

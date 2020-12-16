@@ -2,11 +2,9 @@
 #import Statistics: mean
 # export UniformMesh
 
-include("clockobs.jl")
+# include("clockobs.jl")
 
-cl_obs = ClockObs(8)
-
-using DoubleFloats
+# cl_obs = ClockObs(8)
 
 
 """

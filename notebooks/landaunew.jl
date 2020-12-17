@@ -295,4 +295,5 @@ T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
 # landau2_2(T, 50, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 27))
 # landau1_1(T, 50, SimpleThreadsOpt, sz=(128,128))
-landau1_1(T, 50, NoTimeOpt, sz=(64,128))
+# landau1_1(T, 50, NoTimeOpt, sz=(64,128))
+landau2_2(T, 50, SimpleThreadsOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 27))

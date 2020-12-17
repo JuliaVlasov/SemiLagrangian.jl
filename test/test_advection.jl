@@ -2,7 +2,7 @@ include("../src/advection.jl")
 include("../src/lagrange.jl")
 
 using Test
-# using DoubleFloats
+using DoubleFloats
 
 
 function initmesh(t_deb, t_end, t_size)
@@ -143,11 +143,11 @@ end
     test_adv(BigFloat)
 
 end
-# @testset "test Advection Double64" begin
+@testset "test Advection Double64" begin
 
-#     test_adv(Double64)
+    test_adv(Double64)
 
-# end
+end
 function test_ke(T::DataType)
     t_debsp = T.([-1//1,-10//1,-3//1])
     t_endsp = T.([3//1, 6//1,5//1])

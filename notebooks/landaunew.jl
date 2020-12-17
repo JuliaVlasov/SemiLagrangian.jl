@@ -29,7 +29,7 @@ include("../src/bsplinefft.jl")
 include("../src/lagrange.jl")
 include("../src/interpolation.jl")
 
-
+using DoubleFloats
 
 function landau_old( 
     dt::T, 
@@ -146,6 +146,7 @@ function printout(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, str) where {T,Nsp,
         println(str)
     end
 end
+printout(str)=println(str)
 
 function trace_energy(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t) where{T,Nsp,Nv,Nsum,timeopt}
 
@@ -187,34 +188,21 @@ function landau(advd::AdvectionData, nbdt)
     println("#  end")
 # printall(cl_obs)
 end
-function landau1_1(T::DataType)
+function landau1_1(T::DataType, nbdt, timeopt; sz=(64,64), dt = big"0.1", interp=Lagrange(T, 21))
     epsilon = T(0.5)
-    nbdt = 50
     dt = T(big"0.1")
 
-
-
-    spmin, spmax, nsp =  T(0), T(4big(pi)),  64
-    vmin, vmax, nv = -T(6), T(6.), 128
+    spmin, spmax, nsp =  T(0), T(4big(pi)),  sz[1]
+    vmin, vmax, nv = -T(6), T(6.), sz[2]
 
     mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
     mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
-
-
-    interp=Lagrange(T,21)
-
     
-
-    printout("# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
-    printout("# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
-    printout("# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    printout("# interpolation : $(get_type(interp)) order=$(get_order(interp))")
-    printout("# type=$T precision = $(precision(T))")
-
-    adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt)
+    adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt=timeopt)
 
     fct_sp(x)=epsilon * cos(x/2) + 1
     fct_v(v)=exp( - v^2 / 2)/sqrt(2T(pi))
+
     lgn_sp = fct_sp.(mesh_sp.points)
     lgn_v = fct_v.(mesh_v.points)
 
@@ -222,10 +210,26 @@ function landau1_1(T::DataType)
 
     pvar = getpoissonvar(adv)
 
-    advdata = AdvectionData(adv, data, pvar; isthread=true)
+    advd = AdvectionData(adv, data, pvar)
+
+    printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
+    printout(advd, "# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
+    printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
+    printout(advd, "# interpolation : $(get_type(interp)) order=$(get_order(interp))")
+    printout(advd, "# type=$T precision = $(precision(T))")
+    printout(advd, "# timeopt=$timeopt")
+    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
+        printout(advd, "# nb threads : $(Threads.nthreads())")
+    elseif timeopt == MPIOpt
+        printout(advd,"# nb process : $(adv.mpid.nb)")
+    else
+        printout(advd, "# monothread version")
+    end
+    printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
+
     # advdata = AdvectionData(adv, data, pvar)
 
-    landau(advdata, nbdt)
+    landau(advd, nbdt)
 end   
 function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", interp=Lagrange(T, 31))
     epsilon = T(0.5)
@@ -287,5 +291,6 @@ end
 # landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
 T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
-landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=Lagrange(T, 27))
-
+# landau2_2(T, 50, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 27))
+# landau1_1(T, 50, SimpleThreadsOpt, sz=(128,128))
+landau1_1(T, 50, NoTimeOpt, sz=(64,128))

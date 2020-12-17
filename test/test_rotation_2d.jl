@@ -11,6 +11,7 @@ include("../src/interpolation.jl")
 
 # using Images
 using LinearAlgebra
+using Test
 """
 
    exact(tf, mesh1, mesh2)

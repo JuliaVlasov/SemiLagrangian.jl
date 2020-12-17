@@ -106,6 +106,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     t_interp_v::NTuple{Nv, InterpolationType{T, true}}
     dt_base::T
     tab_coef
+    tab_fct
     v_square
     nbsplit
     mpid
@@ -116,6 +117,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     t_interp_v::NTuple{Nv, InterpolationType{T}},
     dt_base::T;
     tab_coef=[1//2, 1//1, 1//2],
+    tab_fct=[identity,identity,identity],
     timeopt::TimeOptimization=NoTimeOpt
 ) where{T, Nsp, Nv}
         Nsp <= Nv || thrown(ArgumentError("Nsp=$Nsp must less or equal to Nv=$Nv"))
@@ -136,7 +138,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeitr,
     t_mesh_sp, t_mesh_v, 
     t_interp_sp, t_interp_v,
-    dt_base, tab_coef,
+    dt_base, tab_coef, tab_fct,
     v_square,
     nbsplit,
     mpid
@@ -238,7 +240,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
 end
 getext(self)=self.parext
 getdata(self)=self.data
-getcur_t(adv::Advection, state_coef::Int)=adv.tab_coef[state_coef] * adv.dt_base
+getcur_t(adv::Advection, state_coef::Int)=adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
 getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_coef)
 getstate_dim(self)=self.state_dim
 isvelocity(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curid) where {T, Nsp, Nv, Nsum, timeopt} = (curid-1)%Nsum+1 > Nsp

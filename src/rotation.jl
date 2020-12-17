@@ -2,12 +2,12 @@
 include("advection.jl")
 
 function _get_perm(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
-    if isvelocity(adv, curstate)
+    return if isvelocity(adv, curstate)
         [2, 1]
     else
         [1, 2]
     end
-    return p
+
 end
 function _get_split(adv, curstate)
     if adv.nbsplit != 1
@@ -47,20 +47,19 @@ struct RotationConst{T, Nsp, Nv}
     tt_split
     t_itrfirst
     t_itrsecond
-    function PoissonConst(
-    adv::Advection{T, Nsp, Nv, Nsum, timeopt}; 
-    isfftbig=true
+    function RotationConst(
+    adv::Advection{T, Nsp, Nv, Nsum, timeopt}
 ) where{T, Nsp, Nv, Nsum, timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
         t_perms = ntuple(x -> _get_perm(adv, x), Nsum)
         tt_split = ntuple(x-> _get_split(adv, x), Nsum)
         t_itrfirst = ntuple(x -> _get_t_itrfirst(adv, tt_split[x], x), Nsum)
         t_itrsecond = ntuple(x -> Iterators.product(sizeitr(adv)[t_perms[x]][2:Nsum-1]...), Nsum)
-        return new{T,Nsp,Nv}(adv, fctv_k, pfftbig, t_perms, tt_split, t_itrfirst, t_itrsecond)
+        return new{T,Nsp,Nv}(adv, t_perms, tt_split, t_itrfirst, t_itrsecond)
     end
 end
-getperm(pc::RotationConst,advd)=pc.t_perms[_getcurrentindice(advd)]
-gett_split(pc::RotationConst, advd)=pc.tt_split[_getcurrentindice(advd)]
+getperm(pc::RotationConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
+gett_split(pc::RotationConst, advd::AdvectionData)=pc.tt_split[_getcurrentindice(advd)]
 
 
 mutable struct RotationVar{T, Nsp, Nv}
@@ -72,8 +71,8 @@ mutable struct RotationVar{T, Nsp, Nv}
         return new{T, Nsp, Nv}(pc, missing)
     end
 end
-getperm(pvar::RotationVar,advd)=getperm(pvar.pc,advd)
-gett_split(pvar::RotationVar,advd)=gett_split(pvar.pc,advd)
+getperm(pvar::RotationVar,advd::AdvectionData)=getperm(pvar.pc,advd)
+gett_split(pvar::RotationVar,advd::AdvectionData)=gett_split(pvar.pc,advd)
 
 
 
@@ -91,7 +90,7 @@ function initcoef!(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, 
     mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
 #        println("sp trace init moins")
-        pv.bufcur = (-getcur_t(self)/step(mesh_v))*mesh_sp.points
+        pv.bufcur = (getcur_t(self)/step(mesh_v))*mesh_sp.points
     else
         mesh_sp = self.adv.t_mesh_sp[state_dim]
 #        println("sp trace init moins")
@@ -133,7 +132,7 @@ function getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind, indthread) where{T
 end
 getalpha(self::AdvectionData, ind)=getalpha(self,ind,0)
 
-function getprecal(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
+function getprecal(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
 #    alpha = isvelocitystate(self) ? pv.bufcur[ind...] : pv.bufcur[ind]
     alpha = pv.bufcur[ind...]
     decint = convert(Int, floor(alpha))
@@ -142,7 +141,7 @@ function getprecal(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, N
 end
 
 
-function getitrfirst(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
+function getitrfirst(pc::RotationConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
     itrfirst = pc.t_itrfirst[_getcurrentindice(advd)]
     if pc.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? advd.adv.mpid.ind : Threads.threadid()
@@ -153,53 +152,15 @@ function getitrfirst(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum, time
     end
  
 end
-getitrfirst(pvar::PoissonVar, advd::AdvectionData)=getitrfirst(pvar.pc, advd)
+getitrfirst(pvar::RotationVar, advd::AdvectionData)=getitrfirst(pvar.pc, advd)
 addcolindend(ind::Tuple,tup)=(:,tup...,ind...)
 addcolindend(ind::Int,tup)=(:,tup...,ind)
 
-function getitrsecond(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum}, indfirst) where{T,Nsp,Nv,Nsum}
+function getitrsecond(pc::RotationConst, advd::AdvectionData{T,Nsp, Nv, Nsum}, indfirst) where{T,Nsp,Nv,Nsum}
     perm = getperm(pc,advd)
     szitr = sizeitr(advd.adv)[perm]
     tupmid = isvelocitystate(advd) ? szitr[2:Nv] : szitr[2:Nsum-1]
     return addcolindend.((indfirst,), Iterators.product(tupmid...))
 end
-getitrsecond(pvar::PoissonVar, advd::AdvectionData, indfirst)=getitrsecond(pvar.pc, advd, indfirst)
+getitrsecond(pvar::RotationVar, advd::AdvectionData, indfirst)=getitrsecond(pvar.pc, advd, indfirst)
     
-"""
-    compute_ee(t_mesh_sp, t_elf)
-
-compute electric enegie
-|| E(t,.) ||_L2
-
-# Arguments
-- `t_mesh_sp::NTuple{N,UniformMesh{T}}` : tuple of space meshes
-- `t_elf::NTuple{N,Array{T,N}}` : tuple of electric field
-"""
-function compute_ee(
-    t_mesh_sp::NTuple{N,UniformMesh{T}}, 
-    t_elf::NTuple{N,Array{T,N}}
-) where {T,N}
-    res = zero(T)
-    dx = prod(step, t_mesh_sp)
-    for i=1:N
-        res += sum(t_elf[i].^2)
-    end
-    dx * res
-end
-"""
-    compute_ee(t_mesh_sp, t_elf)
-
-compute electric enegie
-|| E(t,.) ||_L2
-
-# Argument
-- `self::AdvectionData` : veriable advection data structure.
-
-"""
-function compute_ee(self::AdvectionData)
-    adv = self.adv
-    pvar = getext(self)
-    dx = prod(step, adv.t_mesh_sp)
-    return dx * sum(map(x->sum(x.^2), pvar.t_elfield))
-end
-

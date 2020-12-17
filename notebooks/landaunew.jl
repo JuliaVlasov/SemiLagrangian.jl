@@ -31,7 +31,7 @@ include("../src/bsplinefft.jl")
 include("../src/lagrange.jl")
 include("../src/interpolation.jl")
 
-using DoubleFloats
+# using DoubleFloats
 
 function landau_old( 
     dt::T, 

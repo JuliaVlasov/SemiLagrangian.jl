@@ -20,6 +20,8 @@ using LinearAlgebra
 
 # +
 import Base.Threads: @spawn, @sync, nthreads, threadid
+# include("../src/mpiinterface.jl")
+include("../src/nompiinterface.jl")
 include("../src/advection.jl")
 include("../src/poisson.jl")
 include("../src/spline.jl")

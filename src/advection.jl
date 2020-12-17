@@ -2,7 +2,7 @@
 
 
 include("mesh.jl")
-include("mpiinterface.jl")
+
 
 abstract type InterpolationType{T, iscirc} end
 

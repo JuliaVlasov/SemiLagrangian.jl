@@ -85,21 +85,4 @@ function dotprodother(t_v::NTuple{N, Vector{T}}) where{N,T}
     return prod.(Iterators.product(t_v...))
 end
 
-# TODO supprimer les fonctions suivantes et les remplacer par les precedentes 
-# motivation : ORTHOGONALITE !!!!
-function tupleshape(ind::Int, nb::Int, mesh::UniformMesh{T}) where{T}
-    return reshape(mesh.points, tupleshape(ind, nb, mesh.length))
-end
-function dotprod(t_mesh::NTuple{N, UniformMesh{T}}) where{N,T}
-#    res = ones(T,totuple(ones(Int,N))) # array of N dimensions with only one one.
-    res = ones(T,ntuple(x->1,N)) # array of N dimensions with only one one.
-    for (ind, mesh) in enumerate(t_mesh)
-        res = res .* tupleshape(ind, N, mesh)
-    end
-    return res
-end
-function dotprodother(t_mesh::NTuple{N, UniformMesh{T}}) where{N,T}
-    return prod.(Iterators.product(points.(t_mesh)...))
-end
-    
 

@@ -29,39 +29,22 @@ function transperm(a,b,n)
     return p
 end
 
-oneitr(t)=map(x->x:x,t)
-
-addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
-function _getitr(ind, sizeitr, nb)
-    indtup = vcat(1:(ind-1),(ind+1):nb)
-    return addcolon.(ind, Iterators.product(sizeitr[indtup]...))
-end
-function _getitr(ind, sizeitr, Nsum, nbth)
-    itr = _getitr(ind, sizeitr, Nsum)
-    return splitvec(nbth, itr)
-end
-function _getitr0(ind, sizeitr, Nsum)
-    indtup = transperm(1,ind,Nsum)[2:Nsum]
-    return addcolon.(1, Iterators.product(sizeitr[indtup]...))
-end
-function _getitr0(ind, sizeitr, Nsum, nbth)
-    itr = _getitr0(ind, sizeitr, Nsum)
-    return splitvec(nbth, itr)
-end
 
 
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
 
 """
-    Advection{T, Nsp, Nv, Nsum}
+    Advection{T, Nsp, Nv, Nsum, timeopt}
     Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
     t_interp_sp::NTuple{Nsp, InterpolationType{T}},
-    t_interp_v::NTuple{Nv, InterpolationType{T}};
+    t_interp_v::NTuple{Nv, InterpolationType{T}},
     dt_base::T;
     tab_coef=[1//2, 1//1, 1//2],
+    tab_fct=[identity, identity, identity],
+    timeopt::TimeOptimization=NoTimeOpt
 )
 
 Immutable structure that contains constant parameters for multidimensional advection
@@ -71,6 +54,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `Nsp` : number of space dimensions
 - `Nv` : number of velocity dimensions
 - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+- `timeopt::TimeOptimization` : time optimization
 
 # Arguments
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
@@ -82,6 +66,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 # Keywords
 - `tab_coef=[1//2, 1//1, 1//2]` : coefficient table for one advection series, the
     coefficients at odd indexes is for space advection series, the coefficients at even indexes is for velocity advection series
+- `tab_fct=[identity, identity, identity]` : function table for one advection series, with the same indexes than tab_coef
 
 # Implementation
 - sizeall : tuple of the sizes of all dimensions (space before velocity)
@@ -92,6 +77,8 @@ Immutable structure that contains constant parameters for multidimensional advec
 - t_interp_v : tuple of velocity interpolation types
 - dt_base::T : time unit of an advection series
 - tab_coef : coefficient table
+- tab_fct : function table
+- v_square : 
 
 # Throws
 - `ArgumentError` : `Nsp` must less or equal to `Nv`.
@@ -124,7 +111,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
-        v_square = dotprod(t_mesh_v) .^ 2 # precompute for ke
+        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing        
         nbsplit = if timeopt == MPIOpt
             mpid.nb
@@ -171,8 +158,7 @@ sizeitr(adv)=adv.sizeitr
     AdvectionData(
     adv::Advection{T,Nsp,Nv,Nsum,timeopt}, 
     data::Array{T,Nsum},
-    parext; 
-    isthread=false)
+    parext)
 
 Mutable structure that contains variable parameters of advection series
 
@@ -181,26 +167,27 @@ Mutable structure that contains variable parameters of advection series
 - `Nsp` : number of space dimensions
 - `Nv` : number of velocity dimensions
 - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+- `timeopt::TimeOptimization` : time optimization
 
 # Arguments
 - `adv::Advection{T,Nsp,Nv,Nsum}` : link to the constant data of this advection
 - `data::Array{T,Nsum}` : Initial data of this advection
 - `parext` : external data of this advection to compute alpha of each interpolations
 
-# Keywords
-- `isthread::Bool=false` : if false only one thread is using else all possible threads are using
-
 # Implementation
 - adv : link to the constant data of this advection
 - state_coef : state that is the index of tab_coef, it is from one to lenth(tab_coef)
 - state_dim : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
 - data : it is the working buffer
+- bufdata : vector of the same size of the working buffer
 - t_buf : tuple of buffer that is used to get the linear data for interpolation, one buffer per thread
 - parext : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `init!(self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
-- `getalpha(self::AdvectionData, ind)` : return the alpha number that is used for interpolation. 
+- `init!(parext, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
+- `getalpha(parext, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
+- `getperm(parext, advd::AdvectionData)) : get the permutation of the dimension as a function of the current state
+- `get
 
 """
 mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
@@ -261,7 +248,11 @@ end
 function getindsplit(self::AdvectionData{T,Nsp, Nv, Nsum}) where{T,Nsp,Nv,Nsum}
     return isvelocitystate(self) ? Nsp : Nv
 end
-       
+function getprecal(self::AdvectionData, alpha)
+    decint = convert(Int, floor(alpha))
+    decfloat = alpha - decint
+    return decint, get_precal(getinterp(self),decfloat)
+end      
 # TODO precalculer dans Avection
 addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
 # function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
@@ -349,7 +340,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
         for indfirst in getitrfirst(extdata, self)
-            local decint, precal = getprecal(extdata, self, indfirst)
+            local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
             for ind in getitrsecond(extdata, self, indfirst)
                 local lgn = view(f,ind...)
                 interpolate!(buf, lgn, decint, precal, interp)
@@ -359,7 +350,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     elseif timeopt == SimpleThreadsOpt
         Threads.@threads for indfirst in collect(getitrfirst(extdata, self))
             local buf=view(tabbuf, :, Threads.threadid())
-            local decint, precal = getprecal(extdata, self, indfirst)
+            local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
             for ind in getitrsecond(extdata, self,indfirst)
                 local lgn = view(f,ind...)
                 interpolate!(buf, lgn, decint, precal, interp)
@@ -370,7 +361,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
         Threads.@threads for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
             for indfirst in getitrfirst(extdata, self)
-                local decint, precal = getprecal(extdata, self, indfirst)
+                local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
                 for ind in getitrsecond(extdata, self,indfirst)
                     local lgn = view(f,ind...)
                     interpolate!(buf, lgn, decint, precal, interp)
@@ -406,7 +397,7 @@ function compute_ke(
     dv = prod(step, t_mesh_v)
     sum_sp = Array{T,Nv}(undef,szv)
     sum_sp .= reshape(sum(f, dims = ntuple(x->x, Nsp)), szv )
-    return  (dsp * dv ) * sum( dotprod(t_mesh_v) .^ 2 .* sum_sp)
+    return  (dsp * dv ) * sum( dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
 end
 """
     compute_ke(t_mesh_sp, t_mesh_v, f)

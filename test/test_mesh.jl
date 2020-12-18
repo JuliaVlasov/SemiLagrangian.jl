@@ -8,7 +8,6 @@ using Test
     @test [5,1,9,2] == tovector((5,1,9,2))
     
     @test (1,1,71,1) == tupleshape(3,4,71)
-    @test reshape((-5//1):1//10:49//10,(1,100,1,1)) == tupleshape(2,4,UniformMesh(-5//1,5//1,100, endpoint=false))
     t_deb =[-1//1,-10//1,-3//1, -1//1]
     t_end = [3//1, 6//1,5//1,1//1]
     t_sz = [20, 10, 8, 16]
@@ -28,8 +27,8 @@ using Test
     tt_mesh = UniformMesh.(t_deb,t_end,t_sz; endpoint=false)
     t_mesh = totuple(tt_mesh)
 #     println("typeof(t_mesh)=$(typeof(t_mesh))")
-    @time @test result == dotprod(t_mesh)
-    @time @test result == dotprodother(t_mesh)
+    @time @test result == dotprod(points.(t_mesh))
+    @time @test result == dotprodother(points.(t_mesh))
 
     t_v = points.(t_mesh)
     @time @test result == dotprod(t_v)

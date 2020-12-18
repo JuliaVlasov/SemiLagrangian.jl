@@ -178,7 +178,7 @@ function test_ke(T::DataType)
     dv = prod(step, t_meshv)
     sum_sp = Array{T,Nv}(undef,szv)
     sum_sp .= reshape(sum(fxv, dims = ntuple(x->x,Nsp)), szv )
-    refres =  (dx * dv ) * sum( dotprod(t_meshv) .^ 2 .* sum_sp)
+    refres =  (dx * dv ) * sum( dotprod(points.(t_meshv)) .^ 2 .* sum_sp)
 
     @test refres == compute_ke(t_meshsp, t_meshv, fxv)
 end

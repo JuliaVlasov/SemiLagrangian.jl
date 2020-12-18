@@ -249,14 +249,7 @@ function getpoissonvar(adv::Advection)
     return PoissonVar(pc)
 end
 
-function getprecal(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
-#    alpha = isvelocitystate(self) ? pv.bufcur[ind...] : pv.bufcur[ind]
-    alpha = pv.bufcur[ind...]
-    decint = convert(Int, floor(alpha))
-    decfloat = alpha - decint
-    return decint, get_precal(getinterp(self),decfloat)
-end
-
+getalpha(pv::PoissonVar, self::AdvectionData, ind)=pv.bufcur[ind...]
 
 function getitrfirst(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
     itrfirst = pc.t_itrfirst[_getcurrentindice(advd)]

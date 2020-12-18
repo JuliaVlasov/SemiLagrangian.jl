@@ -55,7 +55,7 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x - sin(tf) * y
         yn = sin(tf) * x + cos(tf) * y
-        f[i,j] = exp(-13*((xn)^2+(yn+big"1.2")^2))
+        f[i,j] = exp(-13*((xn)^2+(yn+T(6//5))^2))
     end
     f
 end

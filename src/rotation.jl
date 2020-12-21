@@ -102,43 +102,14 @@ function getrotationvar(adv::Advection)
     return RotationVar(pc)
 end
 
-
-
-
-
-
-
-#Obsolete now
 """
     getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection
 
 """
-function getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind, indthread) where{T, Nsp, Nv, Nsum}
-    pv::PoissonVar{T, Nsp, Nv} = getext(self)
-    state_dim = getstate_dim(self)
-    alpha = if isvelocitystate(self)
-        if indthread <= 0
-            pv.bufcur[ind[1:Nsp]...]
-        else
-            pv.bufcur[ind[1:(Nsp-1)]...,((indthread-1)*self.adv.szsplit + ind[Nsp],)...]
-        end
-    else
-        pv.bufcur[ind[self.state_dim+Nsp]]
-    end
-#    println("ind=$ind alpha=$alpha")
-    return alpha
-end
-getalpha(self::AdvectionData, ind)=getalpha(self,ind,0)
+getalpha(pv::RotationVar, self::AdvectionData, ind)=pv.bufcur[ind...]
 
-function getprecal(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
-#    alpha = isvelocitystate(self) ? pv.bufcur[ind...] : pv.bufcur[ind]
-    alpha = pv.bufcur[ind...]
-    decint = convert(Int, floor(alpha))
-    decfloat = alpha - decint
-    return decint, get_precal(getinterp(self),decfloat)
-end
 
 
 function getitrfirst(pc::RotationConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}

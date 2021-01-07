@@ -251,7 +251,7 @@ getstate_dim(self)=self.state_dim
 isvelocity(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curid) where {T, Nsp, Nv, Nsum, timeopt} = (curid-1)%Nsum+1 > Nsp
 isvelocitystate(state_coef::Int)=state_coef%2 == 0
 isvelocitystate(self::AdvectionData)=isvelocitystate(self.state_coef)
-function getindsplit(self::AdvectionData)
+function getindsplit(self::AdvectionData{T,Nsp,Nv,Nsum,timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
     else

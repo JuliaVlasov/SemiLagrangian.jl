@@ -9,57 +9,21 @@ function _get_perm(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T
     end
 
 end
-function _get_split(adv, curstate)
-    if adv.nbsplit != 1
-        perm = _get_perm(adv,curstate)
-        return splititr(adv.nbsplit, sizeall(adv)[perm][end])
-    else
-        return missing
-    end
-end
-function _get_t_itrfirst(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, t_itr, curid) where{T,Nsp,Nv,Nsum,timeopt}
-    
-    szitr = sizeitr(adv)
-    if adv.nbsplit == 1
-        if isvelocity(adv, curid)
-#            println("_get_t_itrfirst trace1")
-            return Iterators.product(szitr[1:Nsp]...)
-        else
-#            println("_get_t_itrfirst trace2 return=$(szitr[curid+Nsp])")
-            return szitr[curid+Nsp]
-        end
-    else
-        if isvelocity(adv, curid)
-#            println("_get_t_itrfirst trace3")
-            return ntuple( x -> Iterators.product((szitr[1:Nsp-1]..., (t_itr[x],)...)...), adv.nbsplit)
-        else
-#            println("_get_t_itrfirst trace4")
-            return t_itr
-        end
-    end
-end
-
 
 
 struct RotationConst{T, Nsp, Nv}
     adv
     t_perms
-    tt_split
-    t_itrfirst
-    t_itrsecond
     function RotationConst(
     adv::Advection{T, Nsp, Nv, Nsum, timeopt}
 ) where{T, Nsp, Nv, Nsum, timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
         t_perms = ntuple(x -> _get_perm(adv, x), Nsum)
-        tt_split = ntuple(x-> _get_split(adv, x), Nsum)
-        t_itrfirst = ntuple(x -> _get_t_itrfirst(adv, tt_split[x], x), Nsum)
-        t_itrsecond = ntuple(x -> Iterators.product(sizeitr(adv)[t_perms[x]][2:Nsum-1]...), Nsum)
-        return new{T,Nsp,Nv}(adv, t_perms, tt_split, t_itrfirst, t_itrsecond)
+        return new{T,Nsp,Nv}(adv, t_perms)
     end
 end
 getperm(pc::RotationConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
-gett_split(pc::RotationConst, advd::AdvectionData)=pc.tt_split[_getcurrentindice(advd)]
+getperm(pc::RotationConst,curst::Int)=pc.t_perms[curst]
 
 
 mutable struct RotationVar{T, Nsp, Nv}
@@ -72,7 +36,8 @@ mutable struct RotationVar{T, Nsp, Nv}
     end
 end
 getperm(pvar::RotationVar,advd::AdvectionData)=getperm(pvar.pc,advd)
-gett_split(pvar::RotationVar,advd::AdvectionData)=gett_split(pvar.pc,advd)
+getperm(pvar::RotationVar,curst::Int)=getperm(pvar.pc, curst)
+
 
 
 
@@ -108,30 +73,6 @@ end
 Implementation of the interface function that is called before each interpolation in advection
 
 """
-getalpha(pv::RotationVar, self::AdvectionData, ind)=pv.bufcur[ind...]
+getalpha(pv::RotationVar, self::AdvectionData, ind)=pv.bufcur[ind]
 
 
-
-function getitrfirst(pc::RotationConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
-    itrfirst = pc.t_itrfirst[_getcurrentindice(advd)]
-    if pc.adv.nbsplit != 1
-        ind = timeopt == MPIOpt ? advd.adv.mpid.ind : Threads.threadid()
-        return itrfirst[ind]
-    else
-#        println("trace good itrfirst=$itrfirst")
-        return itrfirst
-    end
- 
-end
-getitrfirst(pvar::RotationVar, advd::AdvectionData)=getitrfirst(pvar.pc, advd)
-addcolindend(ind::Tuple,tup)=(:,tup...,ind...)
-addcolindend(ind::Int,tup)=(:,tup...,ind)
-
-function getitrsecond(pc::RotationConst, advd::AdvectionData{T,Nsp, Nv, Nsum}, indfirst) where{T,Nsp,Nv,Nsum}
-    perm = getperm(pc,advd)
-    szitr = sizeitr(advd.adv)[perm]
-    tupmid = isvelocitystate(advd) ? szitr[2:Nv] : szitr[2:Nsum-1]
-    return addcolindend.((indfirst,), Iterators.product(tupmid...))
-end
-getitrsecond(pvar::RotationVar, advd::AdvectionData, indfirst)=getitrsecond(pvar.pc, advd, indfirst)
-    

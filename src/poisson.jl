@@ -122,8 +122,8 @@ mutable structure of variable data for the poisson computation
 mutable struct PoissonVar{T, Nsp, Nv}
     pc::PoissonConst{T, Nsp, Nv}
     rho::Array{T, Nsp}
-    t_elfield
-    bufcur
+    t_elfield::Union{NTuple{Nsp, Array{T,Nsp}},Missing}
+    bufcur::Union{Array{T,Nsp}, Vector{T}, Missing}
     function PoissonVar(pc::PoissonConst{T, Nsp, Nv}) where{T, Nsp, Nv}
         sz = length.(pc.adv.t_mesh_sp)
         rho = Array{T, Nsp}(undef, sz)

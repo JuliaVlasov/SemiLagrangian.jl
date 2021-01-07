@@ -81,7 +81,7 @@ function interpolate!( fp, fi, decint, precal, interp::InterpolationType{T,true}
          # println("trace iscirc=true")
     # global cl_obs
     # clockbegin(cl_obs, 1)
-         for i=1:lg
+    @inbounds for i=1:lg
             indbeg=i+origin+decint
             indend=indbeg+order
             fp[i] = sum(res[modone.(indbeg:indend, lg)] .* precal)

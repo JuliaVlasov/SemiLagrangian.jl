@@ -203,9 +203,9 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     t_itrfirst
     t_itrsecond
     tt_split
-    cache_alpha
-    cache_decint
-    cache_precal
+    cache_alpha::T
+    cache_decint::Int64
+    cache_precal::Vector{T}
     parext
 #    itrdataind
     function AdvectionData(
@@ -238,7 +238,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     adv, 1, 1,  
     datanew, bufdata, t_buf,
     t_itrfirst, t_itrsecond, tt_split,
-    undef, missing, missing,
+    Inf, 0, zeros(T,10),
     parext
 )
     end
@@ -361,36 +361,40 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     f = getformdata(self)
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
-        for indfirst in getitrfirst(self)
+        @inbounds for indfirst in getitrfirst(self)
             local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            for ind in getitrsecond(self)
+            @inbounds  for ind in getitrsecond(self)
                 local lgn = view(f,:,ind,indfirst)
                 interpolate!(buf, lgn, decint, precal, interp)
                 lgn .= buf
             end
         end
     elseif timeopt == SimpleThreadsOpt
-        Threads.@threads for indfirst in collect(getitrfirst(self))
+        @inbounds begin
+        Threads.@threads   for indfirst in collect(getitrfirst(self))
             local buf=view(tabbuf, :, Threads.threadid())
             local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            for ind in getitrsecond(self)
+            @inbounds for ind in getitrsecond(self)
                 local lgn = view(f,:,ind,indfirst)
                 interpolate!(buf, lgn, decint, precal, interp)
                 lgn .= buf
             end
         end
+    end
     elseif timeopt == SplitThreadsOpt
-        Threads.@threads for indth=1:Threads.nthreads()
+        @inbounds begin
+        Threads.@threads  for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
-            for indfirst in getitrfirst(self)
+            @inbounds for indfirst in getitrfirst(self)
                 local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-                for ind in getitrsecond(self)
+                @inbounds for ind in getitrsecond(self)
                     local lgn = view(f,:,ind,indfirst)
                     interpolate!(buf, lgn, decint, precal, interp)
                     lgn .= buf
                 end
             end
         end
+    end
     end
     copydata!(self, f)
 

@@ -72,7 +72,7 @@ struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
 end
 @inline get_order(lag::Lagrange{T,iscirc}) where{T, iscirc}= lag.order
 @inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
-@inline get_precal(lag::Lagrange{T},decf) where{T}=[T(fct(decf)) for fct in lag.lagpol]
+@inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf)) for fct in lag.lagpol]
 @inline sol(lag::Lagrange,b)=b
 @inline isbspline(_::Lagrange)=false
 # """

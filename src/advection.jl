@@ -151,6 +151,10 @@ Return a tuple of iterators from one to the sizes of each dimensions
 """
 sizeitr(adv)=adv.sizeitr
 
+function getborne(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, curst) where{T,Nsp,Nv,Nsum,timeopt}
+    return isvelocity(adv, curst) ? Nv : Nsp
+end
+
 
 # 
 """
@@ -187,7 +191,6 @@ Mutable structure that contains variable parameters of advection series
 - `init!(parext, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
 - `getalpha(parext, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
 - `getperm(parext, advd::AdvectionData)) : get the permutation of the dimension as a function of the current state
-- `get
 
 """
 mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
@@ -197,6 +200,9 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     data::Array{T,Nsum}
     bufdata::Vector{T}
     t_buf::NTuple{Nsum, Array{T,2}}
+    t_itrfirst
+    t_itrsecond
+    tt_split
     parext
 #    itrdataind
     function AdvectionData(
@@ -212,6 +218,13 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         datanew = Array{T,Nsum}(undef,s)
         bufdata = Vector{T}(undef, length(data))
         copyto!(datanew, data)
+        t_itrfirst = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][getborne(adv,x)+1:Nsum])), Nsum)
+        t_itrsecond = ntuple(x -> CartesianIndices(s[getperm(parext, x)][2:getborne(adv,x)]), Nsum)
+        ci(x)=CartesianIndices(s[getperm(parext,x)][1:getborne(adv,x)])
+        itlinbeg(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[1],c]
+        itlinend(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[end],c]     
+        tt_split = ntuple(x-> map(y ->itlinbeg(x,t_itrfirst[x][y][1]):itlinend(x,t_itrfirst[x][y][end]), 1:adv.nbsplit), Nsum)
+
         # println("trace1")
 
         # getview(d,ind)=(view(d,ind...), ind)
@@ -220,7 +233,8 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
 
         return new{T, Nsp, Nv, Nsum, timeopt}(
     adv, 1, 1,  
-    datanew, bufdata, t_buf, 
+    datanew, bufdata, t_buf,
+    t_itrfirst, t_itrsecond, tt_split,
     parext
 )
     end
@@ -233,6 +247,14 @@ getstate_dim(self)=self.state_dim
 isvelocity(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curid) where {T, Nsp, Nv, Nsum, timeopt} = (curid-1)%Nsum+1 > Nsp
 isvelocitystate(state_coef::Int)=state_coef%2 == 0
 isvelocitystate(self::AdvectionData)=isvelocitystate(self.state_coef)
+function getindsplit(self::AdvectionData)
+    if self.adv.nbsplit != 1
+        ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
+    else
+        ind = 1
+    end
+    return ind
+end
 function trans1(ind, n) 
     1 < ind <= n || thrown(ArgumentException("ind=$ind n=$n we must have 1 < ind <= n"))
     return ntuple(x-> (x == ind) ? 1 : ((x == 1) ? ind : x) , n)
@@ -245,23 +267,16 @@ function getinterp(self::AdvectionData)
     t = isvelocitystate(self) ? self.adv.t_interp_v : self.adv.t_interp_sp
     return t[self.state_dim]
 end
-function getindsplit(self::AdvectionData{T,Nsp, Nv, Nsum}) where{T,Nsp,Nv,Nsum}
-    return isvelocitystate(self) ? Nsp : Nv
-end
 function getprecal(self::AdvectionData, alpha)
     decint = convert(Int, floor(alpha))
     decfloat = alpha - decint
     return decint, get_precal(getinterp(self),decfloat)
 end      
-# TODO precalculer dans Avection
-addcolon(ind,tup)=(tup[1:(ind-1)]...,:,tup[ind:end]...)
-# function getitr(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
-#     ind = _getcurrentindice(self)
-#     indtup = vcat(1:(ind-1),(ind+1):Nsum)
-#     return addcolon.(ind, Iterators.product(sizeitr(self.adv)[indtup]...))
-# end
-getitr(self)=self.adv.itr[_getcurrentindice(self)]
-getitr(self, indth)=self.adv.itrth[_getcurrentindice(self)][indth]
+
+getitrfirst(self)=self.t_itrfirst[_getcurrentindice(self)][getindsplit(self)]
+getitrsecond(self)=self.t_itrsecond[_getcurrentindice(self)]
+gett_split(self)=self.tt_split[_getcurrentindice(self)]
+
 
 
 """
@@ -292,7 +307,7 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     return ret
 end
 getperm(_::Any,advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum} = (1:Nsum)
-function getdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     p = getperm(getext(advd),advd)
     if p == 1:Nsum
         # the case of identity permutation no copy is needed
@@ -306,8 +321,7 @@ function getdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
 end
 function copydata!(advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}, f) where{T, Nsp, Nv, Nsum, timeopt}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
-        t_split = gett_split(getext(advd), advd)
-        mpibroadcast(advd.adv.mpid, t_split, f)
+        mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
     p = getperm(getext(advd), advd)
     pinv = invperm(p)
@@ -336,23 +350,23 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     extdata = getext(self)
     initcoef!(extdata, self)
     curind =  _getcurrentindice(self)
-    f = getdata(self)
+    f = getformdata(self)
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
-        for indfirst in getitrfirst(extdata, self)
+        for indfirst in getitrfirst(self)
             local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            for ind in getitrsecond(extdata, self, indfirst)
-                local lgn = view(f,ind...)
+            for ind in getitrsecond(self)
+                local lgn = view(f,:,ind,indfirst)
                 interpolate!(buf, lgn, decint, precal, interp)
                 lgn .= buf
             end
         end
     elseif timeopt == SimpleThreadsOpt
-        Threads.@threads for indfirst in collect(getitrfirst(extdata, self))
+        Threads.@threads for indfirst in collect(getitrfirst(self))
             local buf=view(tabbuf, :, Threads.threadid())
             local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            for ind in getitrsecond(extdata, self,indfirst)
-                local lgn = view(f,ind...)
+            for ind in getitrsecond(self)
+                local lgn = view(f,:,ind,indfirst)
                 interpolate!(buf, lgn, decint, precal, interp)
                 lgn .= buf
             end
@@ -360,10 +374,10 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     elseif timeopt == SplitThreadsOpt
         Threads.@threads for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
-            for indfirst in getitrfirst(extdata, self)
+            for indfirst in getitrfirst(self)
                 local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-                for ind in getitrsecond(extdata, self,indfirst)
-                    local lgn = view(f,ind...)
+                for ind in getitrsecond(self)
+                    local lgn = view(f,:,ind,indfirst)
                     interpolate!(buf, lgn, decint, precal, interp)
                     lgn .= buf
                 end

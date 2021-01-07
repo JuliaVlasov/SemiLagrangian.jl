@@ -54,7 +54,7 @@ function _get_fctv_k(adv::Advection{T, Nsp, Nv, Nsum, timeopt}) where {T, Nsp, N
     return ntuple(x->reshape(v_k[x],tupleshape(x,Nsp,sz[x])) .* fctv_k_gen, Nsp)
 end
 
-function _get_perm(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
+function _get_permpoisson(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
     if isvelocity(adv, curstate)
         p = transperm(Nsp+1, curstate, Nsum)
         p = p[vcat(Nsp+1:Nsum, 1:Nsp)]
@@ -63,35 +63,6 @@ function _get_perm(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T
         p = p[transperm(1, curstate, Nsum)]
     end
     return p
-end
-function _get_split(adv, curstate)
-    if adv.nbsplit != 1
-        perm = _get_perm(adv,curstate)
-        return splititr(adv.nbsplit, sizeall(adv)[perm][end])
-    else
-        return missing
-    end
-end
-function _get_t_itrfirst(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, t_itr, curid) where{T,Nsp,Nv,Nsum,timeopt}
-    
-    szitr = sizeitr(adv)
-    if adv.nbsplit == 1
-        if isvelocity(adv, curid)
-#            println("_get_t_itrfirst trace1")
-            return Iterators.product(szitr[1:Nsp]...)
-        else
-#            println("_get_t_itrfirst trace2 return=$(szitr[curid+Nsp])")
-            return szitr[curid+Nsp]
-        end
-    else
-        if isvelocity(adv, curid)
-#            println("_get_t_itrfirst trace3")
-            return ntuple( x -> Iterators.product((szitr[1:Nsp-1]..., (t_itr[x],)...)...), adv.nbsplit)
-        else
-#            println("_get_t_itrfirst trace4")
-            return t_itr
-        end
-    end
 end
 
 
@@ -116,9 +87,6 @@ struct PoissonConst{T, Nsp, Nv}
     fctv_k
     pfftbig
     t_perms
-    tt_split
-    t_itrfirst
-    t_itrsecond
     function PoissonConst(
     adv::Advection{T, Nsp, Nv, Nsum, timeopt}; 
     isfftbig=true
@@ -130,15 +98,12 @@ struct PoissonConst{T, Nsp, Nv}
         else
             missing
         end
-        t_perms = ntuple(x -> _get_perm(adv, x), Nsum)
-        tt_split = ntuple(x-> _get_split(adv, x), Nsum)
-        t_itrfirst = ntuple(x -> _get_t_itrfirst(adv, tt_split[x], x), Nsum)
-        t_itrsecond = ntuple(x -> Iterators.product(sizeitr(adv)[t_perms[x]][2:Nsum-1]...), Nsum)
-        return new{T,Nsp,Nv}(adv, fctv_k, pfftbig, t_perms, tt_split, t_itrfirst, t_itrsecond)
+        t_perms = ntuple(x -> _get_permpoisson(adv, x), Nsum)
+        return new{T,Nsp,Nv}(adv, fctv_k, pfftbig, t_perms)
     end
 end
+getperm(pc::PoissonConst,curstate::Int)=pc.t_perms[curstate]
 getperm(pc::PoissonConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
-gett_split(pc::PoissonConst, advd::AdvectionData)=pc.tt_split[_getcurrentindice(advd)]
 
 """
     PoissonVar{T, Nsp, Nv}
@@ -165,8 +130,8 @@ mutable struct PoissonVar{T, Nsp, Nv}
         return new{T, Nsp, Nv}(pc, rho, missing, missing)
     end
 end
-getperm(pvar::PoissonVar,advd::AdvectionData)=getperm(pvar.pc,advd)
-gett_split(pvar::PoissonVar,advd::AdvectionData)=gett_split(pvar.pc,advd)
+getperm(pvar::PoissonVar, curstate::Int)=getperm(pvar.pc, curstate)
+getperm(pvar::PoissonVar, advd::AdvectionData)=getperm(pvar.pc, advd)
 
 """
 
@@ -249,30 +214,8 @@ function getpoissonvar(adv::Advection)
     return PoissonVar(pc)
 end
 
-getalpha(pv::PoissonVar, self::AdvectionData, ind)=pv.bufcur[ind...]
+getalpha(pv::PoissonVar, self::AdvectionData, ind)=isvelocitystate(self) ? pv.bufcur[ind] : pv.bufcur[ind.I[end]]
 
-function getitrfirst(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
-    itrfirst = pc.t_itrfirst[_getcurrentindice(advd)]
-    if pc.adv.nbsplit != 1
-        ind = timeopt == MPIOpt ? advd.adv.mpid.ind : Threads.threadid()
-        return itrfirst[ind]
-    else
-#        println("trace good itrfirst=$itrfirst")
-        return itrfirst
-    end
- 
-end
-getitrfirst(pvar::PoissonVar, advd::AdvectionData)=getitrfirst(pvar.pc, advd)
-addcolindend(ind::Tuple,tup)=(:,tup...,ind...)
-addcolindend(ind::Int,tup)=(:,tup...,ind)
-
-function getitrsecond(pc::PoissonConst, advd::AdvectionData{T,Nsp, Nv, Nsum}, indfirst) where{T,Nsp,Nv,Nsum}
-    perm = getperm(pc,advd)
-    szitr = sizeitr(advd.adv)[perm]
-    tupmid = isvelocitystate(advd) ? szitr[2:Nv] : szitr[2:Nsum-1]
-    return addcolindend.((indfirst,), Iterators.product(tupmid...))
-end
-getitrsecond(pvar::PoissonVar, advd::AdvectionData, indfirst)=getitrsecond(pvar.pc, advd, indfirst)
     
 """
     compute_ee(t_mesh_sp, t_elf)

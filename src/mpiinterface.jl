@@ -19,13 +19,13 @@ function mpibroadcast(mpid, t_split, data::Array{T,N}) where {T,N}
     if isbitstype(T)
         # for Float64 or Double64 ... per example
         for i=1:mpid.nb
-            vbcast = selectdim(data, N, t_split[i])
+            vbcast = view(data, t_split[i])
             MPI.Bcast!(vbcast, i-1, mpid.comm)
         end
     else
         # for BigFloat ... per example
         for i=1:mpid.nb
-            vbcast = selectdim(data, N, t_split[i])
+            vbcast = view(data, t_split[i])
             bufr = MPI.bcast(vbcast, i-1, mpid.comm)
             if i != mpid.ind
                 copy!(vbcast, bufr)

@@ -1,4 +1,5 @@
 include("../src/advection.jl")
+include("../src/poisson.jl")
 include("../src/lagrange.jl")
 
 using Test
@@ -63,7 +64,7 @@ function test_adv(T::DataType)
 
     tab = rand(T, sizeall(adv))
 
-    advd = AdvectionData(adv, tab, "missing")
+    advd = AdvectionData(adv, tab, getpoissonvar(adv))
 
 
     @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
@@ -72,16 +73,12 @@ function test_adv(T::DataType)
     @test advd.state_dim == 1
 
     @test advd.parext == getext(advd)
-    @test advd.parext == "missing"
     @test advd.data == getdata(advd)
     @test base_dt * adv.tab_coef[2] == getcur_t(adv, 2)
     @test 1 == getstate_dim(advd)
 
     @test !isvelocitystate(advd)
     @test getcur_t(advd) == base_dt * advd.adv.tab_coef[1]
-
-
-    @test addcolon(3,(1,2,3,4,5)) == (1, 2, :, 3, 4, 5)
 
 
 
@@ -183,8 +180,81 @@ function test_ke(T::DataType)
     @test refres == compute_ke(t_meshsp, t_meshv, fxv)
 end
 
+function test_itr(T::DataType)
+    t_debsp = T.([-1,-10,-3])
+    t_endsp = T.([3, 6, 5])
+    t_szsp = (16, 8, 32)
+    t_debv = T.([-3,-9,1])
+    t_endv = T.([1, 7, 1])
+    t_szv = (4, 8, 4)
+    base_dt = one(T)/80
+
+    Nsum = 6
+
+    t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
+    t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
+
+    interp = Lagrange(T,3)
+    adv = Advection(
+    t_meshsp, t_meshv, 
+    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),3), 
+    base_dt
+)
+
+    sref = (t_szsp..., t_szv...)
+
+    refitr = ntuple(x-> 1:sref[x],size(sref,1))
+
+    tab = rand(T, sizeall(adv))
+
+    @show size(tab)
+
+    advd = AdvectionData(adv, tab, getpoissonvar(adv))
+
+#    @show advd.t_itrfirst
+
+    resfirst=[
+        CartesianIndex(2, 6, 2), CartesianIndex(2, 2, 4), CartesianIndex(2, 6, 2), 
+        CartesianIndex(6, 4, 1), CartesianIndex(6, 4, 1), CartesianIndex(6, 4, 1), 
+        CartesianIndex(2, 6, 2), CartesianIndex(2, 2, 4), CartesianIndex(2, 6, 2), CartesianIndex(2, 6, 2)
+]
+    ressecond=[
+        CartesianIndex(6, 2), CartesianIndex(14, 1), CartesianIndex(6, 2),
+        CartesianIndex(6, 2), CartesianIndex(2, 4), CartesianIndex(6, 2), 
+        CartesianIndex(6, 2), CartesianIndex(14, 1), CartesianIndex(6, 2), CartesianIndex(6, 2)
+]
+ 
+
+    for i=1:length(resfirst) 
+ 
+        itrfirst = getitrfirst(advd)
+
+        (res, _) = Iterators.peel(Iterators.drop(itrfirst,53))
+
+        @test resfirst[i] == res
+
+     
+
+        itrsecond = getitrsecond(advd)
+
+        (res2, _) = Iterators.peel(Iterators.drop(itrsecond,13))
+
+        @test ressecond[i] == res2
+        
+        nextstate!(advd)
+     end
+
+end
+
+
+
+
 @testset "test compute_ke" begin
     test_ke(Rational{BigInt})
     test_ke(Float64)
     test_ke(BigFloat)
+end
+@testset "test itr" begin
+    test_itr(Float64)
+    test_itr(BigFloat)
 end

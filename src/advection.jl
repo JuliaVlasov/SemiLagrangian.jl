@@ -203,6 +203,9 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     t_itrfirst
     t_itrsecond
     tt_split
+    cache_alpha
+    cache_decint
+    cache_precal
     parext
 #    itrdataind
     function AdvectionData(
@@ -235,6 +238,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     adv, 1, 1,  
     datanew, bufdata, t_buf,
     t_itrfirst, t_itrsecond, tt_split,
+    undef, missing, missing,
     parext
 )
     end
@@ -268,9 +272,13 @@ function getinterp(self::AdvectionData)
     return t[self.state_dim]
 end
 function getprecal(self::AdvectionData, alpha)
-    decint = convert(Int, floor(alpha))
-    decfloat = alpha - decint
-    return decint, get_precal(getinterp(self),decfloat)
+    if alpha != self.cache_alpha
+        self.cache_alpha = alpha
+        self.cache_decint = convert(Int, floor(alpha))
+        decfloat = alpha - self.cache_decint
+        self.cache_precal = get_precal(getinterp(self),decfloat)
+    end
+    return self.cache_decint, self.cache_precal
 end      
 
 getitrfirst(self)=self.t_itrfirst[_getcurrentindice(self)][getindsplit(self)]

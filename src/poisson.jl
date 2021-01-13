@@ -203,10 +203,13 @@ function initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, N
         end
 #        println("v trace init plus")
         pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]
+#        @show minimum(pv.bufcur),maximum(pv.bufcur) 
     else
         mesh_sp = self.adv.t_mesh_sp[state_dim]
 #        println("sp trace init moins")
        pv.bufcur = (-getcur_t(self)/step(mesh_sp))*mesh_v.points
+#       @show minimum(pv.bufcur),maximum(pv.bufcur) 
+
     end
 end
 function getpoissonvar(adv::Advection)

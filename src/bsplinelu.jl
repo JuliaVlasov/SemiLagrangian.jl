@@ -126,7 +126,7 @@ function decLULu(iscirc, band, lastcols, lastrows)
             end
             for i=1:ku, j=1:kl
                 # A[begrow+i, begcol+j] = A[begrow+i, k]*A[k, begcol+j]
-                lastrows[i,begcol+j] -= lastrows[i, k]*lastcols[k,j]
+                lastrows[i, begcol+j] -= lastrows[i, k]*lastcols[k, j]
             end
         end
     end
@@ -270,6 +270,7 @@ struct B_SplineLU{T,iscirc} <: B_Spline{T,iscirc}
     ls::LuSpline{T}
     bspline::Spline
     function B_SplineLU( order, n, eltfortype::T; iscirc=true) where{T}
+        (order%2 == 0 && n%2 == 0) && throw(ArgumentError("order=$order and n=$n cannot be even at the same time")) 
         bspline = getbspline(order, 0)
         ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
         return new{T, iscirc}(ls, bspline)

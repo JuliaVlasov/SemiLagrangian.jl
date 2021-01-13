@@ -293,7 +293,9 @@ end
 # landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
 T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
-@time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
+# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
+# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=B_SplineLU(4,32,T))
+@time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(T,5))
 # landau1_1(T, 50, SimpleThreadsOpt, sz=(128,128))
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(T, 27))

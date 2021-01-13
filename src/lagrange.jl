@@ -31,10 +31,9 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
     return result
 end
 
-@inline function get_origin(order)
-    v, _ = get_kl_ku(order)
-    return -(v+1)
-end
+# @inline function get_origin(order)
+#     return -div(order,2)
+# end
 
 """
     Lagrange{T, iscirc, granularity}
@@ -64,7 +63,7 @@ struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
     lagpol
     function Lagrange(T::DataType, order; iscirc::Bool=true) 
         type = order <= 10 ? Int64 : BigInt 
-        origin = get_origin(order)
+        origin = -div(order,2)
         lagpol = collect([_getpolylagrange( i, order, origin, type) for i=0:order])
         new{T, iscirc}(order, lagpol) 
     end
@@ -75,6 +74,10 @@ end
 @inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf)) for fct in lag.lagpol]
 @inline sol(lag::Lagrange,b)=b
 @inline isbspline(_::Lagrange)=false
+function print(pol::Lagrange)
+    println("type=$(get_type(pol))")
+    println("polynomes=$(pol.lagpol)")
+end
 # """
 #     polinterpol(
 #     lag::Lagrange, 

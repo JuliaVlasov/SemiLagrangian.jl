@@ -1,5 +1,6 @@
 
 include("../src/advection.jl")
+include("../src/interpolation.jl")
 include("../src/spline.jl")
 include("../src/bspline.jl")
 include("../src/bsplinelu.jl")
@@ -89,8 +90,10 @@ function test_bspline()
 
     @time @testset "test verify bspline" begin
         tab_x=[1821//10000, 1//1234, 7677//8999, big"123456789"//big"234567890", 0//1]
-        for ord=1:9, x in tab_x
-            @test bsplinerec(3,0,x) == getbspline(3,0)(x)
+        for ord=1:10, x in tab_x
+            for i=0:(ord-1)
+                @test bsplinerec(ord,i,x) == getbspline(ord,i)(x)
+            end
         end
     end
 
@@ -112,7 +115,7 @@ function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, is
     fi = zeros(type, n)
     value = convert(type,
 #    big"0.000000000000000000000000000000000000001") 
-    -big"0.385713901112334905767655546588878787878787887874441132001118762519")
+    big"0.385713901112334905767655546588878787878787887874441132001118762519")
 #    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
     for i=1:nb
         fi .= fp
@@ -185,6 +188,7 @@ test_bspline()
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
     #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, false)
     @time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, true)
+#    @time test_interpolation(BigFloat, 10, true, 2^8+1, 100, 1, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end
 

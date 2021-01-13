@@ -107,7 +107,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     tab_fct=[identity,identity,identity],
     timeopt::TimeOptimization=NoTimeOpt
 ) where{T, Nsp, Nv}
-        Nsp <= Nv || thrown(ArgumentError("Nsp=$Nsp must less or equal to Nv=$Nv"))
+        Nsp <= Nv || throw(ArgumentError("Nsp=$Nsp must less or equal to Nv=$Nv"))
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
@@ -274,8 +274,16 @@ end
 function getprecal(self::AdvectionData, alpha)
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
-        self.cache_decint = convert(Int, floor(alpha))
-        decfloat = alpha - self.cache_decint
+        decint = convert(Int, floor(alpha))
+        decfloat = alpha - decint
+        # if decfloat > 0.5
+        #     decfloat -= 1
+        #     decint += 1
+        # end
+        self.cache_decint = decint
+        # if self.cache_decint != 0
+        #      @show alpha, self.cache_decint, decfloat
+        # end
         self.cache_precal = get_precal(getinterp(self),decfloat)
     end
     return self.cache_decint, self.cache_precal

@@ -9,7 +9,10 @@ function get_kl_ku(order)
 end
 function get_precal(bsp, decf)
     bs = get_bspline(bsp)
-    [ bs[i](decf+i) for i=get_order(bsp):-1:0]
+    res = [ bs[i](decf+i) for i=get_order(bsp):-1:0]
+#    res = [ bs[i](1+i - decf) for i=0:get_order(bsp)]
+    @show res
+    return res
 end
 # function interpolate!( adv, fp, fi, dec, 
 #     bsp::B_Spline{T, iscirc}

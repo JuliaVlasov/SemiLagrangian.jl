@@ -24,8 +24,10 @@ function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {
     order=get_order(interp)
     # TODO : pas tres normal le +isbspline, a analyser
     #  mais pour l'intant ca fonctionne
-    origin=get_origin(order) +isbspline(interp)
-    if iscirc
+#    origin=get_origin(order) +isbspline(interp)
+    #origin=-div(order,2) + (isbspline(interp) && order%2 == 0)
+    origin=-div(order,2) # (isbspline(interp) && order%2 == 0)
+if iscirc
         precal = get_precal(interp, decfloat)
 #        println("inside : precal=$precal decint=$decint decfloat=$decfloat")
     else
@@ -76,7 +78,9 @@ function interpolate!( fp, fi, decint, precal, interp::InterpolationType{T,true}
     order = size(precal,1)-1
     # TODO : pas tres normal le +isbspline, a analyser
     #  mais pour l'intant ca fonctionne
-    origin=get_origin(order) +isbspline(interp)
+#    origin=get_origin(order) +isbspline(interp)
+#    origin=-div(order,2)+ isbspline(interp)
+     origin=-div(order,2) #(isbspline(interp) && order%2 == 0)
     lg = length(fi)
          # println("trace iscirc=true")
     # global cl_obs

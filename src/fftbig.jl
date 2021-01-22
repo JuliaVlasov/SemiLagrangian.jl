@@ -180,7 +180,7 @@ function fftbig!(
             signal[perm]
         else
             selectdim(signal, dim, perm)
-        end       
+        end
 
         if flag_inv
             signal ./= s

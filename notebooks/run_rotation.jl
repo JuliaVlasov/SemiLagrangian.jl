@@ -132,7 +132,6 @@ end
 T=Double64
 nbdt=1000
 dt=T(2big(pi))/nbdt
-tab_fct=[tan,sin,tan]
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 #rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 101))
-rotation1_1(T, nbdt, NoTimeOpt, sz=(256,256), interp=Lagrange(T, 101))
+rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 5))

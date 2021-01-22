@@ -11,7 +11,7 @@ function get_precal(bsp, decf)
     bs = get_bspline(bsp)
     res = [ bs[i](decf+i) for i=get_order(bsp):-1:0]
 #    res = [ bs[i](1+i - decf) for i=0:get_order(bsp)]
-    @show res
+#    @show res
     return res
 end
 # function interpolate!( adv, fp, fi, dec, 

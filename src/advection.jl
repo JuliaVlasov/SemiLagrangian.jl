@@ -200,8 +200,9 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     data::Array{T,Nsum}
     bufdata::Vector{T}
     t_buf::NTuple{Nsum, Array{T,2}}
-    t_itrfirst
-    t_itrsecond
+    # t_itrfirst
+    # t_itrsecond
+    t_itr
     tt_split
     cache_alpha::T
     cache_decint::Int64
@@ -221,12 +222,17 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         datanew = Array{T,Nsum}(undef,s)
         bufdata = Vector{T}(undef, length(data))
         copyto!(datanew, data)
-        t_itrfirst = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][getborne(adv,x)+1:Nsum])), Nsum)
-        t_itrsecond = ntuple(x -> CartesianIndices(s[getperm(parext, x)][2:getborne(adv,x)]), Nsum)
-        ci(x)=CartesianIndices(s[getperm(parext,x)][1:getborne(adv,x)])
-        itlinbeg(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[1],c]
-        itlinend(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[end],c]     
-        tt_split = ntuple(x-> map(y ->itlinbeg(x,t_itrfirst[x][y][1]):itlinend(x,t_itrfirst[x][y][end]), 1:adv.nbsplit), Nsum)
+        # t_itrfirst = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][getborne(adv,x)+1:Nsum])), Nsum)
+        # t_itrsecond = ntuple(x -> CartesianIndices(s[getperm(parext, x)][2:getborne(adv,x)]), Nsum)
+        t_itr = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][2:Nsum])), Nsum)
+        t_linind = ntuple(x -> LinearIndices(s[getperm(parext,x)]), Nsum)
+        # ci(x)=CartesianIndices(s[getperm(parext,x)][1:getborne(adv,x)])
+        # itlinbeg(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[1],c]
+        # itlinend(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[end],c]     
+        # itl = CartesianIndices()
+        fbegin(x,y)=t_linind[x][1,t_itr[x][y][1]]
+        fend(x,y)=t_linind[x][end,t_itr[x][y][end]]
+        tt_split = ntuple(x -> ntuple(y -> (fbegin(x,y):fend(x,y)), adv.nbsplit), Nsum)
 
         # println("trace1")
 
@@ -237,7 +243,8 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         return new{T, Nsp, Nv, Nsum, timeopt}(
     adv, 1, 1,  
     datanew, bufdata, t_buf,
-    t_itrfirst, t_itrsecond, tt_split,
+#    t_itrfirst, t_itrsecond, tt_split,
+    t_itr, tt_split,
     Inf, 0, zeros(T,10),
     parext
 )
@@ -289,8 +296,7 @@ function getprecal(self::AdvectionData, alpha)
     return self.cache_decint, self.cache_precal
 end      
 
-getitrfirst(self)=self.t_itrfirst[_getcurrentindice(self)][getindsplit(self)]
-getitrsecond(self)=self.t_itrsecond[_getcurrentindice(self)]
+getitr(self)=self.t_itr[_getcurrentindice(self)][getindsplit(self)]
 gett_split(self)=self.tt_split[_getcurrentindice(self)]
 
 
@@ -369,40 +375,34 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     f = getformdata(self)
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
-        @inbounds for indfirst in getitrfirst(self)
-            local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            @inbounds  for ind in getitrsecond(self)
-                local lgn = view(f,:,ind,indfirst)
-                interpolate!(buf, lgn, decint, precal, interp)
-                lgn .= buf
-            end
+        @inbounds for ind in getitr(self)
+            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+            local lgn = view(f,:,ind)
+            interpolate!(buf, lgn, decint, precal, interp)
+            lgn .= buf
         end
     elseif timeopt == SimpleThreadsOpt
         @inbounds begin
-        Threads.@threads   for indfirst in collect(getitrfirst(self))
+        Threads.@threads   for ind in collect(getitr(self))
             local buf=view(tabbuf, :, Threads.threadid())
-            local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-            @inbounds for ind in getitrsecond(self)
-                local lgn = view(f,:,ind,indfirst)
-                interpolate!(buf, lgn, decint, precal, interp)
-                lgn .= buf
-            end
+            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+            local lgn = view(f,:,ind)
+            interpolate!(buf, lgn, decint, precal, interp)
+            lgn .= buf
         end
-    end
+        end
     elseif timeopt == SplitThreadsOpt
         @inbounds begin
         Threads.@threads  for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
-            @inbounds for indfirst in getitrfirst(self)
-                local decint, precal = getprecal(self, getalpha(extdata, self, indfirst))
-                @inbounds for ind in getitrsecond(self)
-                    local lgn = view(f,:,ind,indfirst)
-                    interpolate!(buf, lgn, decint, precal, interp)
-                    lgn .= buf
-                end
+            @inbounds for ind in getitr(self)
+                local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+                local lgn = view(f,:,ind)
+                interpolate!(buf, lgn, decint, precal, interp)
+                lgn .= buf
             end
         end
-    end
+        end
     end
     copydata!(self, f)
 

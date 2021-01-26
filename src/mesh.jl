@@ -32,7 +32,7 @@ struct UniformMesh{T}
     width::T
 #    pfft
     function UniformMesh(start::T, stop::T, length::Int; 
-    endpoint = true,
+    endpoint = false,
 ) where {T}
         cor = endpoint ? 0 : 1
         pdeb = range(start, stop = stop, length = length + cor)

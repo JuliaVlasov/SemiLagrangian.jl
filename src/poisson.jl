@@ -217,7 +217,10 @@ function getpoissonvar(adv::Advection)
     return PoissonVar(pc)
 end
 
-getalpha(pv::PoissonVar, self::AdvectionData, ind)=isvelocitystate(self) ? pv.bufcur[ind] : pv.bufcur[ind.I[end]]
+function getalpha(pv::PoissonVar, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
+    return isvelocitystate(self) ? pv.bufcur[CartesianIndex(ind.I[Nsum-Nsp:Nsum-1])] : pv.bufcur[ind.I[end]]
+#    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
+end
 
     
 """

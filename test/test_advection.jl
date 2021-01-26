@@ -214,30 +214,30 @@ function test_itr(T::DataType)
 #    @show advd.t_itrfirst
 
     resfirst=[
-        CartesianIndex(2, 6, 2), CartesianIndex(2, 2, 4), CartesianIndex(2, 6, 2), 
-        CartesianIndex(6, 4, 1), CartesianIndex(6, 4, 1), CartesianIndex(6, 4, 1), 
-        CartesianIndex(2, 6, 2), CartesianIndex(2, 2, 4), CartesianIndex(2, 6, 2), CartesianIndex(2, 6, 2)
+        CartesianIndex(2, 17, 1, 2, 1), CartesianIndex(2, 9, 3, 1, 1), CartesianIndex(2, 1, 2, 3, 1), 
+        CartesianIndex(2, 1, 5, 3, 1), CartesianIndex(2, 1, 9, 5, 1), CartesianIndex(2, 1, 5, 3, 1), 
+        CartesianIndex(2, 17, 1, 2, 1), CartesianIndex(2, 9, 3, 1, 1), CartesianIndex(2, 1, 2, 3, 1), CartesianIndex(2, 17, 1, 2, 1)
 ]
     ressecond=[
-        CartesianIndex(6, 2), CartesianIndex(14, 1), CartesianIndex(6, 2),
-        CartesianIndex(6, 2), CartesianIndex(2, 4), CartesianIndex(6, 2), 
-        CartesianIndex(6, 2), CartesianIndex(14, 1), CartesianIndex(6, 2), CartesianIndex(6, 2)
+        CartesianIndex(6, 21, 1, 3, 1), CartesianIndex(6, 11, 1, 2, 1), CartesianIndex(6, 5, 2, 5, 1),
+        CartesianIndex(6, 1, 6, 5, 1), CartesianIndex(2, 2, 11, 1, 2), CartesianIndex(6, 1, 6, 5, 1), 
+        CartesianIndex(6, 21, 1, 3, 1), CartesianIndex(6, 11, 1, 2, 1), CartesianIndex(6, 5, 2, 5, 1), CartesianIndex(6, 21, 1, 3, 1)
 ]
  
 
     for i=1:length(resfirst) 
  
-        itrfirst = getitrfirst(advd)
+        itr = getitr(advd)
 
-        (res, _) = Iterators.peel(Iterators.drop(itrfirst,53))
+        (res, _) = Iterators.peel(Iterators.drop(itr,1153))
+
+#        @show res
 
         @test resfirst[i] == res
 
-     
+        (res2, _) = Iterators.peel(Iterators.drop(itr,2213))
 
-        itrsecond = getitrsecond(advd)
-
-        (res2, _) = Iterators.peel(Iterators.drop(itrsecond,13))
+#        @show res2
 
         @test ressecond[i] == res2
         

@@ -233,7 +233,7 @@ function landau1_1(T::DataType, nbdt, timeopt; sz=(64,64), dt = big"0.1", interp
 
     landau(advd, nbdt)
 end   
-function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", interp=Lagrange(T, 31))
+function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", interp=Lagrange(T, 19))
     epsilon = T(0.5)
     dt = T(dt)
 
@@ -294,8 +294,8 @@ end
 T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
 # @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
-# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=B_SplineLU(4,32,T))
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1")
 # @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(T,5))
-landau1_1(T, 10000, MPIOpt, sz=(128,128), dt=big"0.01")
+# landau1_1(T, 10000, MPIOpt, sz=(128,128), dt=big"0.01")
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(T, 27))

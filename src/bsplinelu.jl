@@ -83,7 +83,7 @@
 #     return x
 # end
 
-
+include("bspline.jl")
 
 
 function decLULu(iscirc, band, lastcols, lastrows)
@@ -266,22 +266,23 @@ end
 get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
-struct B_SplineLU{T,iscirc} <: B_Spline{T,iscirc}
+struct B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
     ls::LuSpline{T}
-    bspline::Spline
+    bspline::SplineInt{N}
     function B_SplineLU( order, n, eltfortype::T; iscirc=true) where{T}
         (order%2 == 0 && n%2 == 0) && throw(ArgumentError("order=$order and n=$n cannot be even at the same time")) 
-        bspline = getbspline(order, 0)
+        bspline = SplineInt(order)
+        N = typeof(bspline.fact_order)
         ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
-        return new{T, iscirc}(ls, bspline)
+        return new{T, iscirc, order, N}(ls, bspline)
     end
     B_SplineLU(o, n, t::DataType ; kwargs... )=B_SplineLU(o, n, one(t) ; kwargs... )
 end
 
 sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where{T}=sol(bsp.ls, b)[1]
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
-get_order(bsp::B_SplineLU{T}) where{T}=get_order(bsp.ls)
+get_order(bsp::B_SplineLU{T, iscirc, order}) where{T, iscirc, order}= order
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
-get_type(bsp::B_SplineLU{T, iscirc}) where{T,iscirc}="B_SplineLU{$T, $iscirc}"
+get_type(bsp::B_SplineLU{T, iscirc, order}) where{T,iscirc, order}="B_SplineLU{$T, $iscirc, $order}"
 istrace(bsp::B_SplineLU)=false
 

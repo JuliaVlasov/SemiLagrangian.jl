@@ -158,7 +158,7 @@ function test_interface()
     bsp = B_SplineLU(25,105,big"0.")
     @test 105 == get_n(bsp)
     @test 25 == get_order(bsp)
-    @test "B_SplineLU{BigFloat, true}" == get_type(bsp)
+    @test "B_SplineLU{BigFloat, true, 25}" == get_type(bsp)
 end
     
 

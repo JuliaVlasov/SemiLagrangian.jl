@@ -1,6 +1,6 @@
 using Polynomials
-# using DynamicPolynomials
-abstract type InterpolationType{T, iscirc} end
+
+include("interpolation.jl")
 
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
@@ -21,9 +21,9 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 - `DommaineError` : when `0 <= k <= order` is `false` or when N ∉ {BInt64, BigInt}
 """
 function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where {N}
-    0 <= k <= order || throw(DomainError("the constaint 0 <= k <= order is false"))
+    0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     N <: Union{BigInt,Int64} || throw(DomainError(N, "N must be Int64 or BigInt"))
-    # the computed is maden with big
+    # the computed is made with big integer
     result = Polynomials.Polynomial([big(fact//1)])
     for l=0:order
         if l != k
@@ -60,21 +60,19 @@ Lagrange Polynomials coefficients
 # end
 # get_order(lag::Lagrange)= size(lag.coef,1)-1
 
-struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
-    order
-    fact_order
-    lagpol
-
+struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
+    fact_order::N
+    lagpol::Vector{Polynomial{N}}
     function Lagrange(T::DataType, order; iscirc::Bool=true) 
         type = order <= 20 ? Int64 : BigInt
         fact_order = factorial(type(order))
         origin = -div(order,2)
         lagpol = collect([_getpolylagrange( i, order, origin, fact_order) for i=0:order])
-        new{T, iscirc}(order, fact_order, lagpol) 
+        new{T, iscirc, order, type}(fact_order, lagpol) 
     end
     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
-@inline get_order(lag::Lagrange{T,iscirc}) where{T, iscirc}= lag.order
+@inline get_order(lag::Lagrange{T,iscirc, order}) where{T, iscirc, order}= order
 @inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
 @inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf))/lag.fact_order for fct in lag.lagpol]
 @inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)

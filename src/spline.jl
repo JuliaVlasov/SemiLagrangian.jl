@@ -2,15 +2,15 @@ using Polynomials
 import Base: +, *, -, ==, getindex, setindex!
 # import Base: +, *
 include("lapack.jl")
-
-struct Spline{N}
+abstract type AbstractSpline{N} end
+struct Spline{N} <: AbstractSpline{N}
     tabpol::Vector{Polynomials.Polynomial{Rational{N}}}
     function Spline(tabpol::Vector{Polynomials.Polynomial{Rational{N}}}) where{N<:Signed}
         return new{N}(tabpol)
     end
 end
 
-function Base.getindex(sp::Spline{N}, index) where{N<:Signed}
+function Base.getindex(sp::AbstractSpline{N}, index) where{N<:Signed}
     i = index+1
     return if 1 <= i <= size(sp.tabpol, 1)
         sp.tabpol[i]
@@ -18,10 +18,10 @@ function Base.getindex(sp::Spline{N}, index) where{N<:Signed}
         zero(Polynomials.Polynomial{Rational{N}})
     end
 end
-function Base.setindex!(sp::Spline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
+function Base.setindex!(sp::AbstractSpline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
     sp.tabpol[index-1] = pol
 end
-Base.size(sp::Spline, dim=1)=size(sp.tabpol,1)
+Base.size(sp::AbstractSpline, dim=1)=size(sp.tabpol,1)
 function +(a::Spline{N}, b::Spline{N}) where{N<:Signed}
     sizenew = max(size(a.tabpol,1), size(b.tabpol,1))
     tabpolnew = zeros(Polynomials.Polynomial{Rational{N}},sizenew)
@@ -90,4 +90,29 @@ function (f::Spline{N})(x) where{N<:Signed}
         return zero(x)
     end
 end
-
+struct SplineInt{N} <: AbstractSpline{N}
+    fact_order::N
+    tabpol::Vector{Polynomials.Polynomial{N}}
+end
+function SplineInt(order)
+    sp = getbspline(order, 0)
+    N = order <= 20 ? Int64 : BigInt
+    fact_order = factorial(N(order))
+    return SplineInt{N}(fact_order, map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
+end
+function (f::SplineInt{N})(x::T) where{N<:Signed, T <: AbstractFloat}
+    i = Int64((floor(x))) # it's different from ceil(x)
+    if 0 <= i < size(f,1)
+        return f[i](x)/f.fact_order
+    else
+        return zero(x)/f.fact_order
+    end
+end
+function (f::SplineInt{N})(x::Union{Rational,Int}) where{N<:Signed}
+    i = Int64((floor(x))) # it's different from ceil(x)
+    if 0 <= i < size(f,1)
+        return f[i](x)//f.fact_order
+    else
+        return zero(x)//f.fact_order
+    end
+end

@@ -20,30 +20,6 @@ function test_base_lagrange(order)
     end
 end
 
-# function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
-#     @testset "Lagrange interpolation function type=$type order=$order iscirc=$iscirc" begin
-#         lag = Lagrange(type, order; iscirc=iscirc)
-# #        println("lag=$lag")
-#         n = number
-#         # whennot circuar coef != 1 set the function unperiodic
-#         coef = iscirc ? 1. : 1.111
-#         fct(v,n) = cos(2big(pi)*coef*v/n)
-#         tf = fct.(BigFloat.(collect(1:n)),n)
-#         value = big"0.456231986"
-#         normax=0.0
-#         for i=1:number
-#             pol = polinterpol(lag, tf, i)
-#             ref=fct(i+value,n)
-#             res=pol(value)
-#             normax = max(normax, norm(ref-res))
-# #            println("i=$i norm=$(norm(res-ref,Inf))")
-# #            println("i=$i norm=$(norm(res-ref,Inf)) type(pol)=$(typeof(pol)) pol=$pol")
-#             @test isapprox(ref, res, atol=tol)
-#         end
-#         println("normax=$normax")
-#     end
-# end
-
 function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1)
     
     lag = Lagrange(T, order; iscirc=iscirc)
@@ -75,11 +51,7 @@ function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1
             fi .= fp
             fpref = fct.(T.(collect(1:n)) .+ i*valuebig, n)
             interpolate!(fp, fi, decint, precal, lag)
-#            println("i=$i norm = $(norm(fpref-fp,Inf))")
-            # for i=1:number
-            #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
-            # end
-#            println("i=$i norm=$(norm(fpref-fp))")
+
             nmax = max(nmax,norm(fpref-fp))
            @test isapprox(fpref, fp, atol=tol)
         end
@@ -93,16 +65,6 @@ end
     end
 end
 
-# test_lagrange(BigFloat, 17,true, 1000, 1e-45)
-# test_lagrange(BigFloat, 23,true, 1000, 1e-50)
-# test_lagrange(BigFloat, 17,false, 1000, 1e-38)
-# test_lagrange(BigFloat, 23,false, 1000, 1e-50)
-# @testset "Lagrange interpolation order=17 iscirc=true" begin
-#     @time test_interpolation(BigFloat, 17,true, 1000, 1, 1e-20, 10000)
-#     for i= 2:13
-#         @time test_interpolation(BigFloat, 17,true, 1000, i, 1e-20, 100)
-#     end
-# end
 
 @time @testset "Interpolation Lagrange" begin
     test_interpolation(Float64, 3,true, 200, 1e-3, 10 )

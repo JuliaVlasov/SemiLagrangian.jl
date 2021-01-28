@@ -43,7 +43,7 @@ function dotprodother(t_v::NTuple{N, Vector{T}}) where{N,T}
     return prod.(Iterators.product(t_v...))
 end
 
-abstract type InterpolationType{T, iscirc} end
+
 
 # for bspline
 function get_kl_ku(order)

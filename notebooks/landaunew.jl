@@ -294,7 +294,7 @@ end
 T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
 # @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
-@time landau2_2(T, 30, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1")
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
 # @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(T,5))
 # landau1_1(T, 10000, MPIOpt, sz=(128,128), dt=big"0.01")
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))

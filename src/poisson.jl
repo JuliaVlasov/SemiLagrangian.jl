@@ -1,33 +1,11 @@
 
 include("fftbig.jl")
 include("advection.jl")
+include("util_poisson.jl")
 
 
 
-"""
-    compute_charge!( rho, mesh_v, fvx)
 
- Compute charge density
-
- ρ(x,t) = ∫ f(x,v,t) dv
-
- # Arguments
- - `rho::Array{T,Nsp}` : result table correctly sized, it is he output
- - `t_mesh_v::NTuple{Nv,UniformMesh{T}}` : velocity meshes
- - `f::Array{T,Nsum}` : input data
-
-"""
-function compute_charge!(
-    rho::Array{T,Nsp},
-    t_mesh_v::NTuple{Nv,UniformMesh{T}},
-    f::Array{T,Nsum}
-) where {T, Nsp, Nv, Nsum}
-    Nsp+Nv == Nsum || thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum")) 
-    dv = prod(step, t_mesh_v)
-    rho .= dv * reshape(sum(f, dims = ntuple(x -> Nsp+x, Nv)), size(rho))
-    rho .-= sum(rho)/prod(size(rho))
-    missing
-end
 """
     compute_charge!( self::AdvectionData)
 

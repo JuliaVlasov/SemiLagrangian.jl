@@ -1,7 +1,8 @@
 using Test
 using LinearAlgebra
-include("../src/interpolation.jl")
 include("../src/lagrange.jl")
+include("../src/interpolation.jl")
+
 
 function test_base_lagrange(order)
     lag = Lagrange(order)
@@ -14,33 +15,34 @@ function test_base_lagrange(order)
         for j=0:order
             res += lag.lagpol[j+1](value)*fct(j-dec)
         end
+        res /= lag.fact_order
         @test res == fct(value)
     end
 end
 
-function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
-    @testset "Lagrange interpolation function type=$type order=$order iscirc=$iscirc" begin
-        lag = Lagrange(type, order; iscirc=iscirc)
-#        println("lag=$lag")
-        n = number
-        # whennot circuar coef != 1 set the function unperiodic
-        coef = iscirc ? 1. : 1.111
-        fct(v,n) = cos(2big(pi)*coef*v/n)
-        tf = fct.(BigFloat.(collect(1:n)),n)
-        value = big"0.456231986"
-        normax=0.0
-        for i=1:number
-            pol = polinterpol(lag, tf, i)
-            ref=fct(i+value,n)
-            res=pol(value)
-            normax = max(normax, norm(ref-res))
-#            println("i=$i norm=$(norm(res-ref,Inf))")
-#            println("i=$i norm=$(norm(res-ref,Inf)) type(pol)=$(typeof(pol)) pol=$pol")
-            @test isapprox(ref, res, atol=tol)
-        end
-        println("normax=$normax")
-    end
-end
+# function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
+#     @testset "Lagrange interpolation function type=$type order=$order iscirc=$iscirc" begin
+#         lag = Lagrange(type, order; iscirc=iscirc)
+# #        println("lag=$lag")
+#         n = number
+#         # whennot circuar coef != 1 set the function unperiodic
+#         coef = iscirc ? 1. : 1.111
+#         fct(v,n) = cos(2big(pi)*coef*v/n)
+#         tf = fct.(BigFloat.(collect(1:n)),n)
+#         value = big"0.456231986"
+#         normax=0.0
+#         for i=1:number
+#             pol = polinterpol(lag, tf, i)
+#             ref=fct(i+value,n)
+#             res=pol(value)
+#             normax = max(normax, norm(ref-res))
+# #            println("i=$i norm=$(norm(res-ref,Inf))")
+# #            println("i=$i norm=$(norm(res-ref,Inf)) type(pol)=$(typeof(pol)) pol=$pol")
+#             @test isapprox(ref, res, atol=tol)
+#         end
+#         println("normax=$normax")
+#     end
+# end
 
 function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1)
     
@@ -86,7 +88,7 @@ function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1
 end
 
 @time @testset "test base interpolation" begin
-    for ord=3:3:27
+    for ord=3:27
         test_base_lagrange(ord)
     end
 end

@@ -2,6 +2,7 @@
 
 include("../src/fftbig.jl")
 
+
 struct B_SplineFFT{T} <: B_Spline{T,true}
     order
     bspline::Spline

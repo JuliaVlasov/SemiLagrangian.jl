@@ -246,9 +246,6 @@ function test_itr(T::DataType)
 
 end
 
-
-
-
 @testset "test compute_ke" begin
     test_ke(Rational{BigInt})
     test_ke(Float64)

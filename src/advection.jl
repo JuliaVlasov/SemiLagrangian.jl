@@ -2,32 +2,11 @@
 
 
 include("mesh.jl")
+include("util.jl")
 
 
-abstract type InterpolationType{T, iscirc} end
-
-# TODO ne plus avoir cette fonction
-function get_kl_ku(order)
-    ku = div(order,2)
-    kl = order-1-ku
-    return kl, ku
-end
-
-function splititr(nb, lgtot)
-    lg, r = divrem(lgtot,nb)
-    return vcat( map(x -> ((x-1)*(lg+1)+1):x*(lg+1), 1:r), map(x -> ((x-1)*lg+r+1):(x*lg+r), (r+1):nb) )
-end
-
-function splitvec(nb, v)
-    return map(x -> v[x], splititr(nb, length(v)))
-end
 
 
-function transperm(a,b,n)
-    p = collect(1:n)
-    p[a],p[b] = b, a
-    return p
-end
 
 
 
@@ -155,8 +134,6 @@ function getborne(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, curst) where{T,Nsp,N
     return isvelocity(adv, curst) ? Nv : Nsp
 end
 
-
-# 
 """
     AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     AdvectionData(
@@ -200,15 +177,12 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     data::Array{T,Nsum}
     bufdata::Vector{T}
     t_buf::NTuple{Nsum, Array{T,2}}
-    # t_itrfirst
-    # t_itrsecond
     t_itr
     tt_split
-    cache_alpha::T
+    cache_alpha::Union{T,Nothing}
     cache_decint::Int64
     cache_precal::Vector{T}
     parext
-#    itrdataind
     function AdvectionData(
     adv::Advection{T,Nsp,Nv,Nsum,timeopt}, 
     data::Array{T,Nsum},
@@ -217,35 +191,22 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
         nbthr = timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() : 1
-#        t_buf = ntuple(x -> Array{T,2}(undef, s[x], nbthr), Nsum)
         t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         bufdata = Vector{T}(undef, length(data))
         copyto!(datanew, data)
-        # t_itrfirst = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][getborne(adv,x)+1:Nsum])), Nsum)
-        # t_itrsecond = ntuple(x -> CartesianIndices(s[getperm(parext, x)][2:getborne(adv,x)]), Nsum)
         t_itr = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][2:Nsum])), Nsum)
         t_linind = ntuple(x -> LinearIndices(s[getperm(parext,x)]), Nsum)
-        # ci(x)=CartesianIndices(s[getperm(parext,x)][1:getborne(adv,x)])
-        # itlinbeg(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[1],c]
-        # itlinend(x,c)=LinearIndices(s[getperm(parext,x)])[ci(x)[end],c]     
-        # itl = CartesianIndices()
         fbegin(x,y)=t_linind[x][1,t_itr[x][y][1]]
         fend(x,y)=t_linind[x][end,t_itr[x][y][end]]
         tt_split = ntuple(x -> ntuple(y -> (fbegin(x,y):fend(x,y)), adv.nbsplit), Nsum)
-
-        # println("trace1")
-
-        # getview(d,ind)=(view(d,ind...), ind)
-        # itrdataind = map( x-> getview.((datanew,), adv.itr[x]), 1:adv.nbth)
-        # println("trace2")
-
+        ordmax = maximum(get_order.((adv.t_interp_sp..., adv.t_interp_v...)))
         return new{T, Nsp, Nv, Nsum, timeopt}(
     adv, 1, 1,  
     datanew, bufdata, t_buf,
 #    t_itrfirst, t_itrsecond, tt_split,
     t_itr, tt_split,
-    Inf, 0, zeros(T,10),
+    nothing, 0, zeros(T,ordmax+1),
     parext
 )
     end
@@ -266,10 +227,6 @@ function getindsplit(self::AdvectionData{T,Nsp,Nv,Nsum,timeopt}) where{T,Nsp,Nv,
     end
     return ind
 end
-function trans1(ind, n) 
-    1 < ind <= n || thrown(ArgumentException("ind=$ind n=$n we must have 1 < ind <= n"))
-    return ntuple(x-> (x == ind) ? 1 : ((x == 1) ? ind : x) , n)
-end
 function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where{T,Nsp,Nv,Nsum}
     return isvelocitystate(self)*Nsp+self.state_dim
 end
@@ -283,15 +240,9 @@ function getprecal(self::AdvectionData, alpha)
         self.cache_alpha = alpha
         decint = convert(Int, floor(alpha))
         decfloat = alpha - decint
-        # if decfloat > 0.5
-        #     decfloat -= 1
-        #     decint += 1
-        # end
         self.cache_decint = decint
-        # if self.cache_decint != 0
-        #      @show alpha, self.cache_decint, decfloat
-        # end
-        self.cache_precal = get_precal(getinterp(self),decfloat)
+#        self.cache_precal = get_precal(getinterp(self),decfloat)
+        get_precal!(self.cache_precal, getinterp(self),decfloat)
     end
     return self.cache_decint, self.cache_precal
 end      
@@ -326,6 +277,7 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     else
         self.state_dim += 1
     end
+    self.cache_alpha = nothing
     return ret
 end
 getperm(_::Any,advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum} = (1:Nsum)
@@ -373,12 +325,13 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     initcoef!(extdata, self)
     curind =  _getcurrentindice(self)
     f = getformdata(self)
+    tabmod=gettabmod(size(f,1))
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
         @inbounds for ind in getitr(self)
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
             local lgn = view(f,:,ind)
-            interpolate!(buf, lgn, decint, precal, interp)
+            interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
         end
     elseif timeopt == SimpleThreadsOpt
@@ -387,7 +340,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
             local buf=view(tabbuf, :, Threads.threadid())
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
             local lgn = view(f,:,ind)
-            interpolate!(buf, lgn, decint, precal, interp)
+            interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
         end
         end
@@ -398,58 +351,12 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
             @inbounds for ind in getitr(self)
                 local decint, precal = getprecal(self, getalpha(extdata, self, ind))
                 local lgn = view(f,:,ind)
-                interpolate!(buf, lgn, decint, precal, interp)
+                interpolate!(buf, lgn, decint, precal, interp, tabmod)
                 lgn .= buf
             end
         end
         end
     end
     copydata!(self, f)
-
     return nextstate!(self)
 end
-"""
-    compute_ke(t_mesh_sp, t_mesh_v, f)
-
-kinetic Energie
-
-1/2∫∫ v^2 f(x,v,t) dv dx
-
-# Arguments
-- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes
-- `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes
-- `f::Array{T,Nsum}` : function data.
-"""
-function compute_ke( 
-    t_mesh_sp::NTuple{Nsp, UniformMesh{T}}, 
-    t_mesh_v::NTuple{Nv, UniformMesh{T}}, 
-    f::Array{T,Nsum}
-) where {T, Nsp, Nv, Nsum}
-    Nsum == Nsp+Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
-    szv=length.(t_mesh_v)
-    dsp = prod(step, t_mesh_sp)
-    dv = prod(step, t_mesh_v)
-    sum_sp = Array{T,Nv}(undef,szv)
-    sum_sp .= reshape(sum(f, dims = ntuple(x->x, Nsp)), szv )
-    return  (dsp * dv ) * sum( dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
-end
-"""
-    compute_ke(t_mesh_sp, t_mesh_v, f)
-
-kinetic Energie
-
-1/2∫∫ v^2 f(x,v,t) dv dx
-
-# Arguments
-- `self::AdvectionData` : mutable structure of variables data.
-"""
-function compute_ke(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
-    Nsum == Nsp+Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
-    adv=self.adv
-    szv=length.(adv.t_mesh_v)
-    dsp = prod(step, adv.t_mesh_sp)
-    dv = prod(step, adv.t_mesh_v)
-    sum_sp = reshape(sum(getdata(self), dims = ntuple(x->x, Nsp)), szv )
-    return (dsp * dv ) * sum(adv.v_square .* sum_sp)
-end  
-

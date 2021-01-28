@@ -1,5 +1,6 @@
 using Polynomials
 # using DynamicPolynomials
+abstract type InterpolationType{T, iscirc} end
 
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
@@ -19,16 +20,17 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 # Throws
 - `DommaineError` : when `0 <= k <= order` is `false` or when N ∉ {BInt64, BigInt}
 """
-function _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)
+function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where {N}
     0 <= k <= order || throw(DomainError("the constaint 0 <= k <= order is false"))
     N <: Union{BigInt,Int64} || throw(DomainError(N, "N must be Int64 or BigInt"))
-    result = Polynomials.Polynomial([one(Rational{N})])
+    # the computed is maden with big
+    result = Polynomials.Polynomial([big(fact//1)])
     for l=0:order
         if l != k
-            result *= Polynomials.Polynomial([-(l+origin)//1,1//1])/(k-l)
-        end
+            result *= Polynomials.Polynomial([-(l+origin),1//1] .// (k-l) )
+         end
     end
-    return result
+    return Polynomials.Polynomial(N.(result.coeffs))
 end
 
 # @inline function get_origin(order)
@@ -60,24 +62,28 @@ Lagrange Polynomials coefficients
 
 struct Lagrange{T, iscirc} <: InterpolationType{T, iscirc}
     order
+    fact_order
     lagpol
+
     function Lagrange(T::DataType, order; iscirc::Bool=true) 
-        type = order <= 10 ? Int64 : BigInt 
+        type = order <= 20 ? Int64 : BigInt
+        fact_order = factorial(type(order))
         origin = -div(order,2)
-        lagpol = collect([_getpolylagrange( i, order, origin, type) for i=0:order])
-        new{T, iscirc}(order, lagpol) 
+        lagpol = collect([_getpolylagrange( i, order, origin, fact_order) for i=0:order])
+        new{T, iscirc}(order, fact_order, lagpol) 
     end
     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
 @inline get_order(lag::Lagrange{T,iscirc}) where{T, iscirc}= lag.order
 @inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
-@inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf)) for fct in lag.lagpol]
+@inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf))/lag.fact_order for fct in lag.lagpol]
+@inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)
 @inline sol(lag::Lagrange,b)=b
 @inline isbspline(_::Lagrange)=false
-function print(pol::Lagrange)
-    println("type=$(get_type(pol))")
-    println("polynomes=$(pol.lagpol)")
-end
+# function print(pol::Lagrange)
+#     println("type=$(get_type(pol))")
+#     println("polynomes=$(pol.lagpol)")
+# end
 # """
 #     polinterpol(
 #     lag::Lagrange, 

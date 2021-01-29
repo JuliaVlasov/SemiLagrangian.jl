@@ -73,7 +73,7 @@ struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
 @inline get_order(lag::Lagrange{T,iscirc, order}) where{T, iscirc, order}= order
-@inline get_type(lag::Lagrange{T, isc}) where{T,isc}="Lagrange{$T, $isc}"
+@inline get_type(lag::Lagrange{T, isc, order, N}) where{T, isc, order, N}="Lagrange{$T, $isc, $order, $N}"
 @inline get_precal(lag::Lagrange{T},decf) where{T}=@inbounds [T(fct(decf))/lag.fact_order for fct in lag.lagpol]
 @inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)
 @inline sol(lag::Lagrange,b)=b

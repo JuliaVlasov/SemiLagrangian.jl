@@ -8,9 +8,9 @@ function get_allprecal(interp::InterpolationType{T,iscirc,order}, decfloat::T) w
 end
 
 function interpolate!( 
-    fp::Vector{T}, fi::Vector{T}, decint::Int, 
+    fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
     precal::Vector{T}, 
-    interp::InterpolationType{T,true, order};
+    interp::InterpolationType{T,true, order},
     tabmod=gettabmod(length(fi))
 ) where {T, order}
     res = sol(interp,fi)
@@ -24,9 +24,9 @@ function interpolate!(
     missing  
 end
 function interpolate!( 
-    fp::Vector{T}, fi::Vector{T}, decint::Int, 
+    fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
     allprecal::Vector{Vector{T}}, 
-    interp::InterpolationType{T, false, order};
+    interp::InterpolationType{T, false, order},
     tabmod=gettabmod(length(fi))
 ) where {T, order}
     res = sol(interp,fi)

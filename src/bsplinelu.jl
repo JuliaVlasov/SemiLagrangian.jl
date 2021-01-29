@@ -283,6 +283,6 @@ sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where{T}=sol(bsp.ls, b)[1]
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 get_order(bsp::B_SplineLU{T, iscirc, order}) where{T, iscirc, order}= order
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
-get_type(bsp::B_SplineLU{T, iscirc, order}) where{T,iscirc, order}="B_SplineLU{$T, $iscirc, $order}"
+get_type(bsp::B_SplineLU{T, iscirc, order, N}) where{T,iscirc, order, N}="B_SplineLU{$T, $iscirc, $order, $N}"
 istrace(bsp::B_SplineLU)=false
 

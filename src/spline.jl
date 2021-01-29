@@ -96,7 +96,7 @@ struct SplineInt{N} <: AbstractSpline{N}
 end
 function SplineInt(order)
     sp = getbspline(order, 0)
-    N = order <= 20 ? Int64 : BigInt
+    N = order <= 13 ? Int64 : BigInt
     fact_order = factorial(N(order))
     return SplineInt{N}(fact_order, map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
 end

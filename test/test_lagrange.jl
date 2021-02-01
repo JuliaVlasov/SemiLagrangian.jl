@@ -1,7 +1,4 @@
-using Test
 using LinearAlgebra
-include("../src/lagrange.jl")
-include("../src/interpolation.jl")
 
 
 function test_base_lagrange(order)

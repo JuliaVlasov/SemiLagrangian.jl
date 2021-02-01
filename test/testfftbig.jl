@@ -1,15 +1,7 @@
-#=
-testfftbig:
-- Julia version: 
-- Author: ymocquar
-- Date: 2019-11-18
-=#
-using Test
+
 using FFTW
 using Random
 using LinearAlgebra
-
-include("../src/fftbig.jl")
 
 function getfalse( tab )
     for i=1:size(tab,1), j=1:size(tab,2)

@@ -45,9 +45,4 @@ end
 
 
 
-# for bspline
-function get_kl_ku(order)
-    ku = div(order,2)
-    kl = order-1-ku
-    return kl, ku
-end
+

@@ -1,12 +1,4 @@
 
-#import Statistics: mean
-# export UniformMesh
-
-# include("clockobs.jl")
-
-# cl_obs = ClockObs(8)
-
-
 """
 
     UniformMesh(start, stop, length)

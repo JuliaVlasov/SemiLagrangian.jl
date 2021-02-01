@@ -1,8 +1,4 @@
-include("../src/advection.jl")
-include("../src/poisson.jl")
-include("../src/lagrange.jl")
 
-using Test
 using DoubleFloats
 
 

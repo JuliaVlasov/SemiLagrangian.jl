@@ -1,13 +1,5 @@
-include("../src/advection.jl")
-include("../src/spline.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-include("../src/bsplinefft.jl")
-include("../src/lagrange.jl")
-include("../src/interpolation.jl")
 
 using LinearAlgebra
-using Test
 
 function test_interp(interp::InterpolationType{Rational{BigInt}, iscirc}, dec,  sz) where {iscirc}
 

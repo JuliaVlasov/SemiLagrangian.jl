@@ -1,7 +1,5 @@
 
-include("fftbig.jl")
-include("advection.jl")
-include("util_poisson.jl")
+
 
 
 

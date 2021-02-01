@@ -1,13 +1,6 @@
 
-include("../src/advection.jl")
-include("../src/interpolation.jl")
-include("../src/spline.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-include("../src/bsplinefft.jl")
 
 using LinearAlgebra
-using Test
 
 function test_spline(order, prec)
     setprecision(prec) do

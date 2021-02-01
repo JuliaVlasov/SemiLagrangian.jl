@@ -1,7 +1,4 @@
 
-include("../src/mesh.jl")
-
-using Test
 @testset "test tupleshape" begin
 
     @test (3,4,1) == totuple([3,4,1])

@@ -1,6 +1,5 @@
 
 
-include("../src/fftbig.jl")
 
 
 struct B_SplineFFT{T, order} <: B_Spline{T,true, order}

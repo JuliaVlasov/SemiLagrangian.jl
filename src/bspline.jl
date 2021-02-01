@@ -1,6 +1,5 @@
 
-include("spline.jl")
-include("interpolation.jl")
+
 abstract type B_Spline{T,iscirc, order} <: InterpolationType{T,iscirc, order} end
 isbspline(_::B_Spline)=true
 function get_kl_ku(order)

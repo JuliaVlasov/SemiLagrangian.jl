@@ -1,10 +1,5 @@
-include("../src/advection.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-
 using LinearAlgebra
 using Random
-using Test
 Random.seed!(5431221)
 # create a band or circular matrix from a vector of non-zero data
 function topl(n, t, iscirc=true)

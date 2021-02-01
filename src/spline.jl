@@ -1,7 +1,7 @@
-using Polynomials
+
 import Base: +, *, -, ==, getindex, setindex!
 # import Base: +, *
-include("lapack.jl")
+
 abstract type AbstractSpline{N} end
 struct Spline{N} <: AbstractSpline{N}
     tabpol::Vector{Polynomials.Polynomial{Rational{N}}}

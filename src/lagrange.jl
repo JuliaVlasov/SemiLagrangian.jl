@@ -1,6 +1,4 @@
-using Polynomials
 
-include("interpolation.jl")
 
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64, N::DataType)

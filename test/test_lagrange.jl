@@ -1,4 +1,6 @@
 using LinearAlgebra
+using Polynomials
+using SemiLagrangian: Lagrange, get_precal, interpolate!
 
 
 function test_base_lagrange(order)

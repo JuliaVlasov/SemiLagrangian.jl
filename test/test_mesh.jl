@@ -1,10 +1,7 @@
 
-@testset "test tupleshape" begin
+using SemiLagrangian: UniformMesh, dotprod, dotprodother, length, step, prod, points, vec_k_fft 
 
-    @test (3,4,1) == totuple([3,4,1])
-    @test [5,1,9,2] == tovector((5,1,9,2))
-    
-    @test (1,1,71,1) == tupleshape(3,4,71)
+@testset "test tupleshape Mesh" begin 
     t_deb =[-1//1,-10//1,-3//1, -1//1]
     t_end = [3//1, 6//1,5//1,1//1]
     t_sz = [20, 10, 8, 16]

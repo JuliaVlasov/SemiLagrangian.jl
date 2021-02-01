@@ -2,6 +2,8 @@
 
 using DoubleFloats
 
+using SemiLagrangian: UniformMesh, compute_ee, compute_ke, PoissonConst, PoissonVar, initcoef!, compute_charge!
+
 function compute_elfield(
     t_mesh_x::NTuple{N,UniformMesh{T}},
     rho::Array{T, N},

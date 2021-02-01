@@ -1,5 +1,8 @@
 using LinearAlgebra
 using Random
+using Polynomials
+using SemiLagrangian: get_kl_ku, getbspline, LuSpline, B_SplineLU, sol, get_n, decal, get_order, get_type, interpolate!
+
 Random.seed!(5431221)
 # create a band or circular matrix from a vector of non-zero data
 function topl(n, t, iscirc=true)
@@ -60,7 +63,7 @@ end
 
 # function testTools()
 
-function sol( A::Matrix{T}, Y::Vector{T}) where{T}
+function SemiLagrangian.sol( A::Matrix{T}, Y::Vector{T}) where{T}
     L, U = getLU(A)
     n = size(A,1)
     Y1 = zeros(T,n)

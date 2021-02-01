@@ -1,35 +1,20 @@
 
 using DoubleFloats
 
+using SemiLagrangian: Advection, AdvectionData, advection!, sizeall, sizeitr, getext, getdata,
+ getcur_t, getstate_dim, isvelocity, isvelocitystate, getindsplit, _getcurrentindice,
+ getbufslgn, getprecal, getitr, gett_split, nextstate!, UniformMesh, totuple, tovector, Lagrange,
+ getpoissonvar, compute_ke, getinterp, points, dotprod
+
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
     return totuple(UniformMesh.(t_deb,t_end,t_size; endpoint=false)), t_step
 end
 
-@testset "test get_kl_ku" begin
-    kl, ku = get_kl_ku(5)
-    @test kl == 2 && ku == 2
-
-    kl, ku = get_kl_ku(6)
-    @test kl == 2 && ku == 3
-end
-
-@testset "test tools" begin
-
-    v = collect(1:53)
-    t = splitvec(5,v)
-    @test t[1] == collect(1:11)
-    @test t[2] == collect(12:22)
-    @test t[3] == collect(23:33)
-    @test t[4] == collect(34:43)
-    @test t[5] == collect(44:53)
-
-    @test transperm(1,2,5) == [2,1,3,4,5]
-    @test transperm(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
 
 
-end
+
 
 function test_adv(T::DataType)
     t_debsp = T.([-1,-10,-3])

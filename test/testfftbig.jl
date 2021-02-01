@@ -2,6 +2,7 @@
 using FFTW
 using Random
 using LinearAlgebra
+using SemiLagrangian: PrepareFftBig, fftbig, fftbig!, fft, fft!, fftgen, ifftgen, fftgen!, ifftgen!, fftgenall, fftgenall!, ifftgenall, ifftgenall!
 
 function getfalse( tab )
     for i=1:size(tab,1), j=1:size(tab,2)

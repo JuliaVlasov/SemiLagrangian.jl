@@ -1,6 +1,7 @@
 
 using LinearAlgebra
-using SemiLagrangian : InterpolationType, Lagrange, B_SplineLU, B_SplineFFT, get_type
+using SemiLagrangian: InterpolationType, Lagrange, B_SplineLU, B_SplineFFT, get_type, 
+    interpolate!, isbspline, getbspline, get_precal, get_order
 
 function test_interp(interp::InterpolationType{Rational{BigInt}, iscirc}, dec,  sz) where {iscirc}
 

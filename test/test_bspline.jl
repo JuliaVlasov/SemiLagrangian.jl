@@ -1,6 +1,9 @@
 
 
 using LinearAlgebra
+using Polynomials
+
+using SemiLagrangian: getbspline, B_SplineLU, B_SplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
     setprecision(prec) do
@@ -169,6 +172,14 @@ function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
         end
     end
 
+end
+
+@testset "test get_kl_ku" begin
+    kl, ku = get_kl_ku(5)
+    @test kl == 2 && ku == 2
+
+    kl, ku = get_kl_ku(6)
+    @test kl == 2 && ku == 3
 end
 
 test_bspline()

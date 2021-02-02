@@ -26,7 +26,7 @@ include("rotation.jl")
 
 export UniformMesh, Advection, AdvectionData, InterpolationType, Lagrange, B_SplineLU, B_SplineFFT
 export compute_charge!, compute_elfield!, compute_ee, compute_ke, advection!
-export dotprod, getpoissonvar 
-
+export dotprod, getpoissonvar, TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt 
+export get_type
 
 end

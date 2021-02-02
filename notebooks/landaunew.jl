@@ -16,7 +16,7 @@
 
 using LinearAlgebra
 using DoubleFloats
-using SemiLagrangian
+# using SemiLagrangian
 
 function landau_old( 
     dt::T, 

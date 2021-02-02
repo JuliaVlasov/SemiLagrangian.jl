@@ -161,7 +161,7 @@ Mutable structure that contains variable parameters of advection series
 - parext : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `init!(parext, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
+- `initcoef!(parext, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
 - `getalpha(parext, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
 - `getperm(parext, advd::AdvectionData)) : get the permutation of the dimension as a function of the current state
 

@@ -1,7 +1,7 @@
 
 
 
-function _get_perm(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
+function _get_permrot(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
     return if isvelocity(adv, curstate)
         [2, 1]
     else
@@ -18,7 +18,7 @@ struct RotationConst{T, Nsp, Nv}
     adv::Advection{T, Nsp, Nv, Nsum, timeopt}
 ) where{T, Nsp, Nv, Nsum, timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
-        t_perms = ntuple(x -> _get_perm(adv, x), Nsum)
+        t_perms = ntuple(x -> _get_permrot(adv, x), Nsum)
         return new{T,Nsp,Nv}(adv, t_perms)
     end
 end

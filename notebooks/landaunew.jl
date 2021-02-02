@@ -15,23 +15,8 @@
 # ---
 
 using LinearAlgebra
-# using ProgressMeter
-# using Plots
-
-# +
-import Base.Threads: @spawn, @sync, nthreads, threadid
-include("../src/mpiinterface.jl")
-# include("../src/nompiinterface.jl")
-include("../src/advection.jl")
-include("../src/poisson.jl")
-include("../src/spline.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-include("../src/bsplinefft.jl")
-include("../src/lagrange.jl")
-include("../src/interpolation.jl")
-
 using DoubleFloats
+using SemiLagrangian
 
 function landau_old( 
     dt::T, 

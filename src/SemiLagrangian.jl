@@ -24,5 +24,9 @@ include("util_poisson.jl")
 include("poisson.jl")
 include("rotation.jl")
 
+export UniformMesh, Advection, AdvectionData, InterpolationType, Lagrange, B_SplineLU, B_SplineFFT
+export compute_charge!, compute_elfield!, compute_ee, compute_ke, advection!
+export dotprod, getpoissonvar 
+
 
 end

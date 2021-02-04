@@ -2,8 +2,18 @@
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
 """
-    Aadvection{T, Nsp, Nv, Nsum, timeopt}
-    Aadvection(
+    bidon(toto)
+
+function compeletement bidon pour voir
+
+# Argument
+- `toto`: le seul argument bidon
+
+"""
+
+"""
+    Advection{T, Nsp, Nv, Nsum, timeopt}
+    Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
     t_interp_sp::NTuple{Nsp, InterpolationType{T}},
@@ -14,13 +24,6 @@
     timeopt::TimeOptimization=NoTimeOpt)
 
 Immutable structure that contains constant parameters for multidimensional advection
-
-# Type parameters
-- `T::DataType` : type of data
-- `Nsp` : number of space dimensions
-- `Nv` : number of velocity dimensions
-- `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
-- `timeopt::TimeOptimization` : time optimization
 
 # Arguments
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
@@ -51,6 +54,14 @@ Immutable structure that contains constant parameters for multidimensional advec
 # Throws
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 """
+
+# # Type parameters
+# - `T::DataType` : type of data
+# - `Nsp` : number of space dimensions
+# - `Nv` : number of velocity dimensions
+# - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+# - `timeopt::TimeOptimization` : time optimization
+
 
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall

@@ -10,6 +10,7 @@ function compeletement bidon pour voir
 - `toto`: le seul argument bidon
 
 """
+bidon(toto)=toto
 
 """
     Advection{T, Nsp, Nv, Nsum, timeopt}
@@ -141,7 +142,7 @@ end
     data::Array{T,Nsum},
     parext)
 
-Mutable structure that contains variable parameters of advection series
+just to see biz commentMutable structure that contains variable parameters of advection series
 
 # Type parameters
 - `T::DataType` : type of data

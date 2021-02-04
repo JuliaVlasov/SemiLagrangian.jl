@@ -2,19 +2,6 @@
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
 """
-    bidon(toto)
-
-function compeletement bidon pour voir
-
-# Argument
-- `toto` : le seul argument bidon
-"""
-function bidon(toto)
-    toto
-end
-
-
-"""
     Advection{T, Nsp, Nv, Nsum, timeopt}
     Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
@@ -28,26 +15,29 @@ end
 
 Immutable structure that contains constant parameters for multidimensional advection
 
-# Type parameters
+## Type parameters
+
 - `T::DataType` : type of data
 - `Nsp` : number of space dimensions
 - `Nv` : number of velocity dimensions
 - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
 - `timeopt::TimeOptimization` : time optimization
 
-# Arguments
+## Arguments
+
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
 - `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes (one per velocity dimension)
 - `t_interp_sp::NTuple{Nsp, InterpolationType{T}}` : tuple of space interpolations (one per space dimension)
 - `t_interp_v::NTuple{Nv, InterpolationType{T}}` : tuple of velocity interpolations(one per velocity dimension)
 - `dt_base::T` : time delta for one advection series
 
-# Keywords
+## Keywords
+
 - `tab_coef=[1//2, 1//1, 1//2]` : coefficient table for one advection series, the
     coefficients at odd indexes is for space advection series, the coefficients at even indexes is for velocity advection series
 - `tab_fct=[identity, identity, identity]` : function table for one advection series, with the same indexes than tab_coef
 
-# Implementation
+## Implementation
 - sizeall : tuple of the sizes of all dimensions (space before velocity)
 - sizeitr : tuple of iterators of indexes of each dimension
 - t_mesh_sp : tuple of space meshes
@@ -61,12 +51,11 @@ Immutable structure that contains constant parameters for multidimensional advec
 - nbsplit : number of slices for split
 - mpiid : MPI id
 
-# Throws
+## Throws
+
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
+
 """
-
-
-
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall
     sizeitr

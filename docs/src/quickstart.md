@@ -8,9 +8,3 @@ using SemiLagrangian
 
 
 ```
-
-@todo "Add and example"
-
-```@docs
-Advection
-```

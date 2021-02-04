@@ -7,10 +7,12 @@
 function compeletement bidon pour voir
 
 # Argument
-- `toto`: le seul argument bidon
-
+- `toto` : le seul argument bidon
 """
-bidon(toto)=toto
+function bidon(toto)
+    toto
+end
+
 
 """
     Advection{T, Nsp, Nv, Nsum, timeopt}
@@ -25,6 +27,13 @@ bidon(toto)=toto
     timeopt::TimeOptimization=NoTimeOpt)
 
 Immutable structure that contains constant parameters for multidimensional advection
+
+# Type parameters
+- `T::DataType` : type of data
+- `Nsp` : number of space dimensions
+- `Nv` : number of velocity dimensions
+- `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+- `timeopt::TimeOptimization` : time optimization
 
 # Arguments
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
@@ -56,12 +65,6 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 """
 
-# # Type parameters
-# - `T::DataType` : type of data
-# - `Nsp` : number of space dimensions
-# - `Nv` : number of velocity dimensions
-# - `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
-# - `timeopt::TimeOptimization` : time optimization
 
 
 struct Advection{T, Nsp, Nv, Nsum, timeopt}

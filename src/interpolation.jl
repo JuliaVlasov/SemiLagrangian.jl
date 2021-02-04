@@ -6,7 +6,22 @@ function get_allprecal(interp::InterpolationType{T,iscirc,order}, decfloat::T) w
     origin = -div(order, 2)
     return [get_precal(interp, decfloat+i) for i=origin:(origin+order)]
 end
+"""
+    interpolate!( fp, fi, decint, precal, interp)
 
+apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
+decint and precal are precompute with get_precal method.
+
+# Arguments
+- `fp::AbstractVector` : output vector
+- `fi::AbstractVector` : input vector
+- `decint` : offset in units of dx
+- `precal::Vector` : vector of length order+1 precompute with get_precal(interp, dec) (dec is the offset)
+- `interp::InterpolationType` : interpolation implementation
+
+# Returns :
+- No return
+"""
 function interpolate!( 
     fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
     precal::Vector{T}, 
@@ -42,6 +57,7 @@ function interpolate!(
     missing  
 end
 
+
 function interpolate!( fp, fi, decint, precal::Vector{Vector{T}}, interp::InterpolationType{T,false, order}, tabmod=gettabmod(length(fi))) where {T, order}
     res = sol(interp,fi)
     origin = -div(order,2)
@@ -55,12 +71,14 @@ function interpolate!( fp, fi, decint, precal::Vector{Vector{T}}, interp::Interp
 end
 """
     interpolate!( fp, fi, dec, interp)
-return the interpolation polynomial for the given values of a function a a specified index
+
+apply the offset dec to the function fi interpolate by interp struct, the result is in fp Vector
 
 # Arguments
-- `fp` : output array of length n
-- `fi` : input array of length n
+- `fp` : output vector of length n
+- `fi` : input vector of length n
 - `dec` : offset in units of dx
+- `interp::InterpolationType` : interpolation implementation
 
 # Returns :
 - No return

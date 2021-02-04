@@ -24,7 +24,7 @@ function compute_ke(
     return  (dsp * dv ) * sum( dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
 end
 """
-    compute_ke(t_mesh_sp, t_mesh_v, f)
+    compute_ke(self::AdvectionData)
 
 kinetic Energie
 
@@ -67,3 +67,43 @@ function compute_charge!(
     rho .-= sum(rho)/prod(size(rho))
     missing
 end
+
+"""
+    compute_ee(t_mesh_sp, t_elf)
+
+compute electric enegie
+|| E(t,.) ||_L2
+
+# Arguments
+- `t_mesh_sp::NTuple{N,UniformMesh{T}}` : tuple of space meshes
+- `t_elf::NTuple{N,Array{T,N}}` : tuple of electric field
+"""
+function compute_ee(
+    t_mesh_sp::NTuple{N,UniformMesh{T}}, 
+    t_elf::NTuple{N,Array{T,N}}
+) where {T,N}
+    res = zero(T)
+    dx = prod(step, t_mesh_sp)
+    for i=1:N
+        res += sum(t_elf[i].^2)
+    end
+    dx * res
+end
+
+"""
+    compute_ee(self::AdvectionData)
+
+compute electric enegie
+|| E(t,.) ||_L2
+
+# Argument
+- `self::AdvectionData` : veriable advection data structure.
+
+"""
+function compute_ee(self::AdvectionData)
+    adv = self.adv
+    pvar = getext(self)
+    dx = prod(step, adv.t_mesh_sp)
+    return dx * sum(map(x->sum(x.^2), pvar.t_elfield))
+end
+

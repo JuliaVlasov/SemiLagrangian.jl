@@ -1,17 +1,9 @@
-# export Advection
-
-
-
-
-
-
 
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
-
 """
-    Advection{T, Nsp, Nv, Nsum, timeopt}
-    Advection(
+    Aadvection{T, Nsp, Nv, Nsum, timeopt}
+    Aadvection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
     t_interp_sp::NTuple{Nsp, InterpolationType{T}},
@@ -53,9 +45,11 @@ Immutable structure that contains constant parameters for multidimensional advec
 - tab_coef : coefficient table
 - tab_fct : function table
 - v_square : precompute for ke
+- nbsplit : number of slices for split
+- mpiid : MPI id
 
 # Throws
-- `ArgumentError` : `Nsp` must less or equal to `Nv`.
+- `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 """
 
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
@@ -81,7 +75,7 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     tab_fct=[identity,identity,identity],
     timeopt::TimeOptimization=NoTimeOpt
 ) where{T, Nsp, Nv}
-        Nsp <= Nv || throw(ArgumentError("Nsp=$Nsp must less or equal to Nv=$Nv"))
+        Nsp <= Nv || throw(ArgumentError("Nsp=$Nsp must be less or equal to Nv=$Nv"))
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
@@ -106,23 +100,23 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
 )
     end
 end
-"""
-    sizeall(adv::Advection)
-
-Return a tuple of the sizes of each dimensions
-
-# Argument
-- `adv::Advection` : Advection structure.
-"""
+#
+#     sizeall(adv::Advection)
+#
+# Return a tuple of the sizes of each dimensions
+#
+# # Argument
+# - `adv::Advection` : Advection structure.
+#
 sizeall(adv)=adv.sizeall
-"""
-    sizeitr(adv::Advection)
+# 
+#     sizeitr(adv::Advection)
 
-Return a tuple of iterators from one to the sizes of each dimensions
+# Return a tuple of iterators from one to the sizes of each dimensions
 
-# Argument
-- `adv::Advection` : Advection structure.
-"""
+# # Argument
+# - `adv::Advection` : Advection structure.
+# 
 sizeitr(adv)=adv.sizeitr
 
 function getborne(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, curst) where{T,Nsp,Nv,Nsum,timeopt}
@@ -247,18 +241,18 @@ gett_split(self)=self.tt_split[_getcurrentindice(self)]
 
 
 
-"""
-    nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
-
-Function called at the end of advection function to update internal state of AdvectionData structure
-
-# Argument
-- `self::AdvectionData{T, Nsp, Nv, Nsum}` : object to update
-
-# return value
-- `ret::Bool` : `true`is the series must continue
-                `false`at the end of the series.
-"""
+# """
+#     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
+#
+# Function called at the end of advection function to update internal state of AdvectionData structure
+#
+# # Argument
+# - `self::AdvectionData{T, Nsp, Nv, Nsum}` : object to update
+#
+# # return value
+# - `ret::Bool` : `true` if the series must continue
+#                 `false` at the end of the series.
+# """
 function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     ret = true
     if self.state_dim == [Nv,Nsp][self.state_coef%2+1]
@@ -275,7 +269,9 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     self.cache_alpha = nothing
     return ret
 end
+# default function of the interface
 getperm(_::Any,advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum} = (1:Nsum)
+# data formating
 function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     p = getperm(getext(advd),advd)
     if p == 1:Nsum

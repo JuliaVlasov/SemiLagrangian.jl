@@ -19,8 +19,7 @@
     dt_base::T;
     tab_coef=[1//2, 1//1, 1//2],
     tab_fct=[identity, identity, identity],
-    timeopt::TimeOptimization=NoTimeOpt
-)
+    timeopt::TimeOptimization=NoTimeOpt)
 
 Immutable structure that contains constant parameters for multidimensional advection
 

@@ -53,7 +53,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 - dt_base::T : time unit of an advection series
 - tab_coef : coefficient table
 - tab_fct : function table
-- v_square : 
+- v_square : precompute for ke
 
 # Throws
 - `ArgumentError` : `Nsp` must less or equal to `Nv`.

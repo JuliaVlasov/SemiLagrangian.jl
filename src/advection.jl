@@ -1,6 +1,8 @@
 
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
+
+
 """
     Advection{T, Nsp, Nv, Nsum, timeopt}
     Advection(
@@ -16,7 +18,6 @@
 Immutable structure that contains constant parameters for multidimensional advection
 
 ## Type parameters
-
 - `T::DataType` : type of data
 - `Nsp` : number of space dimensions
 - `Nv` : number of velocity dimensions
@@ -24,7 +25,6 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `timeopt::TimeOptimization` : time optimization
 
 ## Arguments
-
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
 - `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes (one per velocity dimension)
 - `t_interp_sp::NTuple{Nsp, InterpolationType{T}}` : tuple of space interpolations (one per space dimension)
@@ -32,30 +32,30 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `dt_base::T` : time delta for one advection series
 
 ## Keywords
-
 - `tab_coef=[1//2, 1//1, 1//2]` : coefficient table for one advection series, the
     coefficients at odd indexes is for space advection series, the coefficients at even indexes is for velocity advection series
 - `tab_fct=[identity, identity, identity]` : function table for one advection series, with the same indexes than tab_coef
 
 ## Implementation
-- sizeall : tuple of the sizes of all dimensions (space before velocity)
-- sizeitr : tuple of iterators of indexes of each dimension
-- t_mesh_sp : tuple of space meshes
-- t_mesh_v : tuple of velocity meshes
-- t_interp_sp : tuple of space interpolation types
-- t_interp_v : tuple of velocity interpolation types
-- dt_base::T : time unit of an advection series
-- tab_coef : coefficient table
-- tab_fct : function table
-- v_square : precompute for ke
-- nbsplit : number of slices for split
-- mpiid : MPI id
+- `sizeall` : tuple of the sizes of all dimensions (space before velocity)
+- `sizeitr` : tuple of iterators of indexes of each dimension
+- `t_mesh_sp` : tuple of space meshes
+- `t_mesh_v` : tuple of velocity meshes
+- `t_interp_sp` : tuple of space interpolation types
+- `t_interp_v` : tuple of velocity interpolation types
+- `dt_base::T` : time unit of an advection series
+- `tab_coef` : coefficient table
+- `tab_fct` : function table
+- `v_square` : precompute for ke
+- `nbsplit` : number of slices for split
+- `mpiid` : MPI id
 
 ## Throws
-
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
-
 """
+
+
+
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall
     sizeitr
@@ -127,6 +127,9 @@ function getborne(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, curst) where{T,Nsp,N
     return isvelocity(adv, curst) ? Nv : Nsp
 end
 
+# 
+abstract type AbstractExtDataAdv end
+
 """
     AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     AdvectionData(
@@ -149,24 +152,27 @@ just to see biz commentMutable structure that contains variable parameters of ad
 - `parext` : external data of this advection to compute alpha of each interpolations
 
 # Implementation
-- adv : link to the constant data of this advection
-- state_coef : state that is the index of tab_coef, it is from one to lenth(tab_coef)
-- state_dim : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
-- data : it is the working buffer
-- bufdata : vector of the same size of the working buffer
-- t_buf : tuple of buffer that is used to get the linear data for interpolation, one buffer per thread
-- parext : external data of this advection to compute alpha of each interpolations
+- `adv::Advection{T,Nsp,Nv,Nsum,timeopt}` : link to the constant data of this advection
+- `state_coef::Int` : state that is the index of `tab_coef`, it is from one to lenth(tab_coef)
+- `state_dim::Int` : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
+- `data:Array{T,Nsum}` : it is the working buffer
+- `bufdata::Vector{T}` : vector of the same size of the working buffer
+- `t_buf::NTuple{Nsum, Array{T,2}}` : tuple of buffer that is used to get the linear data for interpolation, one buffer per thread
+- `cache_alpha::Union{T,Nothing}` : cache for precal, the precal is compute only when the alpha or decint values change
+- `cache_decint::Int64` : for precal cache
+- `cache_precal::Vector{T}` : for precal cache
+- `parext::ExtDataAdv` : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `initcoef!(parext, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
-- `getalpha(parext, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
-- `getperm(parext, advd::AdvectionData)) : get the permutation of the dimension as a function of the current state
+- `initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
+- `getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
+- `getperm(parext::AbstractExtDataAdv, advd::AdvectionData)` : get the permutation of the dimension as a function of the current state
 
 """
 mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     adv::Advection{T,Nsp,Nv,Nsum,timeopt}
-    state_coef # from 1 to length(adv.tab_coef)
-    state_dim # from 1 to N
+    state_coef::Int # from 1 to length(adv.tab_coef)
+    state_dim::Int # from 1 to N
     data::Array{T,Nsum}
     bufdata::Vector{T}
     t_buf::NTuple{Nsum, Array{T,2}}
@@ -175,11 +181,11 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     cache_alpha::Union{T,Nothing}
     cache_decint::Int64
     cache_precal::Vector{T}
-    parext
+    parext::AbstractExtDataAdv
     function AdvectionData(
     adv::Advection{T,Nsp,Nv,Nsum,timeopt}, 
     data::Array{T,Nsum},
-    parext, 
+    parext::AbstractExtDataAdv, 
 ) where{T,Nsp,Nv,Nsum,timeopt}
         s = size(data)
         s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))

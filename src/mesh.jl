@@ -10,6 +10,7 @@ length-1 : number of cells
 
 If you want remove the last point for periodic domain, set endpoint=false
 
+# Arguments
     - `step`  : size step
     - `points`: Array with node positions
     - `width` : Distance between left and right edges.

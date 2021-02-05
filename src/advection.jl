@@ -1,21 +1,20 @@
 
 @enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
 
-
-
 """
     Advection{T, Nsp, Nv, Nsum, timeopt}
     Advection(
-    t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
-    t_mesh_v::NTuple{Nv, UniformMesh{T}},
-    t_interp_sp::NTuple{Nsp, InterpolationType{T}},
-    t_interp_v::NTuple{Nv, InterpolationType{T}},
-    dt_base::T;
-    tab_coef=[1//2, 1//1, 1//2],
-    tab_fct=[identity, identity, identity],
-    timeopt::TimeOptimization=NoTimeOpt)
+        t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
+        t_mesh_v::NTuple{Nv, UniformMesh{T}},
+        t_interp_sp::NTuple{Nsp, InterpolationType{T}},
+        t_interp_v::NTuple{Nv, InterpolationType{T}},
+        dt_base::T;
+        tab_coef=[1//2, 1//1, 1//2],
+        tab_fct=[identity, identity, identity],
+        timeopt::TimeOptimization=NoTimeOpt
+    )
 
-aaaImmutable structure that contains constant parameters for multidimensional advection
+Immutable structure that contains constant parameters for multidimensional advection
 
 # Type parameters
 
@@ -40,26 +39,24 @@ aaaImmutable structure that contains constant parameters for multidimensional ad
 - `tab_fct=[identity, identity, identity]` : function table for one advection series, with the same indexes than tab_coef
 
 # Implementation
-- sizeall : tuple of the sizes of all dimensions (space before velocity)
-- sizeitr : tuple of iterators of indexes of each dimension
-- t_mesh_sp : tuple of space meshes
-- t_mesh_v : tuple of velocity meshes
-- t_interp_sp : tuple of space interpolation types
-- t_interp_v : tuple of velocity interpolation types
-- dt_base::T : time unit of an advection series
-- tab_coef : coefficient table
-- tab_fct : function table
-- v_square : precompute for ke
-- nbsplit : number of slices for split
-- mpiid : MPI id
+- `sizeall` : tuple of the sizes of all dimensions (space before velocity)
+- `sizeitr` : tuple of iterators of indexes of each dimension
+- `t_mesh_sp` : tuple of space meshes
+- `t_mesh_v` : tuple of velocity meshes
+- `t_interp_sp` : tuple of space interpolation types
+- `t_interp_v` : tuple of velocity interpolation types
+- `dt_base::T` : time unit of an advection series
+- `tab_coef` : coefficient table
+- `tab_fct` : function table
+- `v_square` : precompute for ke
+- `nbsplit` : number of slices for split
+- `mpiid` : MPI id
 
 # Throws
 
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-
-
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall
     sizeitr
@@ -141,7 +138,7 @@ abstract type AbstractExtDataAdv end
     data::Array{T,Nsum},
     parext)
 
-just to see biz commentMutable structure that contains variable parameters of advection series
+Mutable structure that contains variable parameters of advection series
 
 # Type parameters
 - `T::DataType` : type of data
@@ -214,6 +211,8 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
 )
     end
 end
+
+
 getext(self)=self.parext
 getdata(self)=self.data
 getcur_t(adv::Advection, state_coef::Int)=adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
@@ -255,18 +254,18 @@ gett_split(self)=self.tt_split[_getcurrentindice(self)]
 
 
 
-# """
-#     nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
-#
-# Function called at the end of advection function to update internal state of AdvectionData structure
-#
-# # Argument
-# - `self::AdvectionData{T, Nsp, Nv, Nsum}` : object to update
-#
-# # return value
-# - `ret::Bool` : `true` if the series must continue
-#                 `false` at the end of the series.
-# """
+"""
+    nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
+
+Function called at the end of advection function to update internal state of AdvectionData structure
+
+# Argument
+- `self::AdvectionData{T, Nsp, Nv, Nsum}` : object to update
+
+# return value
+- `ret::Bool` : `true` if the series must continue
+                `false` at the end of the series.
+"""
 function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     ret = true
     if self.state_dim == [Nv,Nsp][self.state_coef%2+1]

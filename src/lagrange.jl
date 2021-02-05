@@ -36,39 +36,33 @@ end
 # end
 
 """
-    Lagrange{T, iscirc, granularity}
+    Lagrange{T, iscirc, order, N}
+    Lagrange(T::DataType, order; iscirc::Bool=true)
 Lagrange Polynomials coefficients
 
-# Fields :
-- `coef::Matrix{T}` : Matrix with all Lagrange polynomials coefficients, each culumn from 0 to order had the coefficients for the corresponding Lagrange polynomial. the matrix had a size of (order + 1, order + 1).
+# Type parameters
+- 'T' : the type of data that is interpolate
+- 'iscirc::Bool' : true if function is circular
+- `order::Int`: order of lagrange interpolation
+- `N` : type of integer, in fact Int64 or BigInt that is used to store lagrange polynomial
+
+# Implementation :
+- `fact_order::N` : factorial of the order
+- `lagpol:Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the order is lagpol[k+1]/fact_order
 
 """
-# struct Lagrange{T, iscirc, granularity} <: InterpolationType{T, iscirc}
-#     coef::Matrix{T}
-#     function Lagrange(T::DataType, order; iscirc::Bool=true, granularity=1)
-#         type = order <= 10 ? Int64 : BigInt 
-#         coef = zeros(T, order+1, order+1)
-#         origin = get_origin(order)
-#         for i = 0:order
-#             coef[:,i+1] .= convert.(T, coeffs(_getpolylagrange( i, order, origin, type)))
-#         end
-#         new{T, iscirc, granularity}(coef) 
-#     end
-#     Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
-# end
-# get_order(lag::Lagrange)= size(lag.coef,1)-1
+
 
 struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     fact_order::N
     lagpol::Vector{Polynomial{N}}
-    function Lagrange(T::DataType, order; iscirc::Bool=true) 
+    function Lagrange(order, T::DataType=Float64; iscirc::Bool=true) 
         type = order <= 20 ? Int64 : BigInt
         fact_order = factorial(type(order))
         origin = -div(order,2)
         lagpol = collect([_getpolylagrange( i, order, origin, fact_order) for i=0:order])
         new{T, iscirc, order, type}(fact_order, lagpol) 
     end
-    Lagrange(order; kwargs...)= Lagrange(Float64, order; kwargs...)
 end
 @inline get_order(lag::Lagrange{T,iscirc, order}) where{T, iscirc, order}= order
 @inline get_type(lag::Lagrange{T, isc, order, N}) where{T, isc, order, N}="Lagrange{$T, $isc, $order, $N}"

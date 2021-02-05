@@ -30,10 +30,10 @@ function test_adv(T::DataType)
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
-    interp = Lagrange(T,3)
+    interp = Lagrange(3, T)
     adv = Advection(
     t_meshsp, t_meshv, 
-    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),3), 
+    ntuple(x->Lagrange(3, T),3), ntuple(x->Lagrange(3, T),3), 
     base_dt
 )
 
@@ -175,10 +175,10 @@ function test_itr(T::DataType)
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp,t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
-    interp = Lagrange(T,3)
+    interp = Lagrange(3, T)
     adv = Advection(
     t_meshsp, t_meshv, 
-    ntuple(x->Lagrange(T,3),3), ntuple(x->Lagrange(T,3),3), 
+    ntuple(x->Lagrange(3, T),3), ntuple(x->Lagrange(3, T),3), 
     base_dt
 )
 

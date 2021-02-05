@@ -21,7 +21,7 @@ end
 
 function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1)
     
-    lag = Lagrange(T, order; iscirc=iscirc)
+    lag = Lagrange(order, T; iscirc=iscirc)
     n = number
  #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
  #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)

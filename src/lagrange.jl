@@ -41,8 +41,8 @@ end
 Lagrange Polynomials coefficients
 
 # Type parameters
-- 'T' : the type of data that is interpolate
-- 'iscirc::Bool' : true if function is circular
+- `T` : the type of data that is interpolate
+- `iscirc::Bool` : true if function is circular
 - `order::Int`: order of lagrange interpolation
 - `N` : type of integer, in fact Int64 or BigInt that is used to store lagrange polynomial
 

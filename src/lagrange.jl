@@ -31,14 +31,11 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where 
     return Polynomials.Polynomial(N.(result.coeffs))
 end
 
-# @inline function get_origin(order)
-#     return -div(order,2)
-# end
-
 """
-    Lagrange{T, iscirc, order, N}
+    Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     Lagrange(T::DataType, order; iscirc::Bool=true)
-Lagrange Polynomials coefficients
+
+Get Lagrange Polynomials coefficients for Lagrange interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
@@ -48,11 +45,8 @@ Lagrange Polynomials coefficients
 
 # Implementation :
 - `fact_order::N` : factorial of the order
-- `lagpol:Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the order is lagpol[k+1]/fact_order
-
+- `lagpol:Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the designed order is lagpol[k+1]/fact_order
 """
-
-
 struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     fact_order::N
     lagpol::Vector{Polynomial{N}}
@@ -70,135 +64,3 @@ end
 @inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)
 @inline sol(lag::Lagrange,b)=b
 @inline isbspline(_::Lagrange)=false
-# function print(pol::Lagrange)
-#     println("type=$(get_type(pol))")
-#     println("polynomes=$(pol.lagpol)")
-# end
-# """
-#     polinterpol(
-#     lag::Lagrange, 
-#     resfct::Vector{T}
-# ) where {T}
-# return the interpolation polynomial for the given values of a function
-
-# # Arguments
-# - `lag::Lagrange` : object with Lagrange coefficients
-# - `resfct::Vector{T}`` : result of functions for values lag.origin to lag.origin+size(lag.coef+1, 1)
-
-# # Returns :
-# - Polynomial{T} : the interpolation polynomial
-# """
-# function polinterpol(
-#     lag::Lagrange, 
-#     resfct::Vector{T}
-# ) where {T}
-#     return Polynomials.Polynomial(lag.coef*resfct)
-# end
-
-# # modulo for "begin to one" array
-# modone(ind, n)=(n+ind-1)%n+1
-# """
-#     polinterpol(
-#     lag::Lagrange, 
-#     resfct::Vector{T},
-#     ind
-# ) where {T<:Union{AbstractFloat,Complex{AbstractFloat}}}
-# return the interpolation polynomial for the given values of a function at a specified index
-
-# # Arguments
-# - `lag::Lagrange` : object with Lagrange coefficients
-# - `resfct::Vector{T}`` : result of functions for all values.
-# - `ind` : indices to take values from lag.origin +ind to ind + lag.origin+size(lag.coef+1, 1)
-
-# # Returns :
-# - Polynomial{T} : the interpolation polynomial
-# """
-# function polinterpol(
-#     lag::Lagrange{T, iscirc, granularity}, 
-#     resfct::Vector{T},
-#     ind
-# ) where {T, iscirc, granularity}
-#     order = get_order(lag)
-#     origin = get_origin(order)
-#     indbegin = origin+ind
-#     indend = indbegin+order
-#     listind = 
-#     if iscirc
-#         modone.(indbegin:indend, size(resfct,1))
-#     else
-#         decl = 0
-#         if indbegin < 1
-#             decl = indbegin - 1
-#             1:indend-decl
-#         elseif indend > size(resfct,1)
-#             decl = indend - size(resfct,1)
-#             indbegin-decl:size(resfct,1)
-#         else
-#             indbegin:indend
-#         end
-#     end
-#     f = resfct[listind]
-#     polret = polinterpol(lag, f)
-#     return if iscirc || decl == 0
-#         polret
-#     else
-#         polret(Polynomials.Polynomial([decl, one(T)]))
-#     end
-# end
-# modulo for "begin to one" array
-# modone(ind, n)=(n+ind-1)%n+1
-# """
-#     interpolate!( fp, fi, dec, lag::Lagrange)
-# return the interpolation polynomial for the given values of a function a a specified index
-
-# # Arguments
-# - `fp` : output array of length n
-# - `fi` : input array of length n
-# - `dec` : offset in units of dx
-
-# # Returns :
-# - No return
-# """
-# function interpolate!( adv, fp, fi, dec, 
-#     lag::Lagrange{T, iscirc}
-# ) where {T, iscirc, granularity}
-#     decint = convert(Int, floor(dec))
-#     decfloat = dec - decint
-
-#     res = sol(lag,fi)
-
-#     println("size res=$(size(res))")
-
-#     order=get_order(lag)
-#     origin=get_origin(order)
-
-#     if iscirc
-#         precal = get_precal(lag, decfloat)
-#     else
-#         allprecal = [get_precal(lag, decfloat+i) for i=origin:(origin+order)]
-#         println("size allprecal=$(size(allprecal))")
-#         println("allprecal=$allprecal")
-#         println("allprecal=$(convert.(Array{Float64,1},allprecal))")
-#     end
-
-
-#     n = size(fi,1)
-#     if iscirc
-#         println("trace iscirc=true")
-#         for i=1:n
-#             indbeg=i+origin
-#             indend=indbeg+order
-#             fp[i] = res[modone.(indbeg:indend, n)] .* precal
-#         end
-#     else
-#         println("trace iscirc=false")
-#         for i=1:n
-#             indbeg = max(1,i+origin)
-#             indend = min(n,indbeg+order)
-#             indbeg = indend-order
-#             ind=i-indbeg+1
-#             fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
-#         end
-#     end
-    
-# end

@@ -1,91 +1,4 @@
 
-# function decLU( A::Matrix{T} ) where{T}
-#     n = size(A,1)
-#     for k=1:n
-#         pivot = A[k,k]
-#         for i=k+1:n
-#             A[i,k] /= pivot
-#         end
-#         for i=k+1:n, j=k+1:n
-#             # if A[i,k] != 0 && A[k,j] != 0
-#             #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
-#             # end
-#             A[i,j] -= A[i,k]*A[k,j]
-#             # if A[i,k] != 0 && A[k,j] != 0
-#             #     println("trace après k=$k i=$i j=$j A[i,j]=$(A[i,j])")
-#             # end
-#         end
-#     end
-#     return A
-# end
-# function decLDLt( A::Matrix{T} ) where{T}
-#     n = size(A,1)
-#     L = zeros(T,n,n)
-#     D = zeros(T,n,n)
-    
-#     for j=1:n
-#         L[j,j] = 1
-#         D[j,j] = A[j, j] - (j!=1 ? sum(L[j,k]^2 * D[k,k] for k=1:j-1) : 0)
-#         for i=j+1:n
-#             L[i,j] = (A[i,j] -(j!=1 ? sum(L[i,k]*L[j,k] * D[k,k] for k=1:j-1) : 0 ))/D[j,j]
-#         end
-#     end
-#     return L, D
-# end
-
-# # gradconj : solve A*x = b for A symetric and positive
-# function gradconj(A::Matrix{T}, b::Vector{T}, tol) where T
-#     n = size(A,1)
-#     x = zeros(T,n)
-#     r = b - A*x
-#     p = copy(r)
-#     r2 = sum(r .^ 2)
-#     for k=1:1000
-#         ap = A*p
-#         alpha = r2 / sum( p .* ap )
-#         x .+= alpha*p
-#         r .-= alpha*ap
-#         nm = norm(r, Inf)
-#         println("k=$k prec=$nm")
-#         if nm < tol
-#             break
-#         end
-#         newr2 = sum(r .^ 2)
-#         beta = newr2/r2
-#         p .= r + beta*p
-#         r2 = newr2
-#     end
-#     return x
-# end
-# # gradconj_np : solve A*x = b for A symetric and not necessary positive
-# function gradconj_np(A::AbstractMatrix{T}, b::Vector{T}, tolabs, tolrel) where T
-#     n = size(A,1)
-#     x = zeros(T,n)
-#     r = A*b - A*(A*x)
-#     p = copy(r)
-#     r2 = sum(r .^ 2)
-#     for k=1:1000
-#         ap = A*(A*p)
-#         alpha = r2 / sum( p .* ap )
-#         x .+= alpha*p
-#         r .-= alpha*ap
-#         nm = norm(r)
-#         nmrel = nm/norm(x)
-#         println("k=$k prec=$nm precrel=$nmrel")
-#         if nm < tolabs && nmrel < tolrel
-#             break
-#         end
-#         newr2 = sum(r .^ 2)
-#         beta = newr2/r2
-#         p .= r + beta*p
-#         r2 = newr2
-#     end
-#     return x
-# end
-
-
-
-
 function decLULu(iscirc, band, lastcols, lastrows)
     wd = size(band, 1)
     ku = div(wd, 2)
@@ -145,11 +58,22 @@ function decLULu(iscirc, band, lastcols, lastrows)
     end
 end
 
+"""
+    struct LuSpline{T}
 
-   
+Structure of a LU decomposition of circular banded matrix,
+a LU decomposition can be stored in a Matrix which is equal to L + U - I.
+For a circular Banded matrix all non zero coefficients are in the band and in the last columns and lines
 
-
-
+# Implementation
+- band::Matrix{T} : matrix of size (kl+ku+1, n-kl)
+- ku : size of the band upper the diagonal
+- kl : size of the band lower the diagonal
+- iscirc : true if and only if original matrix is circular
+- isLU : true if LU decomposition has been perform
+- lastcols : only in circular case, Matrix of size (n-ku, kl) that represents teh last columns of matrix
+- lastrows : only in circular case, Matrix of size (n, ku) that represents the last rows of matrix
+"""
 struct LuSpline{T}
     band::Matrix{T}
     ku::Int64
@@ -158,6 +82,17 @@ struct LuSpline{T}
     isLU::Bool
     lastcols::Union{Matrix{T},Missing} # missing when iscirc=false
     lastrows::Union{Matrix{T},Missing} # missing when iscirc=false
+"""
+    LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
+
+The contructor of LuSpline structure
+
+# Arguments
+- 'n' : size of the matrix
+- 't::Vector{T}` : vector of all values, the size is order+1, where order is the order of the spline.
+
+# 
+"""
     function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
         wd = size(t,1) # band width
         kl, ku = get_kl_ku(wd)
@@ -197,6 +132,7 @@ struct LuSpline{T}
         end
         return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
+    # contructor from a matrix, for test only
     function LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
         n = size(A,1)
         if iscirc
@@ -266,17 +202,39 @@ end
 get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
+"""
+    B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
+
+Type containing spline coefficients for b-spline interpolation
+
+# Type parameters
+- `T` : the type of data that is interpolate
+- `iscirc::Bool` : true if function is circular
+- `order::Int`: order of lagrange interpolation
+- `N` : type of integer, in fact Int64 or BigInt that is used in the Spline object
+
+# Implementation :
+- `ls::LuSpline{T}` : the LU matrix
+- `bspline::SplineInt{N}` : object that contain the bspline
+
+# Arguments : 
+- `n` : size of the matrix
+- `order` : the order of interpolation
+- `[T::DataType=Float64]` : The type values to interpolate 
+
+"""
+
 struct B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
     ls::LuSpline{T}
     bspline::SplineInt{N}
-    function B_SplineLU( order, n, eltfortype::T; iscirc=true) where{T}
+    function B_SplineLU( order, n, T::DataType=Float64; iscirc=true)
         (order%2 == 0 && n%2 == 0) && throw(ArgumentError("order=$order and n=$n cannot be even at the same time")) 
         bspline = SplineInt(order)
         N = typeof(bspline.fact_order)
         ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
         return new{T, iscirc, order, N}(ls, bspline)
     end
-    B_SplineLU(o, n, t::DataType ; kwargs... )=B_SplineLU(o, n, one(t) ; kwargs... )
+    B_SplineLU(o, n, elt::T; kwargs...) where {T}=B_SplineLU(o, n, T; kwargs...)
 end
 
 sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where{T}=sol(bsp.ls, b)[1]
@@ -284,5 +242,6 @@ get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 get_order(bsp::B_SplineLU{T, iscirc, order}) where{T, iscirc, order}= order
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
 get_type(bsp::B_SplineLU{T, iscirc, order, N}) where{T,iscirc, order, N}="B_SplineLU{$T, $iscirc, $order, $N}"
+Base.show(io::IO, bsp::B_SplineLU)=print(io, get_type(bsp))
 istrace(bsp::B_SplineLU)=false
 

@@ -191,8 +191,8 @@ test_bspline()
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
     #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, false)
-    @time test_interpolation(BigFloat, 9, true, 2^8, 100, 1e-20, true)
-#    @time test_interpolation(BigFloat, 10, true, 2^8+1, 100, 1, true)
+    @time test_interpolation(BigFloat, 3, true, 2^8, 100, 1e-5, true)
+    @time test_interpolation(BigFloat, 4, true, 2^8+1, 100, 1e-5, true)
     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
 end
 

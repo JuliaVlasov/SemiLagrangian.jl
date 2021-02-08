@@ -35,7 +35,7 @@ end
     Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     Lagrange(order, T::DataType=Float64; iscirc::Bool=true)
 
-Get Lagrange Polynomials coefficients for Lagrange interpolation
+Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
@@ -46,6 +46,10 @@ Get Lagrange Polynomials coefficients for Lagrange interpolation
 # Implementation :
 - `fact_order::N` : factorial of the order
 - `lagpol:Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the designed order is lagpol[k+1]/fact_order
+
+# Arguments : 
+- order : the order of interpolation
+- `[T::DataType=Float64]` : The type values to interpolate 
 """
 struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
     fact_order::N

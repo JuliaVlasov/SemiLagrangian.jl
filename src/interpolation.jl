@@ -88,9 +88,13 @@ apply the offset dec to the function fi interpolate by interp struct, the result
 # Returns :
 - No return
 """
-function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc}) where {T, iscirc}
-    decint = convert(Int, floor(dec))
+function interpolate!( fp, fi, dec, interp::InterpolationType{T,iscirc, order}) where {T, iscirc, order}
+    decint = convert(Int, floor(dec)) 
     decfloat = dec - decint
+    if order%2 == 0 && isbspline(interp)
+        decint += 2
+        decfloat -= 1
+    end
     precal = if iscirc
         get_precal(interp, decfloat)
     else

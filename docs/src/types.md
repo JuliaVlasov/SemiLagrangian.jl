@@ -1,7 +1,6 @@
-# Functions
+# Types
 
 ```@autodocs
 Modules = [SemiLagrangian]
-Order   = [:function]
+Order   = [:type]
 ```
-

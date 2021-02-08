@@ -17,6 +17,7 @@ makedocs(modules=[SemiLagrangian],
          doctest = false,
          pages = ["Home" => "index.md",
                   "Quickstart" => "quickstart.md",
+                  "Types"     => "types.md",
                   "Functions"     => "functions.md",
                   "Contents"      => "contents.md"])
 

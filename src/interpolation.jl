@@ -1,3 +1,8 @@
+"""
+    InterpolationType{T, iscirc, order}
+
+Abstract supertype for all interpolation type
+"""
 abstract type InterpolationType{T, iscirc, order} end
 # modulo for "begin to one" array
 modone(ind, n)=(n+ind-1)%n+1

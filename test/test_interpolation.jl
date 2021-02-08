@@ -67,7 +67,7 @@ function test_interpfloat(interp::InterpolationType{T, iscirc}, dec::T, sz, tol,
         return
     end
 
-    @time @testset "test interpolation  $(get_type(interp)) order=$(get_order(interp))" begin    
+    @time @testset "test interpolation  $interp order=$(get_order(interp))" begin    
         
         mesh=T.(collect(big.(0:(sz-1)))/sz)
         deb = fct.(mesh)

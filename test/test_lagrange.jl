@@ -1,6 +1,6 @@
 using LinearAlgebra
 using Polynomials
-using SemiLagrangian: Lagrange, get_precal, interpolate!
+using SemiLagrangian: Lagrange, get_precal, get_allprecal,  interpolate!
 
 
 function test_base_lagrange(order)
@@ -27,9 +27,10 @@ function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1
  #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
     fct(v,n) = exp( -(2*cos(2T(big(pi)*v/n)))^2)
 
-    tabv = T.([-big"1.28561390114441619187615524132001118762519",
-            -big"0.885901390114441619187615524132001118762519",
+    tabv = T.([big"0.345141526199181716726626262655544",
             -big"0.3859416191876155241320011187619",
+            -big"1.28561390114441619187615524132001118762519",
+            -big"0.885901390114441619187615524132001118762519",
             big"0.186666659416191876155241320011187619",
             big"0.590999232323232323232365566787878898898",
             big"1.231098015934444444444444788888888878878"
@@ -43,7 +44,7 @@ function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1
             value -= 1
             decint += 1
         end
-        precal = get_precal(lag, value)
+        precal = iscirc ? get_precal(lag, value) : get_allprecal(lag, decint, value)
         nmax=0
         fp .= fct.(T.(collect(1:n)),n)
         for i=1:nb
@@ -54,7 +55,8 @@ function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1
             nmax = max(nmax,norm(fpref-fp))
            @test isapprox(fpref, fp, atol=tol)
         end
-#        println("order = $order value=$valuebig,nmax=$nmax")
+        @show T, order, nb, iscirc, Float32(value), Float64(nmax)
+        #        println("order = $order value=$valuebig,nmax=$nmax")
     end
 end
 
@@ -66,11 +68,12 @@ end
 
 
 @time @testset "Interpolation Lagrange" begin
-    test_interpolation(Float64, 3,true, 200, 1e-3, 10 )
-    test_interpolation(Float64, 4,true, 200, 1e-4, 10 )
-    test_interpolation(Float64, 5,true, 200, 1e-5, 10 )
-    test_interpolation(BigFloat, 23,true, 1000, 1e-34, 10)
-    test_interpolation(BigFloat, 47,true, 1000, 1e-59, 10)
+    test_interpolation(Float64, 3,true, 200, 1e-2, 100 )
+    test_interpolation(Float64, 4,true, 200, 1e-3, 100 )
+    test_interpolation(Float64, 5,true, 200, 1e-4, 100 )
+    test_interpolation(BigFloat, 23,true, 1000, 1e-30, 100)
+    test_interpolation(BigFloat, 47,true, 1000, 1e-55, 100)
+    test_interpolation(Float64, 7, false, 200, 1e-5, 5)
 end
 
 # TODO cas non circulire

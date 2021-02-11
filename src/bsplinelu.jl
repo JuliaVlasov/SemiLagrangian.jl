@@ -1,8 +1,8 @@
+import Base: ==
 
 function decLULu(iscirc, band, lastcols, lastrows)
     wd = size(band, 1)
-    ku = div(wd, 2)
-    kl = wd-1-ku
+    kl, ku = get_kl_ku(wd)
     szb = size(band, 2)
     n = iscirc ? size(lastrows, 2) : szb
     begrow = n-ku
@@ -227,17 +227,26 @@ Type containing spline coefficients for b-spline interpolation
 struct B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
     ls::LuSpline{T}
     bspline::SplineInt{N}
+    fact_order::N
+    tabpol::Vector{Polynomial{N}}
     function B_SplineLU( order, n, T::DataType=Float64; iscirc=true)
         (order%2 == 0 && n%2 == 0) && throw(ArgumentError("order=$order and n=$n cannot be even at the same time")) 
         bspline = SplineInt(order)
         N = typeof(bspline.fact_order)
-        ls = LuSpline(n,convert.(T,bspline.(1:order)), iscirc=iscirc, isLU=true)
-        return new{T, iscirc, order, N}(ls, bspline)
+        tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
+        ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=iscirc, isLU=true)
+        return new{T, iscirc, order, N}(ls, bspline, bspline.fact_order, tabpol)
     end
-    B_SplineLU(o, n, elt::T; kwargs...) where {T}=B_SplineLU(o, n, T; kwargs...)
+    B_SplineLU(o, n, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
 end
 
-sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where{T}=sol(bsp.ls, b)[1]
+get_fact_order(bsp::B_SplineLU)=bsp.fact_order
+get_tabpol(bsp::B_SplineLU)=bsp.tabpol
+
+function sol(bsp::B_SplineLU{T, isc, order}, b::AbstractVector{T}) where{T, isc, order}
+    res = sol(bsp.ls, b)[1]
+    return (isc && order%2 == 0) ? circshift(res, -1) : res
+end
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 get_order(bsp::B_SplineLU{T, iscirc, order}) where{T, iscirc, order}= order
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline

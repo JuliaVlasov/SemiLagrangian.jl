@@ -19,46 +19,46 @@ function test_base_lagrange(order)
     end
 end
 
-function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1)
+# function test_interpolation(T::DataType, order, iscirc::Bool, number,  tol, nb=1)
     
-    lag = Lagrange(order, T; iscirc=iscirc)
-    n = number
- #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
- #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
-    fct(v,n) = exp( -(2*cos(2T(big(pi)*v/n)))^2)
+#     lag = Lagrange(order, T; iscirc=iscirc)
+#     n = number
+#  #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
+#  #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
+#     fct(v,n) = exp( -(2*cos(2T(big(pi)*v/n)))^2)
 
-    tabv = T.([big"0.345141526199181716726626262655544",
-            -big"0.3859416191876155241320011187619",
-            -big"1.28561390114441619187615524132001118762519",
-            -big"0.885901390114441619187615524132001118762519",
-            big"0.186666659416191876155241320011187619",
-            big"0.590999232323232323232365566787878898898",
-            big"1.231098015934444444444444788888888878878"
-        ])
-    fi = zeros(T, number)
-    fp = zeros(T, number)
-    for valuebig in tabv
-        decint = convert(Int,floor(valuebig))
-        value = valuebig-decint
-        if order%2 == 0 && value > 0.5
-            value -= 1
-            decint += 1
-        end
-        precal = iscirc ? get_precal(lag, value) : get_allprecal(lag, decint, value)
-        nmax=0
-        fp .= fct.(T.(collect(1:n)),n)
-        for i=1:nb
-            fi .= fp
-            fpref = fct.(T.(collect(1:n)) .+ i*valuebig, n)
-            interpolate!(fp, fi, decint, precal, lag)
+#     tabv = T.([big"0.345141526199181716726626262655544",
+#             -big"0.3859416191876155241320011187619",
+#             -big"1.28561390114441619187615524132001118762519",
+#             -big"0.885901390114441619187615524132001118762519",
+#             big"0.186666659416191876155241320011187619",
+#             big"0.590999232323232323232365566787878898898",
+#             big"1.231098015934444444444444788888888878878"
+#         ])
+#     fi = zeros(T, number)
+#     fp = zeros(T, number)
+#     for valuebig in tabv
+#         decint = convert(Int,floor(valuebig))
+#         value = valuebig-decint
+#         if order%2 == 0 && value > 0.5
+#             value -= 1
+#             decint += 1
+#         end
+#         precal = iscirc ? get_precal(lag, value) : get_allprecal(lag, decint, value)
+#         nmax=0
+#         fp .= fct.(T.(collect(1:n)),n)
+#         for i=1:nb
+#             fi .= fp
+#             fpref = fct.(T.(collect(1:n)) .+ i*valuebig, n)
+#             interpolate!(fp, fi, decint, precal, lag)
 
-            nmax = max(nmax,norm(fpref-fp))
-           @test isapprox(fpref, fp, atol=tol)
-        end
-        @show T, order, nb, iscirc, Float32(value), Float64(nmax)
-        #        println("order = $order value=$valuebig,nmax=$nmax")
-    end
-end
+#             nmax = max(nmax,norm(fpref-fp))
+#            @test isapprox(fpref, fp, atol=tol)
+#         end
+#         @show T, order, nb, iscirc, Float32(value), Float64(nmax)
+#         #        println("order = $order value=$valuebig,nmax=$nmax")
+#     end
+# end
 
 @time @testset "test base interpolation" begin
     for ord=3:27
@@ -67,14 +67,14 @@ end
 end
 
 
-@time @testset "Interpolation Lagrange" begin
-    test_interpolation(Float64, 3,true, 200, 1e-2, 100 )
-    test_interpolation(Float64, 4,true, 200, 1e-3, 100 )
-    test_interpolation(Float64, 5,true, 200, 1e-4, 100 )
-    test_interpolation(BigFloat, 23,true, 1000, 1e-30, 100)
-    test_interpolation(BigFloat, 47,true, 1000, 1e-55, 100)
-    test_interpolation(Float64, 7, false, 200, 1e-5, 5)
-end
+# @time @testset "Interpolation Lagrange" begin
+#     test_interpolation(Float64, 3,true, 200, 1e-2, 100 )
+#     test_interpolation(Float64, 4,true, 200, 1e-3, 100 )
+#     test_interpolation(Float64, 5,true, 200, 1e-4, 100 )
+#     test_interpolation(BigFloat, 23,true, 1000, 1e-30, 100)
+#     test_interpolation(BigFloat, 47,true, 1000, 1e-55, 100)
+#     test_interpolation(Float64, 7, false, 200, 1e-5, 5)
+# end
 
 # TODO cas non circulire
 # test_interpolation(BigFloat, 23,false, 1000, 12, 1e-40)

@@ -1,7 +1,7 @@
 
 using LinearAlgebra
 using SemiLagrangian: InterpolationType, Lagrange, B_SplineLU, B_SplineFFT, get_type, 
-    interpolate!, isbspline, getbspline, get_precal, get_order
+    interpolate!, isbspline, getbspline, get_precal, get_allprecal, get_order
 
 function test_interp(interp::InterpolationType{Rational{BigInt}, iscirc}, dec,  sz) where {iscirc}
 
@@ -61,124 +61,142 @@ function test_interp(interp, sz)
         test_interp(interp, big"1235"//10240 +i, sz)
     end
 end
-function test_interpfloat(interp::InterpolationType{T, iscirc}, dec::T, sz, tol, fct, nb=100) where {T,iscirc}
-
-    if isbspline(interp) && get_order(interp)%2 == 0
-        return
+function test_interpolation2(T::DataType, order, iscirc::Bool, number,  nb, tol, islu=true)
+    
+    n = number
+    sp = if (islu)
+        B_SplineLU(order, n, zero(T); iscirc=iscirc)
+    else
+        B_SplineFFT(order, n, zero(T))
     end
+ #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
+ #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
+    fct1(v,n) = exp( -(2*cos(2T(big(pi)*v/n)))^2)
+    fct2(v,n)=cos(2T(big(pi)*v/n))
+    tabfct = [fct1, fct2]
 
-    @time @testset "test interpolation  $interp order=$(get_order(interp))" begin    
-        
-        mesh=T.(collect(big.(0:(sz-1)))/sz)
-        deb = fct.(mesh)
- #       println("deb=$deb")
-        fp = deb
-        fi = zeros(T, sz)
+    tabv = T.([            big"0.186666659416191876155241320011187619",
+                    -big"1.58561390114441619187615524132001118762519",
+    -big"1.28561390114441619187615524132001118762519",
+    -big"0.885901390114441619187615524132001118762519",
+            -big"0.3859416191876155241320011187619",
+           big"0.590999232323232323232365566787878898898",
+            big"1.231098015934444444444444788888888878878"
+        ])
+    ifct=0
+    for fct in tabfct
+        ifct += 1
+        fi = zeros(T, number)
+        fp = zeros(T, number)
+        @show typeof(fp), ifct
+        ival=0
+        for valuebig in tabv
+            ival += 1
+            decint = convert(Int,floor(valuebig))
+            value = valuebig-decint
+            if order%2 == 0
+                if value < 0.5
+                    value -= 1
+                    decint += 2
+                else
+                    value -= 0
+                    decint += 1
+                end
+            end
+            precal = get_precal(sp, value)
+            nmax=0
+            fp .= fct.(T.(collect(1:n)),n)
+#            @show typeof(fp), ifct, ival
+            for i=1:nb
+                fi .= fp
+                fpref = fct.(T.(collect(1:n)) .+ i*valuebig, n)
+#                @show typeof(fp), ifct, ival, i
+                interpolate!(fp, fi, decint, precal, sp)
 
-        decint = convert(Int,floor(dec))
-        value = dec-decint
-        if get_order(interp)%2 == 0 && value > 0.5 
-            value -= 1
-            decint += 1
-        end
-        precal = get_precal(interp, value)
-
-        @show Float64.(precal)
-    
-        for i=1:nb
-            fi .= fp
-            ref=fct.(mesh .+ i*dec/sz)
-    
-            interpolate!(fp, fi, decint, precal, interp)
-            println("norm=$(float(norm(fp-ref,Inf)))")
-            diff = fp-ref
-            # for i=1:sz
-            #     println("i=$i diff=$(convert(Float64,diff[i])), $(diff[i])")
-            # end
-            @show i, norm(diff), tol
-            @test isapprox(fp, ref, atol=tol)
+                nmax = max(nmax,norm(fpref-fp))
+                if order%2 == 0
+                    @show i, nmax, ival
+                end
+#                @test isapprox(fpref, fp, atol=tol)
+            end
+            println("order = $order value=$valuebig,nmax=$nmax ifct=$ifct")
         end
     end
 end
 
-lag=Lagrange(3, Rational{BigInt},iscirc=false)
-test_interp(lag,big"3"//1024,128)
-lag=Lagrange(3, Rational{BigInt},iscirc=true)
-test_interp(lag,128)
-bsp=B_SplineLU(3,128,Rational{BigInt}; iscirc=true)
-test_interp(bsp,128)
-# bsp = B_SplineLU(3,128,Float64; iscirc=true)
-# fct(x) = cos(2pi*x+0.25)
-# test_interpfloat(bsp,128,1e-6,fct)
-# bsp = B_SplineLU(31,128,BigFloat; iscirc=true)
-fct(x) = cos(2big(pi)*x+big"0.25")
-# test_interpfloat(bsp,128,1e-50, fct)
-# fct(x) = exp(-260*(x-0.4)^2)
-# test_interpfloat(bsp,128,1e-18, fct)
-# bsp=B_SplineLU(3,128,Rational{BigInt}; iscirc=false)
-# test_interp(bsp,128)
-lag=Lagrange(3, BigFloat,iscirc=true)
-test_interpfloat(lag,big"0.34111111111191919191",128,1e-4, fct, 100)
-test_interpfloat(lag,-big"0.24111111111191919191",128,1e-4, fct, 100)
-test_interpfloat(lag,big"5.34111111111191919191",128,1e-4, fct, 100)
-test_interpfloat(lag,-big"3.34111111111191919191",128,1e-4, fct, 100)
-lag=Lagrange(21, BigFloat, iscirc=true)
-test_interpfloat(lag,big"0.34111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,-big"0.24111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,big"5.34111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,-big"3.34111111111191919191",128,1e-20, fct)
-lag=Lagrange(4, BigFloat,iscirc=true)
-test_interpfloat(lag,big"0.34111111111191919191",128,1e-5, fct)
-test_interpfloat(lag,-big"0.24111111111191919191",128,1e-5, fct)
-test_interpfloat(lag,big"5.34111111111191919191",128,1e-5, fct)
-test_interpfloat(lag,-big"3.34111111111191919191",128,1e-5, fct)
-lag=Lagrange(22, BigFloat,iscirc=true)
-test_interpfloat(lag,big"0.34111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,-big"0.24111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,big"5.34111111111191919191",128,1e-20, fct)
-test_interpfloat(lag,-big"3.34111111111191919191",128,1e-20, fct)
+function test_interpfloat(interp::InterpolationType{T, iscirc}, sz, tol, nb=100) where {T,iscirc}
 
-bsp=B_SplineLU(3,128,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",128,1e-5, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",128,1e-5, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",128,1e-5, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",128,1e-5, fct)
-bsp=B_SplineLU(21,128,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",128,1e-40, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",128,1e-40, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",128,1e-40, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",128,1e-40, fct)
-println("trace1")
-bsp=B_SplineLU(4,129,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",129,1e-5, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",129,1e-5, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",129,1e-5, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",129,1e-5, fct)
-bsp=B_SplineLU(22,129,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",129,1e-40, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",129,1e-40, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",129,1e-40, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",129,1e-40, fct)
+    tabdec = T.([big"0.345141526199181716726626262655544",
+    -big"0.3859416191876155241320011187619",
+    -big"1.28561390114441619187615524132001118762519",
+    -big"0.885901390114441619187615524132001118762519",
+    big"0.186666659416191876155241320011187619",
+    big"0.590999232323232323232365566787878898898",
+    big"1.231098015934444444444444788888888878878"
+])
+    mesh=T.(collect(big.(0:(sz-1)))/sz)
 
-#fct(x)=exp(-260*(x-1.4)^2)
+    fct1(x) = T(cos(2big(pi)*x+big"0.25"))
+    fct2(x) = T(exp(-(cos(2big(pi)*x+big"0.25")-1)^2))
+    tabfct=[fct1, fct2]
+    @time @testset "test interpolation  $interp" begin    
+        nmax=0
 
-bsp=B_SplineLU(3,128,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",128,1e-4, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",128,1e-4, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",128,1e-4, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",128,1e-4, fct)
-bsp=B_SplineLU(21,128,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",128,1e-18, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",128,1e-18, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",128,1e-15, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",128,1e-15, fct)
-bsp=B_SplineLU(4,129,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",129,1e-4, fct)
-test_interpfloat(bsp,-big"0.24111111111191919191",129,1e-4, fct)
-test_interpfloat(bsp,big"5.34111111111191919191",129,1e-4, fct)
-test_interpfloat(bsp,-big"3.34111111111191919191",129,1e-4, fct)
-bsp=B_SplineLU(22,129,BigFloat; iscirc=true)
-test_interpfloat(bsp,big"0.34111111111191919191",129,1e-15, fct,100)
-test_interpfloat(bsp,-big"0.24111111111191919191",129,1e-15, fct,100)
-test_interpfloat(bsp,big"5.34111111111191919191",129,1e-15, fct,100)
-test_interpfloat(bsp,-big"3.34111111111191919191",129,1e-15, fct,100)
+        for (i_fct, fct) in enumerate(tabfct), dec in tabdec
+            deb = fct.(mesh)
+    #       println("deb=$deb")
+            fp = deb
+            fi = zeros(T, sz)
+
+            decint = convert(Int,floor(dec))
+            value = dec-decint
+            if get_order(interp)%2 == 0 && value > 0.5 
+                value -= 1
+                decint += 1
+            end
+            precal = iscirc ? get_precal(interp, value) : get_allprecal(interp, decint, value)
+            for i=1:nb
+                fi .= fp
+                ref=fct.(mesh .+ i*dec/sz)   
+                interpolate!(fp, fi, decint, precal, interp)
+                nmax = max(nmax, float(norm(fp-ref,Inf)))
+                if isbspline(interp) && !iscirc
+                    @show typeof(interp), i_fct, dec, sz, nb, nmax 
+                else
+                    @test isapprox(fp, ref, atol=tol)
+                end
+            end
+        end
+        @show typeof(interp), sz, nb, nmax 
+    end
+end
+
+
+test_interp(Lagrange(3, Rational{BigInt},iscirc=false),big"3"//1024,128)
+
+test_interp(Lagrange(3, Rational{BigInt},iscirc=true), 128)
+
+test_interp(B_SplineLU(3,128,Rational{BigInt}; iscirc=true), 128)
+
+test_interpfloat(Lagrange(3, BigFloat,iscirc=true), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, Float64,iscirc=true), 128, 1e-3, 100)
+
+test_interpfloat(Lagrange(21, BigFloat, iscirc=true), 256, 1e-20)
+test_interpfloat(Lagrange(9, Float64, iscirc=true), 256, 1e-10)
+
+test_interpfloat(Lagrange(4, BigFloat,iscirc=true), 256, 1e-5)
+test_interpfloat(Lagrange(4, Float64,iscirc=true), 256, 1e-5)
+
+test_interpfloat(Lagrange(22, BigFloat,iscirc=true),256,1e-20)
+test_interpfloat(Lagrange(12, Float64,iscirc=true),256,1e-10)
+
+test_interpfloat(B_SplineLU(3,256,BigFloat; iscirc=true), 256, 1e-5)
+test_interpfloat(B_SplineLU(3,256,Float64; iscirc=true), 256, 1e-5)
+
+test_interpfloat(B_SplineLU(21,256,BigFloat; iscirc=true), 256, 1e-30)
+test_interpfloat(B_SplineLU(11,256,Float64; iscirc=true), 256, 1e-12)
+
+
+# test_interpfloat(B_SplineLU(7,1024,BigFloat; iscirc=false),1024, 1e-4, 1)
+
+# test_interpfloat(B_SplineLU(21,1024,BigFloat; iscirc=false),1024, 1e-18, 5)

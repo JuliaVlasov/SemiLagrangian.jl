@@ -51,6 +51,8 @@ integer nodes of degree p with support starting at j.
 Implemented recursively using the de Boor's recursion formula
 using the [De Boor's Algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
 
+Note that this function has an exponential complexity depending to the order, so it is only there for testing.
+
 ```math
 B_{i,0}(x) := \\left\\{
 \\begin{matrix}
@@ -95,84 +97,7 @@ function test_bspline()
 
 end
        
-# function test_interpolation(type::DataType, order, iscirc::Bool, n, nb,  tol, islu::Bool)
-    
-#     sp = if (islu)
-#             B_SplineLU(order, n, zero(type); iscirc=iscirc)
-#     else
-#         B_SplineFFT(order, n, zero(type))
-#     end
-#     coef = convert(type, iscirc ? 1 : big"1.111")
-# #    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-# #    fct(v,n) = exp(-(75*(v-n/2)/n)^2)
-#  #   fct(v,n) = exp( -(cos(2big(pi)*coef*v/n))^2)
-#     fct(v,n) = convert(type, cos(2big(pi)*coef*v/n))
-#  fp = fct.(convert.(type,(collect(1:n))),n)
-#     fi = zeros(type, n)
-#     value = convert(type,
-# #    big"0.000000000000000000000000000000000000001") 
-# #    big"0.385713901112334905767655546588878787878787887874441132001118762519"
-#     big"0.978569186666659416191876155241320011187619")
-# #    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
-#     for i=1:nb
-#         fi .= fp
-# #        fpref = fct.(convert.(type,(collect(1:n))) .+ i*value,n)
-#         fpref = fct.((1:n) .+ i*value,n)
-#         interpolate!(fp, fi, value, sp)
-#         # for i=1:number
-#         #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
-#         # end
-#  #       if i == n
-#         if i%100 == 0
-#             println("i=$i norm=$(norm(fpref-fp)), nb=$(nb_diff_tol(fpref,fp,1e-40))")
-#         end
-#         println("i=$i norm=$(norm(fpref-fp))")
-#  #       end
-#         @test isapprox(fpref, fp, atol=tol)
-#         # println("spline=$(sp.bspline)")
-#         # break
-#     end
-# end
 
-
-function test_interpolation_2d(type::DataType, order, iscirc::Bool, n,  tol)
-    
-    sp = B_SplineLU(order, n, zero(type); iscirc=iscirc)
-    coef = convert(type, iscirc ? 1 : big"1.111")
-#    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-    fct(x,y,n) = cos((coef*2big(pi)/n)*(x+y))
-    fp = [fct(convert.(type,x), convert.(type, y), n) for x=1:n, y=1:n]
-    fi = zeros(type, n)
-    buf = zeros(type, n)
-    value_x = convert(type, 
-#    big"0.0385713901112334905767655546588878787878787887874441619187615524132001118762519")
-    big"0.385713901112334905767655546588878787878787887874441619187615524132001118762519")
-    value_y = convert(type, 
-    #    big"0.0385713901112334905767655546588878787878787887874441619187615524132001118762519")
-        big"0.13901112334905767655546588878787878787887874441619187615524132001118762519")
-    k=0
-    fpref = [fct.(x+k*value_x, y+k*value_y, n) for x=1:n, y=1:n]
-    println("k=$k norm=$(norm(fpref-fp))")
-    @test isapprox(fpref, fp, atol=tol)
-
-    for k=1:n, l=1:2
-        for i=1:n
-            fi .= fp[:,i]
-            interpolate!( buf, fi, (value_x, value_y)[l], sp)
-            fp[:,i] .= buf
-        end
-        fp=transpose(fp)
-        if l == 2
-            fpref = [fct.(x+k*value_x, y+k*value_y, n) for x=1:n, y=1:n]
-            # for i=1:n
-            #     println("k=$k i=$i norm=$(norm(fpref[:,i]-fp[:,i]))")
-            # end
-            println("k=$k norm=$(norm(fpref-fp))")
-            @test isapprox(fpref, fp, atol=tol)
-        end
-    end
-
-end
 
 @testset "test get_kl_ku" begin
     kl, ku = get_kl_ku(5)
@@ -185,20 +110,5 @@ end
 
 test_bspline()
 
-# @testset "test interpolation bspline" begin
-#     # test_interpolation(BigFloat, 11, true, 100, 1e-7)
-#     # test_interpolation(BigFloat, 21, true, 100, 1e-15)
-#     # test_interpolation(BigFloat, 41, true, 100, 1e-20)
-#     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, false)
-#     # @time test_interpolation(BigFloat, 21, true, 2^14, 100, 1e-10, true)
-#     #@time test_interpolation(BigFloat, 9, true, 2^8, 100, 1, false)
-#     @time test_interpolation(BigFloat, 3, true, 2^8, 1000, 1e-4, true)
-#     @time test_interpolation(Float64, 3, true, 2^8, 1000, 1e-4, true)
-# #    @time test_interpolation(BigFloat, 4, true, 2^8+1, 1000, 1e-4, true)
-#     @time test_interpolation2(BigFloat, 3, true, 2^8, 100, 1e-3, true)
-#     @time test_interpolation2(Float64, 3, true, 2^8, 100, 1e-3, true)
-# #    @time test_interpolation2(BigFloat, 4, true, 2^8+1, 100, 1e-3, true)
-#     # test_interpolation_2d(BigFloat, 27, true, 100, 1e-20)
-# end
 
 

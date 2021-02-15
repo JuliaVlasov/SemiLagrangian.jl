@@ -60,10 +60,12 @@ end
 
 """
     struct LuSpline{T}
+    LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
 
 Structure of a LU decomposition of circular banded matrix,
 a LU decomposition can be stored in a Matrix which is equal to L + U - I.
 For a circular Banded matrix all non zero coefficients are in the band and in the last columns and lines
+
 
 # Implementation
 - band::Matrix{T} : matrix of size (kl+ku+1, n-kl)
@@ -73,6 +75,11 @@ For a circular Banded matrix all non zero coefficients are in the band and in th
 - isLU : true if LU decomposition has been perform
 - lastcols : only in circular case, Matrix of size (n-ku, kl) that represents teh last columns of matrix
 - lastrows : only in circular case, Matrix of size (n, ku) that represents the last rows of matrix
+
+# Arguments
+- 'n' : size of the matrix
+- 't::Vector{T}` : vector of all values, the size is order+1, where order is the order of the spline.
+
 """
 struct LuSpline{T}
     band::Matrix{T}
@@ -82,17 +89,6 @@ struct LuSpline{T}
     isLU::Bool
     lastcols::Union{Matrix{T},Missing} # missing when iscirc=false
     lastrows::Union{Matrix{T},Missing} # missing when iscirc=false
-"""
-    LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
-
-The contructor of LuSpline structure
-
-# Arguments
-- 'n' : size of the matrix
-- 't::Vector{T}` : vector of all values, the size is order+1, where order is the order of the spline.
-
-# 
-"""
     function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
         wd = size(t,1) # band width
         kl, ku = get_kl_ku(wd)
@@ -132,7 +128,12 @@ The contructor of LuSpline structure
         end
         return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
-    # contructor from a matrix, for test only
+"""
+    LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
+
+Contructor from a matrix, for test only
+
+"""
     function LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
         n = size(A,1)
         if iscirc
@@ -203,13 +204,13 @@ get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
 """
-    B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
+    B_SplineLU{T,edge, order, N} <: B_Spline{T, edge, order}
 
 Type containing spline coefficients for b-spline interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
-- `iscirc::Bool` : true if function is circular
+- `edge::TypeEdge=CircEdge` : true if function is circular
 - `order::Int`: order of lagrange interpolation
 - `N` : type of integer, in fact Int64 or BigInt that is used in the Spline object
 
@@ -224,34 +225,28 @@ Type containing spline coefficients for b-spline interpolation
 
 """
 
-struct B_SplineLU{T,iscirc, order, N} <: B_Spline{T, iscirc, order}
+struct B_SplineLU{T, edge, order, N} <: B_Spline{T, edge, order}
     ls::LuSpline{T}
-    bspline::SplineInt{N}
     fact_order::N
     tabpol::Vector{Polynomial{N}}
-    function B_SplineLU( order, n, T::DataType=Float64; iscirc=true)
+    function B_SplineLU( order::Int, n::Int, T::DataType=Float64)
         (order%2 == 0) && throw(ArgumentError("order=$order B_SplineLU for even  order is not implemented n=$n")) 
         bspline = SplineInt(order)
         N = typeof(bspline.fact_order)
         tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
-        ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=iscirc, isLU=true)
-        return new{T, iscirc, order, N}(ls, bspline, bspline.fact_order, tabpol)
+        ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=true, isLU=true)
+        return new{T, CircEdge, order, N}(ls, bspline.fact_order, tabpol)
     end
-    B_SplineLU(o, n, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
+    B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
 end
 
 get_fact_order(bsp::B_SplineLU)=bsp.fact_order
 get_tabpol(bsp::B_SplineLU)=bsp.tabpol
-
-# function sol(bsp::B_SplineLU{T, isc, order}, b::AbstractVector{T}) where{T, isc, order}
-#     res = sol(bsp.ls, b)[1]
-#     return (isc && order%2 == 0) ? circshift(res, -1) : res
-# end
 sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number}=sol(bsp.ls, b)[1]
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
-get_order(bsp::B_SplineLU{T, iscirc, order}) where{T, iscirc, order}= order
+get_order(bsp::B_SplineLU{T, edge, order}) where{T, edge, order}= order
 get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
-get_type(bsp::B_SplineLU{T, iscirc, order, N}) where{T,iscirc, order, N}="B_SplineLU{$T, $iscirc, $order, $N}"
+get_type(bsp::B_SplineLU{T, edge, order, N}) where{T,edge, order, N}="B_SplineLU{$T, $edge, $order, $N}"
 Base.show(io::IO, bsp::B_SplineLU)=print(io, get_type(bsp))
 istrace(bsp::B_SplineLU)=false
 

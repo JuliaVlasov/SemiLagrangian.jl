@@ -18,7 +18,7 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 # Throws
 - `DommaineError` : when `0 <= k <= order` is `false` or when N ∉ {BInt64, BigInt}
 """
-function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where {N}
+function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where {N<:Integer}
     0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     N <: Union{BigInt,Int64} || throw(DomainError(N, "N must be Int64 or BigInt"))
     # the computed is made with big integer
@@ -32,40 +32,46 @@ function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where 
 end
 
 """
-    Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
-    Lagrange(order, T::DataType=Float64; iscirc::Bool=true)
+    Lagrange{T, edge, order, N} <: InterpolationType{T, edge, order}
+    Lagrange(order, T::DataType=Float64; edge::EdgeType=CircEdge)
 
 Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
-- `iscirc::Bool` : true if function is circular
+- `edge::EdgeType` : type of edge traitment
 - `order::Int`: order of lagrange interpolation
 - `N` : type of integer, in fact Int64 or BigInt that is used to store lagrange polynomial
 
 # Implementation :
 - `fact_order::N` : factorial of the order
-- `lagpol:Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the designed order is lagpol[k+1]/fact_order
+- `lagpol::Vector{Polynomial{N}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the designed order is lagpol[k+1]/fact_order
 
 # Arguments : 
-- order : the order of interpolation
+- `order::Int` : the order of interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
+
+# Keywords arguments :
+- `edge::EdgeType=CircEdge` : type of edge traitment
+
 """
-struct Lagrange{T, iscirc, order, N} <: InterpolationType{T, iscirc, order}
+struct Lagrange{T, edge, order, N} <: InterpolationType{T, edge, order}
     fact_order::N
     lagpol::Vector{Polynomial{N}}
-    function Lagrange(order, T::DataType=Float64; iscirc::Bool=true) 
+    function Lagrange(order::Int, T::DataType=Float64; edge::EdgeType=CircEdge) 
         type = order <= 20 ? Int64 : BigInt
         fact_order = factorial(type(order))
         origin = -div(order,2)
         lagpol = collect([_getpolylagrange( i, order, origin, fact_order) for i=0:order])
-        new{T, iscirc, order, type}(fact_order, lagpol) 
+        new{T, edge, order, type}(fact_order, lagpol) 
     end
 end
-@inline get_order(lag::Lagrange{T,iscirc, order}) where{T, iscirc, order}= order
-@inline get_type(lag::Lagrange{T, isc, order, N}) where{T, isc, order, N}="Lagrange{$T, $isc, $order, $N}"
-@inline get_precal(lag::Lagrange{T}, decf) where{T}=@inbounds [T(fct(decf))/lag.fact_order for fct in lag.lagpol]
-@inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)
+@inline get_order(lag::Lagrange{T, edge, order}) where{T, edge, order}= order
+@inline get_type(lag::Lagrange{T, e, order, N}) where{T, e, order, N}="Lagrange{$T, $e, $order, $N}"
+# @inline get_precal(lag::Lagrange{T}, decf) where{T}=@inbounds [T(fct(decf))/lag.fact_order for fct in lag.lagpol]
+# @inline get_precal!(v::Vector{T}, lag::Lagrange{T},decf) where{T}=@inbounds v .= get_precal(lag, decf)
 @inline sol(lag::Lagrange, b)=b
 @inline isbspline(_::Lagrange)=false
 Base.show(io::IO, lag::Lagrange)=print(io, get_type(lag))
+get_tabpol(lag::Lagrange)=lag.lagpol
+get_fact_order(lag::Lagrange)=lag.fact_order

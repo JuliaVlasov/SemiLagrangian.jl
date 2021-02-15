@@ -62,8 +62,8 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeitr
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}}
     t_mesh_v::NTuple{Nv, UniformMesh{T}}
-    t_interp_sp::NTuple{Nsp, InterpolationType{T, true}}
-    t_interp_v::NTuple{Nv, InterpolationType{T, true}}
+    t_interp_sp::NTuple{Nsp, InterpolationType{T, CircEdge}}
+    t_interp_v::NTuple{Nv, InterpolationType{T, CircEdge}}
     dt_base::T
     tab_coef
     tab_fct

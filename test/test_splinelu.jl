@@ -154,14 +154,14 @@ function test_perf(n ,order, iscirc)
 end
 
 function test_interface()
-    getpar(bsp::B_SplineLU{T, iscirc, order, N}) where {T, iscirc, order, N}= (T,iscirc, order, N)
+    getpar(bsp::B_SplineLU{T, tedge, order, N}) where {T, tedge, order, N}= (T, tedge, order, N)
     for i = 3:2:29
         bsp= B_SplineLU(i,104,big"0.")
         (_1, _2, order, N) = getpar(bsp)
         @test 104 == get_n(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test "B_SplineLU{BigFloat, true, $order, $N}" == get_type(bsp)
+        @test "B_SplineLU{BigFloat, CircEdge, $order, $N}" == get_type(bsp)
     end
 end
     

@@ -26,7 +26,7 @@ end
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
-    return totuple(UniformMesh.(t_deb,t_end,t_size; endpoint=false)), t_step
+    return totuple(UniformMesh.(t_deb,t_end,t_size)), t_step
 end
 
 
@@ -95,7 +95,7 @@ end
     t_end = [big"3"//1, 6//1,5//1,1//1]
     t_sz = [4, 4, 8, 16]
     t_step = (t_end - t_deb) ./ t_sz
-    tt_mesh = UniformMesh.(t_deb,t_end,t_sz; endpoint=false)
+    tt_mesh = UniformMesh.(t_deb,t_end,t_sz)
     t_mesh = totuple(tt_mesh)
     N=4
     t = ntuple( x->rationalize.(BigInt, rand(Float64,totuple(t_sz))), N)

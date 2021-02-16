@@ -182,8 +182,8 @@ function landau1_1(T::DataType, nbdt, timeopt; sz=(64,64), dt = big"0.1", interp
     spmin, spmax, nsp =  T(0), T(4big(pi)),  sz[1]
     vmin, vmax, nv = -T(5), T(5), sz[2]
 
-    mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
-    mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
+    mesh_sp = UniformMesh( spmin, spmax, nsp)
+    mesh_v = UniformMesh( vmin, vmax, nv)
     
     adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt=timeopt)
 
@@ -225,14 +225,14 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", 
     sp1min, sp1max, nsp1 =  T(0), T(4big(pi)),  sz[1]
     v1min, v1max, nv1 = -T(6.), T(6.), sz[3]
 
-    mesh1_sp = UniformMesh( sp1min, sp1max, nsp1, endpoint = false)
-    mesh1_v = UniformMesh( v1min, v1max, nv1, endpoint = false )
+    mesh1_sp = UniformMesh( sp1min, sp1max, nsp1)
+    mesh1_v = UniformMesh( v1min, v1max, nv1)
 
     sp2min, sp2max, nsp2 =  T(0), T(4big(pi)),  sz[2]
     v2min, v2max, nv2 = -T(6.), T(6.), sz[4]
 
-    mesh2_sp = UniformMesh( sp2min, sp2max, nsp2, endpoint = false)
-    mesh2_v = UniformMesh( v2min, v2max, nv2, endpoint = false )
+    mesh2_sp = UniformMesh( sp2min, sp2max, nsp2)
+    mesh2_v = UniformMesh( v2min, v2max, nv2)
 
  
     adv = Advection((mesh1_sp, mesh2_sp), (mesh1_v, mesh2_v), interpall[1:2], interpall[3:4], dt, timeopt=timeopt)

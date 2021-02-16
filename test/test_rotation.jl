@@ -55,7 +55,7 @@ function test_rotation(
         diff = norm(data .- tabref, Inf)
         diffmax = max(diffmax, diff)
     end
-    println("test_rot sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
+    println("test_rotation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
     return diffmax
 
 end

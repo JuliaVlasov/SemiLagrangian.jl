@@ -9,7 +9,7 @@ using SemiLagrangian: Advection, AdvectionData, advection!, sizeall, sizeitr, ge
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
-    return totuple(UniformMesh.(t_deb,t_end,t_size; endpoint=false)), t_step
+    return totuple(UniformMesh.(t_deb,t_end,t_size)), t_step
 end
 
 
@@ -131,7 +131,7 @@ function test_ke(T::DataType)
     t_endsp = T.([3//1, 6//1,5//1])
     t_szsp = [2, 4, 8]
     t_stepsp = (t_endsp - t_debsp) ./ t_szsp
-    tt_meshsp = UniformMesh.(t_debsp, t_endsp, t_szsp; endpoint=false)
+    tt_meshsp = UniformMesh.(t_debsp, t_endsp, t_szsp)
     t_meshsp = totuple(tt_meshsp)
     szsp=totuple(t_szsp)
 
@@ -139,7 +139,7 @@ function test_ke(T::DataType)
     t_endv = T.([1//1, 7//1,5//1,3//1])
     t_szv = [4, 8, 4, 2]
     t_stepv = (t_endv - t_debv) ./ t_szv
-    tt_meshv = UniformMesh.(t_debv,t_endv,t_szv; endpoint=false)
+    tt_meshv = UniformMesh.(t_debv,t_endv,t_szv)
     t_meshv = totuple(tt_meshv)
     szv=totuple(t_szv)
 

@@ -95,8 +95,8 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz=(64,64), interp=Lagrange(T, 
     spmin, spmax, nsp =  T(-5), T(5),  sz[1]
     vmin, vmax, nv = -T(5), T(5), sz[2]
 
-    mesh_sp = UniformMesh( spmin, spmax, nsp, endpoint = false)
-    mesh_v = UniformMesh( vmin, vmax, nv, endpoint = false )
+    mesh_sp = UniformMesh( spmin, spmax, nsp)
+    mesh_v = UniformMesh( vmin, vmax, nv)
     
     adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt=timeopt, tab_fct=[tan,sin,tan])
 

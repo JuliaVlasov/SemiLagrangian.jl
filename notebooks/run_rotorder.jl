@@ -45,8 +45,8 @@ end
 
 function fctmain( sz, dt::T, ordmax) where{T}
 
-    mesh1 = UniformMesh(T(-5), T(5), sz; endpoint=false)
-    mesh2 = UniformMesh(T(-5), T(5), sz; endpoint=false)
+    mesh1 = UniformMesh(T(-5), T(5), sz)
+    mesh2 = UniformMesh(T(-5), T(5), sz)
 
     refdeb = exact( zero(T), mesh1, mesh2)
     refend = exact( dt, mesh1, mesh2)

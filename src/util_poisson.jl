@@ -3,7 +3,7 @@
 
 kinetic Energie
 
-1/2∫∫ v^2 f(x,v,t) dv dx
+∫∫ v^2 f(x,v,t) dv dx
 
 # Arguments
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes
@@ -28,7 +28,7 @@ end
 
 kinetic Energie
 
-1/2∫∫ v^2 f(x,v,t) dv dx
+∫∫ v^2 f(x,v,t) dv dx
 
 # Arguments
 - `self::AdvectionData` : mutable structure of variables data.

@@ -1,9 +1,5 @@
 
 
-
-
-
-
 """
     compute_charge!( self::AdvectionData)
 

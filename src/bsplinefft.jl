@@ -24,7 +24,7 @@ struct B_SplineFFT{T, order, N} <: B_Spline{T, CircEdge, order}
     end
     B_SplineFFT(o::Int, n::Int, _::T) where {T}=B_SplineFFT(o, n, T)
 end
-function sol(bsp::B_SplineFFT{T}, b::Vector{T}) where{T}
+function sol(bsp::B_SplineFFT{T}, b::AbstractVector{T}) where{T}
     return real(ifftgen(bsp.parfft,fftgen(bsp.parfft,b) ./ bsp.c_fft))
 end
 get_n(bsp::B_SplineFFT) where{T}=size(bsp.c_fft,1)

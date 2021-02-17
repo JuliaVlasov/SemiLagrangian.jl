@@ -40,7 +40,6 @@ Immutable structure that contains constant parameters for multidimensional advec
 
 # Implementation
 - `sizeall` : tuple of the sizes of all dimensions (space before velocity)
-- `sizeitr` : tuple of iterators of indexes of each dimension
 - `t_mesh_sp` : tuple of space meshes
 - `t_mesh_v` : tuple of velocity meshes
 - `t_interp_sp` : tuple of space interpolation types
@@ -59,7 +58,6 @@ Immutable structure that contains constant parameters for multidimensional advec
 """
 struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall
-    sizeitr
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}}
     t_mesh_v::NTuple{Nv, UniformMesh{T}}
     t_interp_sp::NTuple{Nsp, InterpolationType{T, CircEdge}}
@@ -83,7 +81,6 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
         Nsp <= Nv || throw(ArgumentError("Nsp=$Nsp must be less or equal to Nv=$Nv"))
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
-        sizeitr = ntuple(x -> 1:sizeall[x], Nsum)
         v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing        
         nbsplit = if timeopt == MPIOpt
@@ -95,7 +92,6 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
         end
         return new{T, Nsp, Nv, Nsum, timeopt}(
     sizeall,
-    sizeitr,
     t_mesh_sp, t_mesh_v, 
     t_interp_sp, t_interp_v,
     dt_base, tab_coef, tab_fct,
@@ -105,30 +101,17 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
 )
     end
 end
-#
-#     sizeall(adv::Advection)
-#
-# Return a tuple of the sizes of each dimensions
-#
-# # Argument
-# - `adv::Advection` : Advection structure.
-#
+"""
+    sizeall(adv::Advection)
+
+Return a tuple of the sizes of each dimensions
+
+# Argument
+- `adv::Advection` : Advection structure.
+"""
 sizeall(adv)=adv.sizeall
-# 
-#     sizeitr(adv::Advection)
 
-# Return a tuple of iterators from one to the sizes of each dimensions
-
-# # Argument
-# - `adv::Advection` : Advection structure.
-# 
-sizeitr(adv)=adv.sizeitr
-
-function getborne(adv::Advection{T,Nsp, Nv, Nsum, timeopt}, curst) where{T,Nsp,Nv,Nsum,timeopt}
-    return isvelocity(adv, curst) ? Nv : Nsp
-end
-
-# 
+# Interface of external data
 abstract type AbstractExtDataAdv end
 
 """
@@ -165,9 +148,9 @@ Mutable structure that contains variable parameters of advection series
 - `parext::ExtDataAdv` : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that init! can modify otherwise it leads to unpredictable behaviour.
+- `initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
 - `getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
-- `getperm(parext::AbstractExtDataAdv, advd::AdvectionData)` : get the permutation of the dimension as a function of the current state
+- `getperm(parext::AbstractExtDataAdv, advd::AdvectionData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
 mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}

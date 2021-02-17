@@ -14,8 +14,6 @@ length   : number of points and cells
 
 """
 struct UniformMesh{T}
-#    start::T
-#    stop::T
     length::Int
     step::T
     points::Vector{T}
@@ -26,7 +24,6 @@ struct UniformMesh{T}
         points = pdeb[1:end-1]
         step_loc = step(pdeb)
         width = stop - start
-#        new{T}(start, stop, length, step_loc, points, width)
         new{T}(length, step_loc, points, width)
     end
 end
@@ -37,7 +34,13 @@ points(mesh::UniformMesh)=mesh.points
 """
     vec_k_fft(mesh::UniformMesh{T}) where{T}
 
-Get the fft coeffficient
+Get the fft coefficients of the mesh
+
+# Argument
+- `mesh::UniformMesh{T}` : the mesh
+
+# Return
+- fft coefficients
 """
 function vec_k_fft(mesh::UniformMesh{T}) where{T}
     midx = div(mesh.length,2)

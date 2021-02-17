@@ -106,13 +106,10 @@ getperm(pvar::PoissonVar, curstate::Int)=getperm(pvar.pc, curstate)
 getperm(pvar::PoissonVar, advd::AdvectionData)=getperm(pvar.pc, advd)
 
 """
-
     compute_elfield!( self:AdvectionData)
 
 computation of electric field
     ∇.e = - ρ
-
-
 
 # Argument
  - `self::AdvectionData` : mutable structure of variables data.

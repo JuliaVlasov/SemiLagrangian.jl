@@ -68,11 +68,9 @@ function getrotationvar(adv::Advection)
 end
 
 """
-    getalpha(self::AdvectionData{T, Nsp, Nv, Nsum}, ind) 
+    getalpha(pv::RotationVar, self::AdvectionData, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection
 
 """
 getalpha(pv::RotationVar, self::AdvectionData, ind)=pv.bufcur[ind]
-
-

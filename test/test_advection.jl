@@ -1,7 +1,7 @@
 
 using DoubleFloats
 
-using SemiLagrangian: Advection, AdvectionData, advection!, sizeall, sizeitr, getext, getdata,
+using SemiLagrangian: Advection, AdvectionData, advection!, sizeall, getext, getdata,
  getcur_t, getstate_dim, isvelocity, isvelocitystate, getindsplit, _getcurrentindice,
  getbufslgn, getprecal, getitr, gett_split, nextstate!, UniformMesh, totuple, tovector, Lagrange,
  getpoissonvar, compute_ke, getinterp, points, dotprod
@@ -40,9 +40,7 @@ function test_adv(T::DataType)
     sref = (t_szsp..., t_szv...)
     @test sref == sizeall(adv)
 
-    refitr = ntuple(x-> 1:sref[x],size(sref,1))
-    @test refitr == sizeitr(adv)
-
+    
     tab = rand(T, sizeall(adv))
 
     advd = AdvectionData(adv, tab, getpoissonvar(adv))

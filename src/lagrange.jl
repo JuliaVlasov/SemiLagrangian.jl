@@ -18,7 +18,7 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 # Throws
 - `DommaineError` : when `0 <= k <= order` is `false` or when N ∉ {BInt64, BigInt}
 """
-function _getpolylagrange(k::Int64, order::Int64, origin::Int64, fact::N) where {N<:Integer}
+function _getpolylagrange(k::Int, order::Int, origin::Int, fact::N) where {N<:Integer}
     0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     N <: Union{BigInt,Int64} || throw(DomainError(N, "N must be Int64 or BigInt"))
     # the computed is made with big integer

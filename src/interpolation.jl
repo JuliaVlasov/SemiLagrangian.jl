@@ -7,11 +7,13 @@ Abstract supertype for all interpolation type
 """
 abstract type InterpolationType{T, edge, order} end
 @inline function get_precal(interp::InterpolationType{T}, decf::T) where{T}
-    return @inbounds [T(fct(decf)) for fct in get_tabpol(interp)] ./ get_fact_order(interp)
+    return [T(fct(decf)) for fct in get_tabpol(interp)] ./ get_fact_order(interp)
+#    return @inbounds [T(fct(decf)) for fct in get_tabpol(interp)] ./ get_fact_order(interp)
 end
 
 @inline function get_precal!(v::Vector{T}, bsp::InterpolationType{T}, decf::T) where{T}
-    @inbounds v .= get_precal(bsp,decf)
+    v .= get_precal(bsp,decf)
+#    @inbounds v .= get_precal(bsp,decf)
 end
 
 # modulo for "begin to one" array

@@ -10,13 +10,16 @@ struct Spline{N} <: AbstractSpline{N}
     end
 end
 
-function Base.getindex(sp::AbstractSpline{N}, index) where{N<:Signed}
-    i = index+1
+function Base.getindex(sp::AbstractSpline{N}, index::Integer) where{N<:Signed}
+    i = index + 1
     return if 1 <= i <= size(sp.tabpol, 1)
         sp.tabpol[i]
     else 
         zero(Polynomials.Polynomial{Rational{N}})
     end
+end
+function Base.getindex(sp::AbstractSpline{N}, index::AbstractRange) where{N<:Signed}
+    return Base.getindex.((sp::AbstractSpline{N},), index::AbstractRange)
 end
 function Base.setindex!(sp::AbstractSpline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
     sp.tabpol[index-1] = pol
@@ -97,8 +100,8 @@ end
 function SplineInt(order)
     sp = getbspline(order, 0)
     N = order <= 13 ? Int64 : BigInt
-    fact_order = factorial(N(order))
-    return SplineInt{N}(fact_order, map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
+    fact_order = factorial(big(order))
+    return SplineInt{N}(N(fact_order), map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
 end
 function (f::SplineInt{N})(x::T) where{N<:Signed, T <: AbstractFloat}
     i = Int64((floor(x))) # it's different from ceil(x)

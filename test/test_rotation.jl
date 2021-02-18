@@ -15,14 +15,11 @@ Lagrange, B_SplineLU, B_SplineFFT
 
 """
 function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T}
-
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         s, c = sincos(tf)
-        xn = c * x - s * y
-        yn = s * x + c * y
+        xn, yn = c * x - s * y, s * x + c * y
         f[i,j] = exp(-13*((xn)^2+(yn+T(6//5))^2))
     end
-    f
 end
 
 function test_rotation(

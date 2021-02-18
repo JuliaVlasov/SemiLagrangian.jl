@@ -4,6 +4,9 @@
     AbstractInterpolation{T, edge, order}
 
 Abstract supertype for all interpolation type
+
+# Implementation constraint
+- `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
 """
 abstract type AbstractInterpolation{T, edge, order} end
 
@@ -30,25 +33,21 @@ sol(_::AbstractInterpolation, b::AbstractVector)=b
 isbspline(_::AbstractInterpolation)=false
 
 Base.show(io::IO, interp::AbstractInterpolation)=print(io, typeof(interp))
-# get_tabfct(lag::Lagrange)=lag.lagpol
-# get_fact_order(lag::Lagrange)=lag.fact_order
 
 
 
 
 @inline function get_precal(interp::AbstractInterpolation{T}, decf::T) where{T}
     return [T(fct(decf)) for fct in interp.tabfct]
-#    return @inbounds [T(fct(decf)) for fct in get_tabfct(interp)] ./ get_fact_order(interp)
 end
 
 @inline function get_precal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where{T}
     v .= get_precal(bsp,decf)
-#    @inbounds v .= get_precal(bsp,decf)
 end
 
 # modulo for "begin to one" array
 modone(ind, n)=(n+ind-1)%n+1
-gettabmod(lg)=modone.(1:3lg, lg)#
+gettabmod(lg)=modone.(1:3lg, lg) # 
 function get_allprecal(interp::AbstractInterpolation{T, InsideEdge,order}, decint::Int, decfloat::T) where {T,order}
     origin = -div(order, 2)
     indbeg = origin+decint
@@ -57,17 +56,22 @@ function get_allprecal(interp::AbstractInterpolation{T, InsideEdge,order}, decin
 end
 
 """
-    interpolate!( fp, fi, decint, precal, interp)
+    interpolate!( fp::AbstractVector{T}, 
+        fi::AbstractVector{T},
+        decint::Int, 
+        precal::Vector{T}, 
+        interp::AbstractInterpolation{T, CircEdge, order},
+        tabmod=gettabmod(length(fi)) ) where {T, order}
 
 apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
-decint and precal are precompute with get_precal method.
+decint and precal are precompute with get_precal method, the TypeEdge is CircEdge
 
 # Arguments
 - `fp::AbstractVector` : output vector
 - `fi::AbstractVector` : input vector
 - `decint` : offset in units of dx
 - `precal::Vector` : vector of length order+1 precompute with get_precal(interp, dec) (dec is the offset)
-- `interp::AbstractInterpolation{T, CircEdge, order}` : interpolation implementation
+- `interp::AbstractInterpolation{T, CircEdge, order}` : interpolation implementation, note that TypeEdge is CircEdge
 - `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
 
 # Returns :
@@ -91,6 +95,28 @@ function interpolate!(
     end
     missing  
 end
+"""
+    interpolate!( 
+    fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
+    allprecal::Vector{Vector{T}}, 
+    interp::AbstractInterpolation{T, InsideEdge, order},
+    tabmod=gettabmod(length(fi))
+    ) where {T, order}
+
+apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
+decint and precal are precompute with get_precal method, the TypeEdge is InsideEdge, it is a marginal case
+
+# Arguments
+- `fp::AbstractVector` : output vector
+- `fi::AbstractVector` : input vector
+- `decint` : offset in units of dx
+- `allprecal::Vector{Vector{T}}` : vector of vector of length order+1 precompute with get_precal(interp, dec) (dec is the offset)
+- `interp::AbstractInterpolation{T, InsideEdge, order}` : interpolation implementation, note that TypeEdge is CircEdge
+- `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
+
+# Returns :
+- No return
+"""
 function interpolate!( 
     fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
     allprecal::Vector{Vector{T}}, 

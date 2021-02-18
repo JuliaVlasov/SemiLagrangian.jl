@@ -8,4 +8,9 @@ SemiLagrangian.width
 SemiLagrangian.vec_k_fft
 ```
 # Interpolation
-
+```@docs
+SemiLagrangian.AbstractInterpolation
+SemiLagrangian.get_order
+SemiLagrangian.sol(_::AbstractInterpolation, b::AbstractVector)
+SemiLagrangian.interpolate!
+```

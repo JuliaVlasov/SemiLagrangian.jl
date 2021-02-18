@@ -84,7 +84,7 @@ function interpolate!(
     res = sol(interp,fi)
     origin = -div(order,2)
     lg = length(fi)
-    @inbounds for i=1:lg
+    for i=1:lg
         indbeg=i+origin+decint+lg
         indend=indbeg+order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)

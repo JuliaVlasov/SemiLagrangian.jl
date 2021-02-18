@@ -1,7 +1,7 @@
 using DoubleFloats
 using LinearAlgebra
 
-using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, getrotationvar, InterpolationType, 
+using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, getrotationvar, AbstractInterpolation, 
 Lagrange, B_SplineLU, B_SplineFFT
 """
 
@@ -24,8 +24,8 @@ end
 
 function test_rotation(
     sz::NTuple{2,Int}, 
-    interp_sp::InterpolationType{T}, 
-    interp_v::InterpolationType{T},
+    interp_sp::AbstractInterpolation{T}, 
+    interp_v::AbstractInterpolation{T},
     nbdt::Int
 ) where {T}
     spmin, spmax, nsp =  T(-5), T(5),  sz[1]

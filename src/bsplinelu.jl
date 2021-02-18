@@ -225,28 +225,24 @@ Type containing spline coefficients for b-spline interpolation
 
 """
 
-struct B_SplineLU{T, edge, order, N} <: B_Spline{T, edge, order}
+struct B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
     ls::LuSpline{T}
-    fact_order::N
-    tabpol::Vector{Polynomial{N}}
+    tabfct::Vector{Polynomial{T}}
     function B_SplineLU( order::Int, n::Int, T::DataType=Float64)
         (order%2 == 0) && throw(ArgumentError("order=$order B_SplineLU for even  order is not implemented n=$n")) 
-        bspline = SplineInt(order)
-        N = typeof(bspline.fact_order)
-        tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
+        bspline = getbspline(order, 0)
+        tabfct_rat = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
+        # bspline = SplineInt(order)
+        # N = typeof(bspline.fact_order)
+        # tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=true, isLU=true)
-        return new{T, CircEdge, order, N}(ls, bspline.fact_order, tabpol)
+        return new{T, CircEdge, order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
     B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
 end
 
-get_fact_order(bsp::B_SplineLU)=bsp.fact_order
-get_tabpol(bsp::B_SplineLU)=bsp.tabpol
+
 sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number}=sol(bsp.ls, b)[1]
 get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
-get_order(bsp::B_SplineLU{T, edge, order}) where{T, edge, order}= order
-get_bspline(bsp::B_SplineLU{T}) where{T}=bsp.bspline
-get_type(bsp::B_SplineLU{T, edge, order, N}) where{T,edge, order, N}="B_SplineLU{$T, $edge, $order, $N}"
-Base.show(io::IO, bsp::B_SplineLU)=print(io, get_type(bsp))
-istrace(bsp::B_SplineLU)=false
+
 

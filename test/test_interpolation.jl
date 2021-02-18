@@ -1,9 +1,9 @@
 
 using LinearAlgebra
-using SemiLagrangian: InterpolationType, Lagrange, B_SplineLU, B_SplineFFT, get_type, 
+using SemiLagrangian: AbstractInterpolation, Lagrange, B_SplineLU, B_SplineFFT, 
     interpolate!, isbspline, getbspline, get_precal, get_allprecal, get_order, EdgeType, InsideEdge, CircEdge
 
-function test_interp(interp::InterpolationType{Rational{BigInt}, edge}, dec,  sz) where {edge}
+function test_interp(interp::AbstractInterpolation{Rational{BigInt}, edge}, dec,  sz) where {edge}
 
     @time @testset "test interpolation  $interp dec=$dec" begin    
         fct = if edge == CircEdge
@@ -124,7 +124,7 @@ end
 #     end
 # end
 
-function test_interpfloat(interp::InterpolationType{T, edge}, sz, tol, nb=100) where {T,edge}
+function test_interpfloat(interp::AbstractInterpolation{T, edge}, sz, tol, nb=100) where {T,edge}
 
     tabdec = T.([big"0.345141526199181716726626262655544",
     -big"0.3859416191876155241320011187619",

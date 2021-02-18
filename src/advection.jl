@@ -6,8 +6,8 @@
     Advection(
         t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
         t_mesh_v::NTuple{Nv, UniformMesh{T}},
-        t_interp_sp::NTuple{Nsp, InterpolationType{T}},
-        t_interp_v::NTuple{Nv, InterpolationType{T}},
+        t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
+        t_interp_v::NTuple{Nv, AbstractInterpolation{T}},
         dt_base::T;
         tab_coef=[1//2, 1//1, 1//2],
         tab_fct=[identity, identity, identity],
@@ -28,8 +28,8 @@ Immutable structure that contains constant parameters for multidimensional advec
 
 - `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
 - `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes (one per velocity dimension)
-- `t_interp_sp::NTuple{Nsp, InterpolationType{T}}` : tuple of space interpolations (one per space dimension)
-- `t_interp_v::NTuple{Nv, InterpolationType{T}}` : tuple of velocity interpolations(one per velocity dimension)
+- `t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}}` : tuple of space interpolations (one per space dimension)
+- `t_interp_v::NTuple{Nv, AbstractInterpolation{T}}` : tuple of velocity interpolations(one per velocity dimension)
 - `dt_base::T` : time delta for one advection series
 
 # Keywords
@@ -60,8 +60,8 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     sizeall
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}}
     t_mesh_v::NTuple{Nv, UniformMesh{T}}
-    t_interp_sp::NTuple{Nsp, InterpolationType{T, CircEdge}}
-    t_interp_v::NTuple{Nv, InterpolationType{T, CircEdge}}
+    t_interp_sp::NTuple{Nsp, AbstractInterpolation{T, CircEdge}}
+    t_interp_v::NTuple{Nv, AbstractInterpolation{T, CircEdge}}
     dt_base::T
     tab_coef
     tab_fct
@@ -71,8 +71,8 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     function Advection(
     t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
     t_mesh_v::NTuple{Nv, UniformMesh{T}},
-    t_interp_sp::NTuple{Nsp, InterpolationType{T}},
-    t_interp_v::NTuple{Nv, InterpolationType{T}},
+    t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
+    t_interp_v::NTuple{Nv, AbstractInterpolation{T}},
     dt_base::T;
     tab_coef=[1//2, 1//1, 1//2],
     tab_fct=[identity,identity,identity],

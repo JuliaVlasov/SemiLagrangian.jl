@@ -16,7 +16,7 @@ Return the order of interpolation implementation
 """
 get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}=order
 """
-    sol(_::AbstractInterpolation, line::AbstractVector)=line
+    sol(_::AbstractInterpolation, line::AbstractVector)
 
 Interface method to transform the treated line, by default this method does nothing
 

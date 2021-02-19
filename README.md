@@ -11,7 +11,7 @@
 [![](https://github.com/juliavlasov/SemiLagrangian.jl/workflows/Documentation/badge.svg)](https://juliavlasov.github.io/SemiLagrangian.jl/dev)
 [![codecov](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl)
 
-Advection implementation using Semi-Lagrangian numerical method
+Advection implementation in Julia using Semi-Lagrangian numerical method
 
 **NOTE: This package is still very much under development and is not fully tested.**
 
@@ -23,6 +23,3 @@ pkg> registry add https://github.com/juliavlasov/Registry
 pkg> add SemiLagrangian
 julia> using SemiLagrangian
 ```
-
-Some examples are available in notebooks directory.
-

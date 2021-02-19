@@ -77,7 +77,7 @@ compute_charge!(advdata)
 compute_elfield!(advdata)
 ee = compute_ee(advdata)
 ke = compute_ke(advdata)
-println("$t\t$ee\t$ke")
+println("$t\t$ee\t$ke\t$(ee+ke)")
 
 for ind=1:nbdt
     while advection!(advdata) end
@@ -86,7 +86,7 @@ for ind=1:nbdt
     compute_elfield!(advdata)
     ee = compute_ee(advdata)
     ke = compute_ke(advdata)
-    println("$t\t$ee\t$ke")
+    println("$t\t$ee\t$ke\t$(ee+ke)")
 end
 
 ```

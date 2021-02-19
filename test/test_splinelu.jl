@@ -161,7 +161,7 @@ function test_interface()
         @test 104 == get_n(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test "B_SplineLU{BigFloat,CircEdge,$order}" == "$bsp"
+        @test "B_SplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
     end
 end
     

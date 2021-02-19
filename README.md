@@ -8,7 +8,7 @@
 ![Lifecycle](https://img.shields.io/badge/lifecycle-archived-red.svg)
 ![Lifecycle](https://img.shields.io/badge/lifecycle-dormant-blue.svg) -->
 ![Build Status](https://github.com/juliavlasov/SemiLagrangian.jl/workflows/CI/badge.svg)
-[![](https://github.com/juliavlasov/SemiLagrangian.jl/workflows/Documentation/badge.svg)](https://juliavlasov.github.io/SemiLagrangian.jl/dev)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://juliavlasov.github.io/SemiLagrangian.jl/dev)
 [![codecov](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaVlasov/SemiLagrangian.jl)
 
 Advection implementation in Julia using Semi-Lagrangian numerical method

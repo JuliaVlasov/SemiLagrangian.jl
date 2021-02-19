@@ -18,12 +18,12 @@ function Base.getindex(sp::AbstractSpline{N}, index::Integer) where{N<:Signed}
         zero(Polynomials.Polynomial{Rational{N}})
     end
 end
-function Base.getindex(sp::AbstractSpline{N}, index::AbstractRange) where{N<:Signed}
-    return Base.getindex.((sp::AbstractSpline{N},), index::AbstractRange)
-end
-function Base.setindex!(sp::AbstractSpline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
-    sp.tabpol[index-1] = pol
-end
+# function Base.getindex(sp::AbstractSpline{N}, index::AbstractRange) where{N<:Signed}
+#     return Base.getindex.((sp::AbstractSpline{N},), index::AbstractRange)
+# end
+# function Base.setindex!(sp::AbstractSpline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
+#     sp.tabpol[index-1] = pol
+# end
 Base.size(sp::AbstractSpline, dim=1)=size(sp.tabpol,1)
 function +(a::Spline{N}, b::Spline{N}) where{N<:Signed}
     sizenew = max(size(a.tabpol,1), size(b.tabpol,1))
@@ -97,25 +97,25 @@ struct SplineInt{N} <: AbstractSpline{N}
     fact_order::N
     tabpol::Vector{Polynomials.Polynomial{N}}
 end
-function SplineInt(order)
-    sp = getbspline(order, 0)
-    N = order <= 13 ? Int64 : BigInt
-    fact_order = factorial(big(order))
-    return SplineInt{N}(N(fact_order), map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
-end
-function (f::SplineInt{N})(x::T) where{N<:Signed, T <: AbstractFloat}
-    i = Int64((floor(x))) # it's different from ceil(x)
-    if 0 <= i < size(f,1)
-        return f[i](x)/f.fact_order
-    else
-        return zero(x)/f.fact_order
-    end
-end
-function (f::SplineInt{N})(x::Union{Rational,Int}) where{N<:Signed}
-    i = Int64((floor(x))) # it's different from ceil(x)
-    if 0 <= i < size(f,1)
-        return f[i](x)//f.fact_order
-    else
-        return zero(x)//f.fact_order
-    end
-end
+# function SplineInt(order)
+#     sp = getbspline(order, 0)
+#     N = order <= 13 ? Int64 : BigInt
+#     fact_order = factorial(big(order))
+#     return SplineInt{N}(N(fact_order), map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
+# end
+# function (f::SplineInt{N})(x::T) where{N<:Signed, T <: AbstractFloat}
+#     i = Int64((floor(x))) # it's different from ceil(x)
+#     if 0 <= i < size(f,1)
+#         return f[i](x)/f.fact_order
+#     else
+#         return zero(x)/f.fact_order
+#     end
+# end
+# function (f::SplineInt{N})(x::Union{Rational,Int}) where{N<:Signed}
+#     i = Int64((floor(x))) # it's different from ceil(x)
+#     if 0 <= i < size(f,1)
+#         return f[i](x)//f.fact_order
+#     else
+#         return zero(x)//f.fact_order
+#     end
+# end

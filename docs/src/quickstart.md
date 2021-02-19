@@ -1,5 +1,6 @@
 # Quickstart
 
+## Rotation
 First simulation using semi-lagrangian method to get a rotation
 
 ```julia
@@ -42,3 +43,51 @@ for ind=1:nbdt
 end
 
 ```
+
+## Vlasov/poisson
+
+For Vlasov Poisson equation 
+```julia
+using SemiLagrangian
+
+mesh_sp = UniformMesh( 0.0, 4pi, 32)
+mesh_v = UniformMesh( -6.0, 6.0, 32)
+
+nbdt=50
+dt = 0.1
+epsilon = 0.5
+
+interp = Lagrange(7)
+
+adv = Advection( (mesh_sp, mesh_sp), (mesh_v, mesh_v), (interp, interp), (interp, interp), dt)
+
+fct_sp(x)=epsilon * cos(x/2) + 1
+fct_v(v)=exp( - v^2 / 2)/sqrt(2pi)
+lgn_sp = fct_sp.(mesh_sp.points)
+lgn_v = fct_v.(mesh_v.points)
+
+data = dotprod((lgn_sp, lgn_sp, lgn_v, lgn_v))
+
+pvar = getpoissonvar(adv)
+
+advdata = AdvectionData(adv, data, pvar)
+
+t=0
+compute_charge!(advdata)
+compute_elfield!(advdata)
+ee = compute_ee(advdata)
+ke = compute_ke(advdata)
+println("$t\t$ee\t$ke")
+
+for ind=1:nbdt
+    while advection!(advdata) end
+    t = Float32(dt*ind)
+    compute_charge!(advdata)
+    compute_elfield!(advdata)
+    ee = compute_ee(advdata)
+    ke = compute_ke(advdata)
+    println("$t\t$ee\t$ke")
+end
+
+```
+

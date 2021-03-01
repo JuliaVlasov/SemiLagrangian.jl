@@ -315,14 +315,15 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     tabmod=gettabmod(size(f,1)) # just for optimization of interpolation!
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
-        @inbounds for ind in getitr(self)
-            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+#        @inbounds for ind in getitr(self)
+        for ind in getitr(self)
+                local decint, precal = getprecal(self, getalpha(extdata, self, ind))
             local lgn = view(f,:,ind)
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
         end
     elseif timeopt == SimpleThreadsOpt
-        @inbounds begin
+#        @inbounds begin
         Threads.@threads   for ind in collect(getitr(self))
             local buf=view(tabbuf, :, Threads.threadid())
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
@@ -330,9 +331,9 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
         end
-        end
+#        end
     elseif timeopt == SplitThreadsOpt
-        @inbounds begin
+#        @inbounds begin
         Threads.@threads  for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
             @inbounds for ind in getitr(self)
@@ -342,7 +343,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
                 lgn .= buf
             end
         end
-        end
+#        end
     end
     copydata!(self, f)
     return nextstate!(self)

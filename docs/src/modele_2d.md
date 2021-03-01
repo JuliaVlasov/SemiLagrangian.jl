@@ -15,8 +15,7 @@ We consider $2D$ transport equation of the form
 
 where the advection field $(u_x, u_y)(t, x, y)$ satisfies the
 incompressibility condition $\partial_x u_x + \partial_y u_y=0$ which
-implies (1) can be
-reformulated as
+implies (1) can be reformulated as
 
 ```math
 \partial_t f + \partial_x( u_x  f )+ \partial_y(u_y  f) = 0, f(t=0, x, y)= f_0(x, y),
@@ -299,8 +298,8 @@ f_0(x, y)= \sin(y) + 0.015\cos(x/2).
 ```
 
 For this problem, the electric
-energy ${\cal E}_e :=\int\!\int (E_x^2+E_y^2)dxdy$ and the enstrophy
-${\cal E}_f:=\int\!\int f^2 dx dy$ are preserved with time. Some results
+energy ``{\cal E}_e :=\int\!\int (E_x^2+E_y^2)dxdy`` and the enstrophy
+``{\cal E}_f:=\int\!\int f^2 dx dy`` are preserved with time. Some results
 are given in [^qiu] or [^crouseilles].
 
 ## Etienne's models

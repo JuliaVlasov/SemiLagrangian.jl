@@ -11,6 +11,12 @@ makedocs(modules=[SemiLagrangian],
          authors = "Yves Mocquard, Pierre Navaro and Nicolas Crouseilles",
          format=Documenter.HTML(;
          prettyurls=get(ENV, "CI", "false") == "true",
+         mathengine = MathJax(Dict(
+            :TeX => Dict(
+                :equationNumbers => Dict(:autoNumber => "AMS"),
+                :Macros => Dict()
+            )
+         )),
          canonical="https://juliavlasov.github.io/SemiLagrangian.jl",
          assets=String[],
          ),

@@ -9,16 +9,13 @@ implementation.
 We consider $2D$ transport equation of the form 
 
 ```math
-\begin{equation}
-\label{eq0}
+\tag{1}
 \partial_t f + u_x \partial_x f + u_y \partial_y f = 0, f(t=0, x, y)= f_0(x, y), x, y\in \Omega\subset \mathbb{R}^2,
-\end{equation}
 ```
 
 where the advection field $(u_x, u_y)(t, x, y)$ satisfies the
 incompressibility condition $\partial_x u_x + \partial_y u_y=0$ which
-implies [\[eq0\]](#eq0){reference-type="eqref" reference="eq0"} can be
-reformulated as
+implies (1) can be reformulated as
 
 ```math
 \partial_t f + \partial_x( u_x  f )+ \partial_y(u_y  f) = 0, f(t=0, x, y)= f_0(x, y),
@@ -26,7 +23,7 @@ reformulated as
 
 from which we deduce the mass conservation
 $\int\!\!\int f(t, x, y) dxdy = \int\!\!\int f_0(x, y) dxdy$. To solve
-numerically [\[eq0\]](#eq0){reference-type="eqref" reference="eq0"}, we
+numerically (1), we
 will use a $2D$ semi-Lagrangian method which is based on the fact that
 the solution $f$ is constant along the characteristics
 $X(t)=(x(t), y(t)$ defined by
@@ -34,6 +31,7 @@ $X(t)=(x(t), y(t)$ defined by
 ```math
 \dot{X}(t) = U(t, X(t)), \;\; X(s) = X_g,
 ```
+
 with
 $U(t, X):=U(t, x, y)=(u_x(t, x, y), u_y(t, x, y))$, $s$ is a time and
 $X_g$ is a prescribed condition (which will be a grid point). Hence, we
@@ -70,22 +68,22 @@ given.
 First, we need to compute $X(t^n)$ which the solution at time $t^n$ of
 
 ```math
-\label{edo}
+\tag{2}
 \dot{X}(t) = U(t, X(t)), \;\; X(t^{n+1}) = X_g.
 ```
 When $U$ is simple
 enough, $X(t^n)$ can be computed analytically but in general, we need a
 solver of this differential equation. The main difficulty comes from the
-fact that [\[edo\]](#edo){reference-type="eqref" reference="edo"} has to
+fact that (2) has to
 be solved backward in time and when the time dependency of $U$ is
 nonlinearly coupled to the solution $f$ itself (see Examples 3 and 4
 below), we do not know $U(t, \dot)$ for $t>t^n$ (and time extrapolation
-has to be used [@filbet]).
+has to be used [^filbet]).
 
 ### First order 
 
-A simple scheme to compute $X(t^n)$ is the Euler scheme applied to
-[\[edo\]](#edo){reference-type="eqref" reference="edo"}
+A simple scheme to compute $X(t^n)$ is the Euler scheme applied to (2)
+
 ```math
 \frac{X(t^{n+1}) - X(t^n)}{\Delta t} = U(t^n, X(t^{n+1}),
 ```
@@ -99,8 +97,7 @@ X(t^n) = X_g - \Delta t U(t^n, X_g).
 
 ### Second order 
 
-A mid-point scheme (which is second order accurate) can be used to solve
-[\[edo\]](#edo){reference-type="eqref" reference="edo"}:
+A mid-point scheme (which is second order accurate) can be used to solve (2):
 
 ```math
 \frac{X(t^{n+1}) - X(t^n)}{\Delta t} = U\Big(t^{n+1/2}, \frac{X(t^{n+1}) + X(t^n)}{2}\Big),
@@ -109,8 +106,10 @@ A mid-point scheme (which is second order accurate) can be used to solve
 which gives an implicit expression for $X(t^n)$ 
 
 ```math
+\begin{equation}
 \label{ode_2nd_imp}
 X(t^n) = X(t^{n+1}) -\Delta t \, U\Big(t^{n+1/2}, \frac{X(t^{n+1}) + X(t^n)}{2}\Big).
+\end{equation}
 ```
 
 As mentioned above, we first need to extrapolate $U(t^{n+1/2}, \cdot)$.
@@ -122,10 +121,8 @@ ${\cal L}(t), t\in[t^{n-1}, t^n]$
 {\cal L}(t) = U(t^n, \cdot) \frac{t^{n-1}-t}{\Delta t} + U(t^{n-1}, \cdot) \frac{t - t^{n}}{\Delta t}.
 ```
 
-We then approximate $U(t^{n+1/2}, \cdot)$ by ${\cal L}(t^{n+1/2})$. We
-then have to solve
-[\[ode_2nd_imp\]](#ode_2nd_imp){reference-type="eqref"
-reference="ode_2nd_imp"} using a fixed point
+We then approximate $U(t^{n+1/2}, \cdot)$ by ${\cal L}(t^{n+1/2})$. We then have to solve
+\eqref{ode_2nd_imp} using a fixed point
 
 ```math
 X^{n, k+1} = X_g -\Delta t \, {\cal L}\Big(t^{n+1/2}, \frac{X_g + X^{n,k}}{2}\Big), \;\; \mbox{ for } k\geq 0, X^{n, 0}=X_g,
@@ -135,7 +132,7 @@ up to convergence.
 
 ### Extension to higher order 
 
-We can look at the schemes proposed in [@filbet] but we can also use the package `DifferentialEquations.jl`
+We can look at the schemes proposed in [^filbet] but we can also use the package `DifferentialEquations.jl`
 
 ## $2D$ Interpolation
 
@@ -166,7 +163,9 @@ f(x,y) \approx {\cal P}(x,y) =\sum_{i=1}^{N_x} \sum_{j=1}^{N_y} f(x_i,y_j) L_{x,
 
 For cubic splines, one can use
 
-     splinePP 
+```julia
+splinePP 
+```
 
 which I try to explain below.
 
@@ -178,19 +177,18 @@ for $i=1, \dots, N_x$ and $j=1, \dots, N_y$ and
 $F_{N_x+1, j}= f(x_1, y_j)$ for periodicity. We compute the splines
 coefficients as
 
--   solve $A \eta_j = 6 f(:,y_j), \;\; \forall j=1, \dots, N_y$ with
-    $\eta_j\in \mathbb{R}^{N_x+1}$
+- solve $A \eta_j = 6 f(:,y_j), \;\; \forall j=1, \dots, N_y$ with
+  $\eta_j\in \mathbb{R}^{N_x+1}$
 
--   gestion du bord (Pierre ?) pour obtenir $\eta(1:Nx+3, 1:N_y+1)$
+- gestion du bord (Pierre ?) pour obtenir $\eta(1:Nx+3, 1:N_y+1)$
 
--   solve
-    $A \,$coef$_i \, = 6 \eta(i,:), \;\; \forall i=1, \cdots, N_x+3$
-    with coef$_i\in \mathbb{R}^{N_y+1}$
+- solve $A \,$coef$_i \, = 6 \eta(i,:), \;\; \forall i=1, \cdots, N_x+3 $ with coef$_i\in \mathbb{R}^{N_y+1}$
 
--   gestion du bord (Pierre ?) pour obtenir coef$(1:Nx+3, 1:N_y+3)$
+- gestion du bord (Pierre ?) pour obtenir coef$(1:Nx+3, 1:N_y+3)$
 
--   $f(x,y)\approx {\cal S}(x,y) = \sum_i\sum_j$
-    coef$_{i,j} B_i(x) B_j(y)$
+```math
+f(x,y) \approx {\cal S}(x,y) = \sum_i\sum_j {\tt coef}_{i,j} B_i(x) B_j(y)
+```
 
 ## Some examples
 
@@ -199,12 +197,17 @@ validate our algorithms.
 
 ### Example 1 : rotation
 
-$$\label{eq1}
-\partial_t f + y \partial_x f - x \partial_y f = 0, f(t=0, x, y)= f_0(x, y).$$
+```math
+\partial_t f + y \partial_x f - x \partial_y f = 0, f(t=0, x, y)= f_0(x, y).
+```
+
 We already discussed this test and we have to check it again. In this
 case, the characteristics can be solved exactly in time since
 $X(t^n) = e^{-J \Delta t}X_g$ with $J$ the symplectic matrix. This test
-will enable us to validate the $2D$ interpolation step. Here $$J=\Big(
+will enable us to validate the $2D$ interpolation step. Here
+
+```math
+J=\Big(
 \begin{matrix}
 0 & 1 \\
 -1 & 0
@@ -216,52 +219,88 @@ e^{-J \Delta t}=\Big(
 \cos \Delta t & -\sin\Delta t \\
 \sin\Delta t & \cos\Delta t
 \end{matrix}
-\Big).$$
+\Big).
+```
 
 ### Example 2 : swirling deformation flow
 
-$$\label{eq2}
-\partial_t f + \Big( \sin^2(\pi x) \sin(2\pi y) g(t)\Big) \partial_x f - \Big(\sin^2(\pi y)\sin(2\pi x) g(t)  \Big) \partial_y f = 0, f(t=0, x, y)= f_0(x, y)$$
+```math
+\begin{aligned}
+\partial_t f + \Big( \sin^2(\pi x) \sin(2\pi y) g(t)\Big) \partial_x f - \Big(\sin^2(\pi y)\sin(2\pi x) g(t)  \Big) \partial_y f = 0, \\
+f(t=0, x, y)= f_0(x, y)
+\end{aligned}
+```
+
 with $g(t)=\cos(\pi t/T)$. The solution slows down and reverses
 direction in such a way that the initial condition should be recovered
 at time $T$: $f(T, x, y)=f_0(x,y)$. This gives a very useful test to
 validate our methods since we know the exact solution at time $T$. For
-the initial condition, we consider $$f_0(x, y) = 
+the initial condition, we consider 
+
+```math
+\begin{equation}
+f_0(x, y) = 
 \left\{ 
 \begin{array}{cc}
 1, & \mbox{ if } (x-1)^2+(y-1)^2 <0.8\\
 0, & \mbox{ otherwise}.
 \end{array}
-\right.$$ We can choose $T=1.5$ and the spatial domain is $[0, 1]^2$.
-Some results are given in [@leveque] or [@qiu].
+\right.
+\end{equation}
+```
+
+We can choose $T=1.5$ and the spatial domain is $[0, 1]^2$.
+Some results are given in [^leveque] or [^qiu].
 
 ### Example 3: Vlasov-Poisson
 
-$$\label{eq3}
-\partial_t f + y \partial_x f +E \partial_y f = 0, f(t=0, x, y)= f_0(x, y), x\in [0, 4\pi], y\in \mathbb{R},$$
+```math
+\partial_t f + y \partial_x f +E \partial_y f = 0, f(t=0, x, y)= f_0(x, y), x\in [0, 4\pi], y\in \mathbb{R},
+```
+
 where the electric field $E$ derives from a potential
 $\phi(t, x)\in\mathbb{R}$ which satisfies a Poisson equation
-$$\partial_x^2 \phi = \int_{\mathbb{R}} f dy - 1.$$ The initial
-condition is
-$$f_0(x, y)= \frac{1}{\sqrt{2}\pi}e^{-y^2/2}(1 + 0.001\cos(x/2)).$$ For
-this problem, we define the electric energy ${\cal E}_e :=\int E^2dx$
-and the kinetic energy ${\cal E}_k:=\int\!\int y^2 f dx dy$ so that the
-total energy ${\cal E}_e+{\cal E}_k$ is preserved with time. We can also
-consider the time evolution of ${\cal E}_e$ for which we know the
+
+```math
+\partial_x^2 \phi = \int_{\mathbb{R}} f dy - 1.
+```
+
+The initial condition is
+
+```math
+f_0(x, y)= \frac{1}{\sqrt{2}\pi}e^{-y^2/2}(1 + 0.001\cos(x/2)).
+```
+
+For this problem, we define the electric energy ``{\cal E}_e = \int E^2dx ``
+and the kinetic energy ``{\cal E}_k := \int\!\int y^2 f dx dy`` so that the
+total energy ``{\cal E}_e+{\cal E}_k`` is preserved with time. We can also
+consider the time evolution of ``{\cal E}_e`` for which we know the
 behavior.
 
 ### Example 4: guiding-center
 
-$$\label{eq4}
-\partial_t f + E_x \partial_x f +E_y \partial_y f = 0, f(t=0, x, y)= f_0(x, y)$$
+```math
+\partial_t f + E_x \partial_x f +E_y \partial_y f = 0, f(t=0, x, y)= f_0(x, y)
+```
+
 where the electric field $E=(E_x, E_y)(t, x, y)$ derives from a
 potential $\phi(t, x, y)\in\mathbb{R}$ which satisfies a Poisson
-equation $$\Delta \phi = f.$$ The spatial domain is
-$[0, 4\pi]\times [0, 2\pi]$ and the initial condition is
-$$f_0(x, y)= \sin(y) + 0.015\cos(x/2).$$ For this problem, the electric
-energy ${\cal E}_e :=\int\!\int (E_x^2+E_y^2)dxdy$ and the enstrophy
-${\cal E}_f:=\int\!\int f^2 dx dy$ are preserved with time. Some results
-are given in [@qiu] or [@cms].
+equation 
+
+```math
+\Delta \phi = f.
+```
+
+The spatial domain is $[0, 4\pi]\times [0, 2\pi]$ and the initial condition is
+
+```math
+f_0(x, y)= \sin(y) + 0.015\cos(x/2).
+```
+
+For this problem, the electric
+energy ``{\cal E}_e :=\int\!\int (E_x^2+E_y^2)dxdy`` and the enstrophy
+``{\cal E}_f:=\int\!\int f^2 dx dy`` are preserved with time. Some results
+are given in [^qiu] or [^crouseilles].
 
 ## Etienne's models
 
@@ -276,24 +315,13 @@ numerical method.
 
 ## References
 
-F. Filbet, C. Prouveur, *High order time discretization for backward
-semi-Lagrangian methods*, Journal of Computational and Applied
-Mathematics, vol 303, (2016) pp. 171-188.
+[^filbet]: F. Filbet, C. Prouveur, *High order time discretization for backward semi-Lagrangian methods*, Journal of Computational and Applied Mathematics, vol 303, (2016) pp. 171-188.
 
-R. LeVeque, *High-resolution conservative algorithms for advection in
-incompressible flow*, SIAM Journal on Numerical Analysis, (1996), pp.
-627-665.
-<https://www.jstor.org/stable/2158391?seq=29#metadata_info_tab_contents>
+[^leveque]: R. LeVeque, *High-resolution conservative algorithms for advection in incompressible flow*, SIAM Journal on Numerical Analysis, (1996), pp.  627-665.  <https://www.jstor.org/stable/2158391?seq=29#metadata_info_tab_contents>
 
-J. Qiu, C.-W. Shu, *Conservative high order semi-Lagrangian finite
-difference WENO methods for advection in incompressible flow*, Journal
-of Computational Physics, Volume 230, Issue 4, 20 (2011), pp. 863-889.
+[^qiu]: J. Qiu, C.-W. Shu, *Conservative high order semi-Lagrangian finite difference WENO methods for advection in incompressible flow*, Journal of Computational Physics, Volume 230, Issue 4, 20 (2011), pp. 863-889.
 
-P. Lauritzen, D. Ramachandran, P. Ullrich, *A conservative
-semi-Lagrangian multi-tracer transport scheme (CSLAM) on the
-cubed-sphere grid*, J. Comput. Phys. 229, (2010), pp. 1401-1424.
+[^lauritzen]: P. Lauritzen, D. Ramachandran, P. Ullrich, *A conservative semi-Lagrangian multi-tracer transport scheme (CSLAM) on the cubed-sphere grid*, J. Comput. Phys. 229, (2010), pp. 1401-1424.
 
-N. Crouseilles, M. Mehrenberger, E. Sonnendrücker *Conservative
-semi-Lagrangian methods for the Vlasov equations*, J. Comput. Phys.,
-229, pp 1927-1953, (2010).
+[^crouseilles]: N. Crouseilles, M. Mehrenberger, E. Sonnendrücker *Conservative semi-Lagrangian methods for the Vlasov equations*, J. Comput. Phys., 229, pp 1927-1953, (2010).
 

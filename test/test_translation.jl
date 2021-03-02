@@ -1,0 +1,78 @@
+using DoubleFloats
+using LinearAlgebra
+
+using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, gettranslationvar, AbstractInterpolation, 
+Lagrange, B_SplineLU, B_SplineFFT
+"""
+
+   exact(tf, mesh1, mesh2)
+
+   Julia function to compute exact solution "
+
+```math
+\frac{d f}{dt} +  (y \frac{df}{delta1} - x \frac{df}{delta2}) = 0 
+```
+
+"""
+function exact!(f, decall::NTuple{Nsum,T}, t::T) where {T, Nsum}
+    for ind in CartesianIndices(f)
+       f[ind] = exp( -sum( [sin( 2T(pi)*(ind.I[i]+decall[i]*t)/size(f,i) +T(big"0.56")*i^2) for i=1:Nsum] ) )
+    end
+end
+
+function test_translation(
+    sz::NTuple{2,Int},
+    interp_sp::AbstractInterpolation{T}, 
+    interp_v::AbstractInterpolation{T},
+    nbdt::Int
+) where {T}
+    spmin, spmax, nsp =  T(-5), T(5),  sz[1]
+    vmin, vmax, nv = -T(5), T(5), sz[2]
+
+    mesh_sp = UniformMesh( spmin, spmax, nsp)
+    mesh_v = UniformMesh( vmin, vmax, nv)
+
+    dt = T(1)
+    adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt)
+    tabref = zeros(T,sz)
+ 
+    v1=rand(T)-T(big"0.5")
+    v2=rand(T)-T(big"0.5")
+    v1 /= 10
+    v2 *= 0
+
+    exact!(tabref, (v1, v2), T(0))
+
+    pvar = gettranslationvar((v1, v2))
+
+    advdata = AdvectionData(adv, tabref, pvar)
+
+    diffmax = 0
+    data = getdata(advdata)
+    for ind=1:nbdt
+        while advection!(advdata) end
+        exact!(tabref, (v1, v2), T(ind))
+        diff = norm(data .- tabref, Inf)
+#        @show v1, v2, ind, diff
+        diffmax = max(diffmax, diff)
+    end
+    println("test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
+    return diffmax
+
+end
+
+
+@testset "test translation" begin
+    T = Float64
+    @time @test test_translation((200, 200), Lagrange(5, T), Lagrange(5, T), 11) < 1e-8
+    @time @test test_translation((128, 128), B_SplineLU(5, 128, T), B_SplineLU(5, 128, T), 11) < 1e-11
+    @time @test test_translation((128, 128), B_SplineFFT(5, 128, T), B_SplineFFT(5, 128, T), 11) < 1e-11
+    T = Double64
+    @time @test test_translation((200, 200), Lagrange(15, T), Lagrange(15, T), 11) < 1e-20
+    @time @test test_translation((128, 128), B_SplineLU(15, 128, T), B_SplineLU(15, 128, T), 11) < 1e-24
+    @time @test test_translation((128, 128), B_SplineFFT(15, 128, T), B_SplineFFT(15, 128, T), 11) < 1e-24
+    T = BigFloat
+    @time @test test_translation((200, 200), Lagrange(25, T), Lagrange(25, T), 11) < 1e-30
+    @time @test test_translation((128, 128), B_SplineLU(25, 128, T), B_SplineLU(25, 128, T), 11) < 1e-35
+    @time @test test_translation((128, 128), B_SplineFFT(25, 128, T), B_SplineFFT(25, 128, T), 11) < 1e-37
+end

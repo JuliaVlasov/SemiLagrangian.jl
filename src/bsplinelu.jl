@@ -204,19 +204,18 @@ get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
 """
-    B_SplineLU{T,edge, order, N} <: B_Spline{T, edge, order}
+    B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
 
 Type containing spline coefficients for b-spline interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
 - `edge::TypeEdge=CircEdge` : true if function is circular
-- `order::Int`: order of lagrange interpolation
-- `N` : type of integer, in fact Int64 or BigInt that is used in the Spline object
+- `order::Int` : order of lagrange interpolation
 
 # Implementation :
 - `ls::LuSpline{T}` : the LU matrix
-- `bspline::SplineInt{N}` : object that contain the bspline
+- `tabfct::Vector{Polynomial{T}}` : function table for interpolation
 
 # Arguments : 
 - `n` : size of the matrix

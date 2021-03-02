@@ -1,7 +1,7 @@
 
 
 
-using SemiLagrangian: splititr, splitvec, transperm, totuple, tovector, tupleshape
+using SemiLagrangian: splititr, splitvec, transposition, totuple, tovector, tupleshape
 
 @testset "split util" begin
     data = [ 
@@ -30,17 +30,17 @@ end
     @test t[4] == collect(34:43)
     @test t[5] == collect(44:53)
 
-    @test transperm(1,2,5) == [2,1,3,4,5]
-    @test transperm(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
+    @test transposition(1,2,5) == [2,1,3,4,5]
+    @test transposition(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
 
 
 end
 
-@testset "transperm" begin
-    @test transperm(1,2,5) == [2,1,3,4,5]
-    @test transperm(1,2,5) == [2,1,3,4,5]
-    @test transperm(3,7,7) == [1,2,7,4,5,6,3]
-    @test transperm(7,3,7) == [1,2,7,4,5,6,3]
+@testset "transposition" begin
+    @test transposition(1,2,5) == [2,1,3,4,5]
+    @test transposition(1,2,5) == [2,1,3,4,5]
+    @test transposition(3,7,7) == [1,2,7,4,5,6,3]
+    @test transposition(7,3,7) == [1,2,7,4,5,6,3]
 end
 
 @testset "totuple tovector" begin

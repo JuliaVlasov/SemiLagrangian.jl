@@ -71,5 +71,4 @@ end
     @time @test test_rotation((200, 200), Lagrange(25, T), Lagrange(25, T), 11) < 1e-10
     @time @test test_rotation((128, 128), B_SplineLU(25, 128, T), B_SplineLU(25, 128, T), 11) < 1e-11
     @time @test test_rotation((128, 128), B_SplineFFT(25, 128, T), B_SplineFFT(25, 128, T), 11) < 1e-11
-
 end

@@ -12,7 +12,7 @@ function splitvec(nb, v)
 end
 
 # construct the permutation of size n that is the transposition of a and b
-function transperm(a,b,n)
+function transposition(a,b,n)
     p = collect(1:n)
     p[a],p[b] = b, a
     return p

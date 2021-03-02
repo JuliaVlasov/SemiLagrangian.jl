@@ -112,7 +112,7 @@ Return a tuple of the sizes of each dimensions
 sizeall(adv)=adv.sizeall
 
 # Interface of external data
-abstract type AbstractExtDataAdv end
+abstract type AbstractExtDataAdv{T, Nsum} end
 
 """
     AdvectionData{T,Nsp,Nv,Nsum,timeopt}
@@ -266,7 +266,24 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     return ret
 end
 # default function of the interface
-getperm(_::Any,advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum} = (1:Nsum)
+initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)=missing
+function getperm(
+    _::AbstractExtDataAdv{T, Nsum},
+    curstate::Int
+) where{T, Nsum}
+    return transposition(1, curstate, Nsum)
+end
+function getperm(
+    _::AbstractExtDataAdv,
+    advd::AdvectionData{T, Nsp, Nv, Nsum}
+) where{T, Nsp, Nv, Nsum}
+    return transposition(1, _getcurrentindice(advd), Nsum)
+end
+# this interface function must always be defined
+function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)
+    throw(error("getalpha undefined for $(typeof(parext))"))
+end
+
 # data formating
 function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     p = getperm(getext(advd),advd)
@@ -317,7 +334,7 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
         local buf=view(tabbuf, :, 1)
 #        @inbounds for ind in getitr(self)
         for ind in getitr(self)
-                local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
             local lgn = view(f,:,ind)
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf

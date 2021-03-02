@@ -26,13 +26,14 @@ getperm(pc::RotationConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd
 getperm(pc::RotationConst,curst::Int)=pc.t_perms[curst]
 
 
-mutable struct RotationVar{T, Nsp, Nv} <: AbstractExtDataAdv
+mutable struct RotationVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv{T, Nsum}
     pc::RotationConst{T, Nsp, Nv}
     bufcur
     function RotationVar(pc::RotationConst{T, Nsp, Nv}) where{T, Nsp, Nv}
         sz = length.(pc.adv.t_mesh_sp)
         rho = Array{T, Nsp}(undef, sz)
-        return new{T, Nsp, Nv}(pc, missing)
+        Nsum = Nsp + Nv
+        return new{T, Nsp, Nv, Nsum}(pc, missing)
     end
 end
 getperm(pvar::RotationVar,advd::AdvectionData)=getperm(pvar.pc,advd)

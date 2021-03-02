@@ -1,14 +1,32 @@
 
 
 
+"""
+    B_SplineFFT{T, order} <: B_Spline{T, CircEdge, order}
+    B_SplineFFT( order::Int, n::Int, T::DataType=Float64)
 
+Type containing spline coefficients for b-spline interpolation based on fft, using the fact that b-spline matrix is a circulant matrix
+
+# Type parameters
+- `T` : the type of data that is interpolate
+- `order::Int`: order of lagrange interpolation
+
+# Implementation :
+- `c_fft::Vector{Complex{T}}` : fft transform of coefficients
+- `parfft::PrepareFftBig` : fft precomputed data
+- `tabfct::Vector{Polynomial{T}}` : function table for interpolation
+
+# Arguments : 
+- `n` : size of the matrix
+- `order` : the order of interpolation
+- `[T::DataType=Float64]` : The type values to interpolate 
+
+"""
 struct B_SplineFFT{T, order} <: B_Spline{T, CircEdge, order}
     c_fft::Vector{Complex{T}}
     parfft::PrepareFftBig
     tabfct::Vector{Polynomial{T}}
     function B_SplineFFT( order::Int, n::Int, T::DataType=Float64)
-        # bspline = SplineInt(order)
-        # tabfct = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         kl, ku = get_kl_ku(order)

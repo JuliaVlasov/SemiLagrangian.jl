@@ -28,11 +28,11 @@ end
 
 function _get_permpoisson(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
     if isvelocity(adv, curstate)
-        p = transperm(Nsp+1, curstate, Nsum)
+        p = transposition(Nsp+1, curstate, Nsum)
         p = p[vcat(Nsp+1:Nsum, 1:Nsp)]
     else
-        p = transperm(curstate+Nsp, Nsum, Nsum)
-        p = p[transperm(1, curstate, Nsum)]
+        p = transposition(curstate+Nsp, Nsum, Nsum)
+        p = p[transposition(1, curstate, Nsum)]
     end
     return p
 end
@@ -78,7 +78,7 @@ getperm(pc::PoissonConst,curstate::Int)=pc.t_perms[curstate]
 getperm(pc::PoissonConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
 
 """
-    PoissonVar{T, Nsp, Nv} <: AbstractExtDataAdv
+    PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv
     PoissonVar(pc::PoissonConst{T, Nsp, Nv})
 
 mutable structure of variable data for the poisson computation
@@ -91,7 +91,7 @@ mutable structure of variable data for the poisson computation
 - `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
 - `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
 """
-mutable struct PoissonVar{T, Nsp, Nv} <: AbstractExtDataAdv
+mutable struct PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv{T, Nsum}
     pc::PoissonConst{T, Nsp, Nv}
     rho::Array{T, Nsp}
     t_elfield::Union{NTuple{Nsp, Array{T,Nsp}},Missing}
@@ -99,7 +99,8 @@ mutable struct PoissonVar{T, Nsp, Nv} <: AbstractExtDataAdv
     function PoissonVar(pc::PoissonConst{T, Nsp, Nv}) where{T, Nsp, Nv}
         sz = length.(pc.adv.t_mesh_sp)
         rho = Array{T, Nsp}(undef, sz)
-        return new{T, Nsp, Nv}(pc, rho, missing, missing)
+        Nsum = Nsp + Nv
+        return new{T, Nsp, Nv, Nsum}(pc, rho, missing, missing)
     end
 end
 getperm(pvar::PoissonVar, curstate::Int)=getperm(pvar.pc, curstate)

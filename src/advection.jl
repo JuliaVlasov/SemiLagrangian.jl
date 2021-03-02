@@ -353,7 +353,8 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
 #        @inbounds begin
         Threads.@threads  for indth=1:Threads.nthreads()
             local buf=view(tabbuf, :, Threads.threadid())
-            @inbounds for ind in getitr(self)
+#           @inbounds for ind in getitr(self)
+            for ind in getitr(self)
                 local decint, precal = getprecal(self, getalpha(extdata, self, ind))
                 local lgn = view(f,:,ind)
                 interpolate!(buf, lgn, decint, precal, interp, tabmod)

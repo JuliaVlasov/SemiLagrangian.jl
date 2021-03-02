@@ -200,11 +200,11 @@ function sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}
     end
     return X, Y
 end
-get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
+# get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
 """
-    B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
+    B_SplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
 
 Type containing spline coefficients for b-spline interpolation
 
@@ -223,7 +223,6 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-
 struct B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
@@ -242,6 +241,6 @@ end
 
 
 sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number}=sol(bsp.ls, b)[1]
-get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
+# get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 
 

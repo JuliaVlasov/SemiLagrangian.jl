@@ -36,10 +36,8 @@ function test_translation(
     adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt)
     tabref = zeros(T,sz)
  
-    v1=rand(T)-T(big"0.5")
-    v2=rand(T)-T(big"0.5")
-    v1 /= 10
-    v2 *= 0
+    v1=T(big"0.83545655467782872872782870029282982828737872878776717190927267611111")
+    v2=T(-big"0.945678101929276765616767176761671771766717828781828998101092981877817176")
 
     exact!(tabref, (v1, v2), T(0))
 
@@ -64,15 +62,15 @@ end
 
 @testset "test translation" begin
     T = Float64
-    @time @test test_translation((200, 200), Lagrange(5, T), Lagrange(5, T), 11) < 1e-8
-    @time @test test_translation((128, 128), B_SplineLU(5, 128, T), B_SplineLU(5, 128, T), 11) < 1e-11
-    @time @test test_translation((128, 128), B_SplineFFT(5, 128, T), B_SplineFFT(5, 128, T), 11) < 1e-11
+    @time @test test_translation((200, 200), Lagrange(5, T), Lagrange(5, T), 11) < 1e-7
+    @time @test test_translation((128, 128), B_SplineLU(5, 128, T), B_SplineLU(5, 128, T), 11) < 1e-8
+    @time @test test_translation((128, 128), B_SplineFFT(5, 128, T), B_SplineFFT(5, 128, T), 11) < 1e-8
     T = Double64
-    @time @test test_translation((200, 200), Lagrange(15, T), Lagrange(15, T), 11) < 1e-20
-    @time @test test_translation((128, 128), B_SplineLU(15, 128, T), B_SplineLU(15, 128, T), 11) < 1e-24
-    @time @test test_translation((128, 128), B_SplineFFT(15, 128, T), B_SplineFFT(15, 128, T), 11) < 1e-24
+    @time @test test_translation((200, 200), Lagrange(15, T), Lagrange(15, T), 11) < 1e-18
+    @time @test test_translation((128, 128), B_SplineLU(15, 128, T), B_SplineLU(15, 128, T), 11) < 1e-22
+    @time @test test_translation((128, 128), B_SplineFFT(15, 128, T), B_SplineFFT(15, 128, T), 11) < 1e-22
     T = BigFloat
-    @time @test test_translation((200, 200), Lagrange(25, T), Lagrange(25, T), 11) < 1e-30
-    @time @test test_translation((128, 128), B_SplineLU(25, 128, T), B_SplineLU(25, 128, T), 11) < 1e-35
-    @time @test test_translation((128, 128), B_SplineFFT(25, 128, T), B_SplineFFT(25, 128, T), 11) < 1e-37
+    @time @test test_translation((200, 200), Lagrange(25, T), Lagrange(25, T), 11) < 1e-28
+    @time @test test_translation((128, 128), B_SplineLU(25, 128, T), B_SplineLU(25, 128, T), 11) < 1e-34
+    @time @test test_translation((128, 128), B_SplineFFT(25, 128, T), B_SplineFFT(25, 128, T), 11) < 1e-34
 end

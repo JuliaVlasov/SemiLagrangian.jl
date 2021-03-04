@@ -182,7 +182,7 @@ coefficients as
 
 - gestion du bord (Pierre ?) pour obtenir $\eta(1:Nx+3, 1:N_y+1)$
 
-- solve $A \,$coef$_i \, = 6 \eta(i,:), \;\; \forall i=1, \cdots, N_x+3 $ with coef$_i\in \mathbb{R}^{N_y+1}$
+- solve $A \,{\tt coef}_i \, = 6 \eta(i,:), \;\; \forall i=1, \cdots, N_x+3 $ with ${\tt coef}_i\in \mathbb{R}^{N_y+1}$
 
 - gestion du bord (Pierre ?) pour obtenir coef$(1:Nx+3, 1:N_y+3)$
 

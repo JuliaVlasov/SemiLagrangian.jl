@@ -26,7 +26,7 @@ $\int\!\!\int f(t, x, y) dxdy = \int\!\!\int f_0(x, y) dxdy$. To solve
 numerically (1), we
 will use a $2D$ semi-Lagrangian method which is based on the fact that
 the solution $f$ is constant along the characteristics
-$X(t)=(x(t), y(t)$ defined by
+$X(t)=(x(t), y(t))$ defined by
 
 ```math
 \dot{X}(t) = U(t, X(t)), \;\; X(s) = X_g,

@@ -10,6 +10,8 @@ Abstract supertype for all interpolation type
 """
 abstract type AbstractInterpolation{T, edge, order} end
 
+abstract type AbstractInterpolation2d{T, edge, order} end
+
 """
     get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
 Return the order of interpolation implementation       
@@ -47,7 +49,7 @@ end
 
 # modulo for "begin to one" array
 modone(ind, n)=(n+ind-1)%n+1
-gettabmod(lg)=modone.(1:3lg, lg) # 
+gettabmod(lg)=modone.(1:10lg, lg) # 
 function get_allprecal(interp::AbstractInterpolation{T, InsideEdge,order}, decint::Int, decfloat::T) where {T,order}
     origin = -div(order, 2)
     indbeg = origin+decint
@@ -89,7 +91,7 @@ function interpolate!(
     origin = -div(order,2)
     lg = length(fi)
     for i=1:lg
-        indbeg=i+origin+decint+lg
+        indbeg=i+origin+decint+5lg
         indend=indbeg+order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
@@ -178,4 +180,40 @@ function interpolate!( fp, fi, dec, interp::AbstractInterpolation{T, edge, order
     missing
 end
 
+function interpolate!(
+    fp::AbstractArray{T,2}, 
+    fi::AbstractArray{T,2}, 
+    dec::NTuple{2,AbstractVector{T}}, 
+    interp::AbstractInterpolation2d{T, edge, order},
+    tabmod=gettabmod.(size(fi))
+) where {T, edge, order}
 
+    tabfct = gettabfct(interp)
+    decint1 = Int.(floor.(dec[1]))
+    decint2 = Int.(floor.(dec[2]))
+    decfl1 = dec[1] - decint1
+    decfl2 = dec[2] - decint2
+
+    
+
+    tabdec1 = [f(d) for f in tabfct, d in decfl1]
+    tabdec2 = [f(d) for f in tabfct, d in decfl2]
+    origin = -div(order,2)
+
+    dec1=origin+size(fp,1)
+    dec2=origin+size(fp,2)
+
+    for i=1:size(fp,1)
+        deb_i = i + decint1[i]+dec1
+        end_i = deb_i+order
+        for j=1:size(fp,2)
+            deb_j = j+decint2[j]+dec2
+            end_j = deb_j + order
+#            @show size(tabdec1), size(tabdec2)
+            tab = tabdec1[:, i] .* transpose(tabdec2[:, j])
+            
+#            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
+            fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
+        end
+    end
+end

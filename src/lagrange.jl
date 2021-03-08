@@ -60,3 +60,13 @@ struct Lagrange{T, edge, order} <: AbstractInterpolation{T, edge, order}
         new{T, edge, order}(convert.(Polynomial{T}, tabfct_rat)) 
     end
 end
+
+
+struct Lagrange2d{T, edge, order} <: AbstractInterpolation2d{T, edge, order}
+    l1d::Lagrange{T, edge, order}
+    function Lagrange2d(order, T::DataType=Float64; edge::EdgeType=CircEdge)
+        new{T, edge, order}(Lagrange(order, T, edge=edge))
+    end
+end
+
+gettabfct(interp::Lagrange2d)=interp.l1d.tabfct

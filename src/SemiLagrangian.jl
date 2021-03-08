@@ -25,7 +25,8 @@ include("poisson.jl")
 include("rotation.jl")
 include("translation.jl")
 
-export UniformMesh, Advection, AdvectionData, AbstractInterpolation, Lagrange, B_SplineLU, B_SplineFFT
+export UniformMesh, Advection, AdvectionData, AbstractInterpolation, AbstractInterpolation2d
+export Lagrange, B_SplineLU, B_SplineFFT, interpolate!
 export compute_charge!, compute_elfield!, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar 
 export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt 

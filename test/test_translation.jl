@@ -1,7 +1,7 @@
 using DoubleFloats
 using LinearAlgebra
 
-using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, gettranslationvar, AbstractInterpolation, 
+using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, gettranslationvar, AbstractInterpolation, interpolate!,
 Lagrange, B_SplineLU, B_SplineFFT, Lagrange2d
 """
 
@@ -27,7 +27,7 @@ function test_translation(
     nbdt::Int
 ) where {T}
     spmin, spmax, nsp =  T(-5), T(5),  sz[1]
-    vmin, vmax, nv = -T(5), T(5), sz[2]
+    vmin, vmax, nv = -T(5.55), T(5), sz[2]
 
     mesh_sp = UniformMesh( spmin, spmax, nsp)
     mesh_v = UniformMesh( vmin, vmax, nv)
@@ -64,15 +64,17 @@ function test_translation(
     nbdt::Int
 ) where {T}
     spmin, spmax, nsp =  T(-5), T(5),  sz[1]
-    vmin, vmax, nv = -T(5), T(5), sz[2]
+    vmin, vmax, nv = -T(6.5), T(5), sz[2]
 
     mesh_sp = UniformMesh( spmin, spmax, nsp)
     mesh_v = UniformMesh( vmin, vmax, nv)
 
     dt = T(1)
  
-    v1=T(big"0.82545655467782872872782870029282982828737872878776717190927267611111")
-    v2=T(-big"0.915678101929276765616767176761671771766717828781828998101092981877817176")
+    v1=T(big"5.82545655467782872872782870029282982828737872878776717190927267611111")
+    v2=T(-big"3.915678101929276765616767176761671771766717828781828998101092981877817176")
+
+    @show v1, v2
 
     tabref = zeros(T,sz)
     exact!(tabref, (v1, v2), T(0))
@@ -81,8 +83,8 @@ function test_translation(
 
     buf = zeros(T,sz)
 
-    dec1=fill(v1, sz[1])
-    dec2=fill(v2, sz[2])
+    dec1=fill(v1, sz)
+    dec2=fill(v2, sz)
     diffmax=0
     for ind=1:nbdt
         interpolate!(buf, data, (dec1, dec2), interp)
@@ -110,8 +112,8 @@ end
     @time @test test_translation((128, 256), B_SplineLU(15, 128, T), B_SplineLU(15, 256, T), 11) < 1e-22
     @time @test test_translation((128, 256), B_SplineFFT(15, 128, T), B_SplineFFT(15, 256, T), 11) < 1e-22
     T = BigFloat
-    @time @test test_translation((200, 200), Lagrange2d(21, T), 11) < 1e-23
-    @time @test test_translation((200, 200), Lagrange(25, T), Lagrange(25, T), 11) < 1e-28
+    @time @test test_translation((200, 190), Lagrange2d(21, T), 11) < 1e-23
+    @time @test test_translation((200, 190), Lagrange(25, T), Lagrange(25, T), 11) < 1e-28
     @time @test test_translation((128, 256), B_SplineLU(25, 128, T), B_SplineLU(25, 256, T), 11) < 1e-34
     @time @test test_translation((128, 256), B_SplineFFT(25, 128, T), B_SplineFFT(25, 256, T), 11) < 1e-34
 end

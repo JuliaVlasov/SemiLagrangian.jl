@@ -18,7 +18,7 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         s, c = sincos(tf)
         xn, yn = c * x - s * y, + s * x + c * y
-        f[i,j] = exp(-13*((xn)^2+(yn+T(6//5))^2))
+        f[i,j] = exp(-4*((xn)^2+(yn+T(6//5))^2))
     end
 end
 
@@ -36,6 +36,7 @@ function test_rotation(
 
     dt = T(2big(pi)/nbdt)
     adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_fct=[tan, sin, tan])
+#    adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
     sz = sizeall(adv)
     tabref = zeros(T,sz)
     exact!(tabref, mesh_sp, mesh_v, T(0))
@@ -51,6 +52,7 @@ function test_rotation(
         exact!(tabref, mesh_sp, mesh_v, dt*ind)
         diff = norm(data .- tabref, Inf)
         diffmax = max(diffmax, diff)
+        @show ind, diff
     end
     println("test_rotation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
     return diffmax
@@ -70,8 +72,26 @@ function test_rotation(
 
     dt = T(2big(pi)/nbdt)
 
-    dec2 = -dt / step(mesh_sp) * mesh_v.points
-    dec1 = dt / step(mesh_v) * mesh_sp.points
+    # dec1 = -2tan(dt/2) / step(mesh_sp) * mesh_v.points
+    # dec2 = 2tan(dt/2) / step(mesh_v) * mesh_sp.points
+    dec1 = zeros(T, sz)
+    dec2 = zeros(T, sz)
+    coef = 1/(1+dt^2/4)
+    cor = 2sin(dt/2)
+    for i=1:sz[1], j=1:sz[2]
+        x = mesh_sp.points[i] /step(mesh_v)
+        y = mesh_v.points[j]/ step(mesh_sp)
+        v = [- dt * coef * (y + dt*x/2) , (dt * coef * (x - dt*y/2))]
+        nv = norm(v)
+        nr = norm([x,y])
+        if nv != 0
+            v *= cor*nr/nv
+        end
+        dec1[i,j], dec2[i,j] = v
+    end
+
+    @show minimum(dec1), maximum(dec1)
+    @show minimum(dec2), maximum(dec2)
 
 #    @show dec1, dec2
 
@@ -98,7 +118,7 @@ end
 
 @testset "test rotation" begin
     T = Float64
-#    @time @test test_rotation((200, 200), Lagrange2d(5, T), 11111) < 1e-3
+    @time @test test_rotation((200, 200), Lagrange2d(5, T), 100) < 1e-3
     @time @test test_rotation((200, 220), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
     @time @test test_rotation((128, 256), B_SplineLU(5, 128, T), B_SplineLU(5, 256, T), 11) < 1e-3
     @time @test test_rotation((128, 256), B_SplineFFT(5, 128, T), B_SplineFFT(5, 256, T), 11) < 1e-3

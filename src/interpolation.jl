@@ -183,7 +183,7 @@ end
 function interpolate!(
     fp::AbstractArray{T,2}, 
     fi::AbstractArray{T,2}, 
-    dec::NTuple{2,AbstractVector{T}}, 
+    dec::NTuple{2,AbstractArray{T,2}}, 
     interp::AbstractInterpolation2d{T, edge, order},
     tabmod=gettabmod.(size(fi))
 ) where {T, edge, order}
@@ -204,13 +204,17 @@ function interpolate!(
     dec2=origin+size(fp,2)
 
     for i=1:size(fp,1)
-        deb_i = i + decint1[i]+dec1
-        end_i = deb_i+order
         for j=1:size(fp,2)
-            deb_j = j+decint2[j]+dec2
+            deb_i = i + decint1[i,j]+dec1
+            end_i = deb_i+order
+            deb_j = j+decint2[i,j]+dec2
             end_j = deb_j + order
 #            @show size(tabdec1), size(tabdec2)
-            tab = tabdec1[:, i] .* transpose(tabdec2[:, j])
+#    tab = tabdec1[:, tabmod[1][i+decint1[i]+size(fp,1)]] .* transpose(tabdec2[:, tabmod[2][j+decint2[j]+size(fp,2)]])
+# tab = tabdec1[:, tabmod[2][j+decint1[j]+size(fp,2)]] .* transpose(tabdec2[:, tabmod[1][i+decint1[i]+size(fp,1)]])
+            fl_i = decfl1[i,j]
+            fl_j = decfl2[i,j]
+            tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
             
 #            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
             fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])

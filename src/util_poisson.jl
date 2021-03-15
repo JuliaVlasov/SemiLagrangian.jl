@@ -69,6 +69,55 @@ function compute_charge!(
 end
 
 """
+    compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
+
+computation of electric field
+    ∇.e = - ρ
+
+# Argument
+ - `self::AdvectionData` : mutable structure of variables data.
+
+"""
+# function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+#     pv::PoissonVar{T, Nsp, Nv} = getext(self)
+
+#     sz = size(pv.rho)
+#     pfft = pv.pc.pfftbig
+#     buf = fftgenall(pfft, pv.rho)
+#     # for i=1:Nsp
+#     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
+#     # end
+#     pv.t_elfield = ntuple(
+#     x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
+#     Nsp
+# )
+#     missing
+# end
+function compute_elfield(
+    t_mesh_x::NTuple{N,UniformMesh{T}},
+    rho::Array{T, N},
+    pfft
+) where {T <: AbstractFloat, N}
+
+    fct_k(v)= im/sum(v.^2)
+
+    v_k = vec_k_fft.(t_mesh_x)
+    sz = length.(t_mesh_x)
+
+    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
+    buf[1] = 0im
+
+    return ntuple( 
+    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
+    N
+)
+end
+function compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
+    elf .= compute_elfield((mesh,), rho, PrepareFftBig(size(rho), zero(T); numdims=1))[1]
+end
+
+
+"""
     compute_ee(t_mesh_sp, t_elf)
 
 compute electric enegie

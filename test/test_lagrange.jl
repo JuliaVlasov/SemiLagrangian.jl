@@ -1,6 +1,6 @@
 using LinearAlgebra
 using Polynomials
-using SemiLagrangian: Lagrange, Lagrange2d
+using SemiLagrangian: Lagrange
 
 struct Pol2{T}
     tab::Array{T, 2}
@@ -31,7 +31,7 @@ function test_base_lagrange(order)
     end
 end
 function test_base_lagrange2d(order)
-    lag = Lagrange2d(order, Rational{BigInt})
+    lag = Lagrange(order, Rational{BigInt}, nd=2)
     tab = rationalize.(BigInt, rand(order,order), tol=1/1000000)
     fct = Pol2(tab)
     dec = div(order, 2)
@@ -40,7 +40,7 @@ function test_base_lagrange2d(order)
         val_y = rationalize.(BigInt, rand(), tol=1/1000000)
         res = 0//1
         for j=0:order, k=0:order
-            res += lag.l1d.tabfct[j+1](val_x)*lag.l1d.tabfct[k+1](val_y)*fct(j-dec, k-dec)
+            res += lag.tabfct[j+1](val_x)*lag.tabfct[k+1](val_y)*fct(j-dec, k-dec)
         end
         resf= fct(val_x, val_y)
 #        println("order = $order res-fct=$(res-resf)")

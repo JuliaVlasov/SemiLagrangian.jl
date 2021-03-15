@@ -25,8 +25,8 @@ function landau_old(
     tabcoef::Vector{T},
     mesh_x::UniformMesh{T}, 
     mesh_v::UniformMesh{T}, 
-    interp_x::InterpolationType{T, true},
-    interp_v::InterpolationType{T, true}
+    interp_x::AbstractInterpolation{T},
+    interp_v::AbstractInterpolation{T}
 ) where{T,ndims}
     adv_x = Advection( mesh_x, interp_x)
     adv_v = Advection( mesh_v, interp_v)
@@ -252,11 +252,11 @@ function landau2_2(T::DataType, nbdt, timeopt; sz=(32,32,32,32), dt = big"0.1", 
     advd = AdvectionData(adv, data, pvar)
     # advdata = AdvectionData(adv, data, pvar)
     printout(advd, "# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2")
-    printout(advd, "# sp1 : from $(Float64(mesh1_sp.start)) to $(Float64(mesh1_sp.stop))")
-    printout(advd, "# sp2 : from $(Float64(mesh2_sp.start)) to $(Float64(mesh2_sp.stop))")
-    printout(advd, "# v1 : from $(Float64(mesh1_v.start)) to $(Float64(mesh1_v.stop))")
-    printout(advd, "# v2 : from $(Float64(mesh2_v.start)) to $(Float64(mesh2_v.stop))")
-    printout(advd, "# interpolation : $(get_type.(interpall))")
+    printout(advd, "# sp1 : from $(Float64(mesh1_sp.points[1])) to $(Float64(mesh1_sp.points[end]))")
+    printout(advd, "# sp2 : from $(Float64(mesh2_sp.points[1])) to $(Float64(mesh2_sp.points[end]))")
+    printout(advd, "# v1 : from $(Float64(mesh1_v.points[1])) to $(Float64(mesh1_v.points[end]))")
+    printout(advd, "# v2 : from $(Float64(mesh2_v.points[1])) to $(Float64(mesh2_v.points[end]))")
+    printout(advd, "# interpolation : $interpall)")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
@@ -280,8 +280,8 @@ T=Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
 # @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
 # @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
-sz=(32,64,36,40)
-@time landau2_2(T, 30, NoTimeOpt, sz=sz, dt=big"0.1", interpall=ntuple(x -> B_SplineLU(13, sz[x], T), 4))
+sz=(32,32,20,22)
+@time landau2_2(T, 10, SplitThreadsOpt, sz=sz, dt=big"0.1", interpall=ntuple(x -> B_SplineLU(13, sz[x], T), 4))
 ## @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(T,5))
 # landau1_1(T, 10000, MPIOpt, sz=(128,128), dt=big"0.01")
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))

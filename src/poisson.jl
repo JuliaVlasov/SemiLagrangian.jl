@@ -119,9 +119,6 @@ computation of electric field
 function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
     pv::PoissonVar{T, Nsp, Nv} = getext(self)
 
-#    ICI Revenir en arriere (au dernier commit) et y aller plus progressivement
-
-    
     sz = size(pv.rho)
     pfft = pv.pc.pfftbig
     buf = fftgenall(pfft, pv.rho)

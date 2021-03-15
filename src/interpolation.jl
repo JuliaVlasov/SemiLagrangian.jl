@@ -1,16 +1,21 @@
 @enum EdgeType CircEdge=1 InsideEdge=2
 
 """
-    AbstractInterpolation{T, edge, order}
+    AbstractInterpolation{T, edge, order, nd}
 
 Abstract supertype for all interpolation type
+
+# Type parameters
+- `T` : type of number on witch interpolation works
+- `edge` : type of edge treatment
+- `order` : order of interpolation
+- `nd` : number of dimensions of the interpolation
 
 # Implementation constraint
 - `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
 """
-abstract type AbstractInterpolation{T, edge, order} end
+abstract type AbstractInterpolation{T, edge, order, nd} end
 
-abstract type AbstractInterpolation2d{T, edge, order} end
 
 """
     get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
@@ -30,7 +35,7 @@ Interface method to transform the treated line, by default this method does noth
 The transformed line
 
 """
-sol(_::AbstractInterpolation, b::AbstractVector)=b
+sol(_::AbstractInterpolation, b::AbstractArray)=b
 
 isbspline(_::AbstractInterpolation)=false
 
@@ -183,41 +188,74 @@ end
 function interpolate!(
     fp::AbstractArray{T,2}, 
     fi::AbstractArray{T,2}, 
-    dec::NTuple{2,AbstractArray{T,2}}, 
-    interp::AbstractInterpolation2d{T, edge, order},
+    dec::NTuple{2, Array{T, 2}}, 
+    interp::AbstractInterpolation{T, edge, order, 2},
     tabmod=gettabmod.(size(fi))
 ) where {T, edge, order}
 
-    tabfct = gettabfct(interp)
+    res = sol(interp, fi)
+
+    tabfct = interp.tabfct
     decint1 = Int.(floor.(dec[1]))
     decint2 = Int.(floor.(dec[2]))
     decfl1 = dec[1] - decint1
     decfl2 = dec[2] - decint2
 
-    
-
-    tabdec1 = [f(d) for f in tabfct, d in decfl1]
-    tabdec2 = [f(d) for f in tabfct, d in decfl2]
     origin = -div(order,2)
+    dec1=origin+5size(fp,1)
+    dec2=origin+5size(fp,2)
 
-    dec1=origin+size(fp,1)
-    dec2=origin+size(fp,2)
-
-    for i=1:size(fp,1)
-        for j=1:size(fp,2)
-            deb_i = i + decint1[i,j]+dec1
-            end_i = deb_i+order
-            deb_j = j+decint2[i,j]+dec2
-            end_j = deb_j + order
+    for i=1:size(fp,1), j=1:size(fp,2)
+        deb_i = i + decint1[i,j]+dec1
+        end_i = deb_i+order
+        deb_j = j+decint2[i,j]+dec2
+        end_j = deb_j + order
 #            @show size(tabdec1), size(tabdec2)
 #    tab = tabdec1[:, tabmod[1][i+decint1[i]+size(fp,1)]] .* transpose(tabdec2[:, tabmod[2][j+decint2[j]+size(fp,2)]])
 # tab = tabdec1[:, tabmod[2][j+decint1[j]+size(fp,2)]] .* transpose(tabdec2[:, tabmod[1][i+decint1[i]+size(fp,1)]])
-            fl_i = decfl1[i,j]
-            fl_j = decfl2[i,j]
-            tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
-            
+        fl_i = decfl1[i,j]
+        fl_j = decfl2[i,j]
+        tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
+        
 #            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
-            fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
-        end
+        fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
     end
 end
+# TODO pour n'importe quel nd
+# function interpolate!(
+#     fp::AbstractArray{T,nd}, 
+#     fi::AbstractArray{T,nd}, 
+#     dec::NTuple{nd,Any}, 
+#     interp::AbstractInterpolation{T, edge, order,nd},
+#     tabmod=gettabmod.(size(fi))
+# ) where {T, edge, order, nd}
+
+#     res = sol(interp, fi)
+
+#     tabfct = gettabfct(interp)
+#     decint1 = Int.(floor.(dec[1]))
+#     decint2 = Int.(floor.(dec[2]))
+#     decfl1 = dec[1] - decint1
+#     decfl2 = dec[2] - decint2
+
+#     origin = -div(order,2)
+#     dec1=origin+5size(fp,1)
+#     dec2=origin+5size(fp,2)
+
+#     for i=1:size(fp,1), j=1:size(fp,2)
+        
+#         deb_i = i + decint1[i,j]+dec1
+#         end_i = deb_i+order
+#         deb_j = j+decint2[i,j]+dec2
+#         end_j = deb_j + order
+# #            @show size(tabdec1), size(tabdec2)
+# #    tab = tabdec1[:, tabmod[1][i+decint1[i]+size(fp,1)]] .* transpose(tabdec2[:, tabmod[2][j+decint2[j]+size(fp,2)]])
+# # tab = tabdec1[:, tabmod[2][j+decint1[j]+size(fp,2)]] .* transpose(tabdec2[:, tabmod[1][i+decint1[i]+size(fp,1)]])
+#         fl_i = decfl1[i,j]
+#         fl_j = decfl2[i,j]
+#         tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
+        
+# #            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
+#         fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
+#     end
+# end

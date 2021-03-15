@@ -2,27 +2,9 @@
 
 using DoubleFloats
 
-using SemiLagrangian: UniformMesh, compute_ee, compute_ke, PoissonConst, PoissonVar, initcoef!, compute_charge!
+using SemiLagrangian: UniformMesh, compute_ee, compute_ke, PoissonConst, PoissonVar, initcoef!, compute_charge!, compute_elfield
 
-function compute_elfield(
-    t_mesh_x::NTuple{N,UniformMesh{T}},
-    rho::Array{T, N},
-    pfft
-) where {T <: AbstractFloat, N}
 
-    fct_k(v)= im/sum(v.^2)
-
-    v_k = vec_k_fft.(t_mesh_x)
-    sz = length.(t_mesh_x)
-
-    buf = fftgenall(pfft, rho) .* fct_k.(collect(Iterators.product(v_k...)))
-    buf[1] = 0im
-
-    return ntuple( 
-    x -> real(ifftgenall(pfft, reshape(v_k[x],tupleshape(x,N,sz[x])) .* buf )),
-    N
-)
-end
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size

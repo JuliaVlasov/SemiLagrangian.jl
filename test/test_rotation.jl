@@ -2,7 +2,7 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, getrotationvar, AbstractInterpolation, 
-Lagrange, B_SplineLU, B_SplineFFT, AbstractInterpolation2d, Lagrange2d, interpolate!
+Lagrange, B_SplineLU, B_SplineFFT, interpolate!
 """
 
    exact(tf, mesh1, mesh2)
@@ -61,9 +61,9 @@ end
 
 function test_rotation(
     sz::NTuple{2,Int}, 
-    interp::AbstractInterpolation2d{T}, 
+    interp::AbstractInterpolation{T, edge, order, 2}, 
     nbdt::Int
-) where{T}
+) where{T, edge, order}
     spmin, spmax, nsp =  T(-4.5), T(5),  sz[1]
     vmin, vmax, nv = -T(5.2), T(5), sz[2]
 
@@ -118,17 +118,17 @@ end
 
 @testset "test rotation" begin
     T = Float64
-    @time @test test_rotation((100, 122), Lagrange2d(5, T), 11) < 1e-3
+    @time @test test_rotation((100, 122), Lagrange(5, T, nd=2), 11) < 1e-3
     @time @test test_rotation((200, 222), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
     @time @test test_rotation((128, 256), B_SplineLU(5, 128, T), B_SplineLU(5, 256, T), 11) < 1e-3
     @time @test test_rotation((128, 256), B_SplineFFT(5, 128, T), B_SplineFFT(5, 256, T), 11) < 1e-3
     T = Double64
-    @time @test test_rotation((100, 122), Lagrange2d(15, T), 11) < 1e-6
+    @time @test test_rotation((100, 122), Lagrange(15, T, nd=2), 11) < 1e-6
     @time @test test_rotation((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-7
     @time @test test_rotation((128, 256), B_SplineLU(15, 128, T), B_SplineLU(15, 256, T), 11) < 1e-8
     @time @test test_rotation((128, 256), B_SplineFFT(15, 128, T), B_SplineFFT(15, 256, T), 11) < 1e-8
     T = BigFloat
-    @time @test test_rotation((100, 122), Lagrange2d(21, T), 11) < 1e-7
+    @time @test test_rotation((100, 122), Lagrange(21, T, nd=2), 11) < 1e-7
     @time @test test_rotation((200, 220), Lagrange(25, T), Lagrange(25, T), 11) < 1e-10
     @time @test test_rotation((128, 256), B_SplineLU(25, 128, T), B_SplineLU(25, 256, T), 11) < 1e-11
     @time @test test_rotation((128, 256), B_SplineFFT(25, 128, T), B_SplineFFT(25, 256, T), 11) < 1e-11

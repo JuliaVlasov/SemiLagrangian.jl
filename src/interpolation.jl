@@ -185,54 +185,17 @@ function interpolate!( fp, fi, dec, interp::AbstractInterpolation{T, edge, order
     missing
 end
 
-function interpolate!(
-    fp::AbstractArray{T,2}, 
-    fi::AbstractArray{T,2}, 
-    dec::NTuple{2, Array{T, 2}}, 
-    interp::AbstractInterpolation{T, edge, order, 2},
-    tabmod=gettabmod.(size(fi))
-) where {T, edge, order}
-
-    res = sol(interp, fi)
-
-    tabfct = interp.tabfct
-    decint1 = Int.(floor.(dec[1]))
-    decint2 = Int.(floor.(dec[2]))
-    decfl1 = dec[1] - decint1
-    decfl2 = dec[2] - decint2
-
-    origin = -div(order,2)
-    dec1=origin+5size(fp,1)
-    dec2=origin+5size(fp,2)
-
-    for i=1:size(fp,1), j=1:size(fp,2)
-        deb_i = i + decint1[i,j]+dec1
-        end_i = deb_i+order
-        deb_j = j+decint2[i,j]+dec2
-        end_j = deb_j + order
-#            @show size(tabdec1), size(tabdec2)
-#    tab = tabdec1[:, tabmod[1][i+decint1[i]+size(fp,1)]] .* transpose(tabdec2[:, tabmod[2][j+decint2[j]+size(fp,2)]])
-# tab = tabdec1[:, tabmod[2][j+decint1[j]+size(fp,2)]] .* transpose(tabdec2[:, tabmod[1][i+decint1[i]+size(fp,1)]])
-        fl_i = decfl1[i,j]
-        fl_j = decfl2[i,j]
-        tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
-        
-#            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
-        fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
-    end
-end
-# TODO pour n'importe quel nd
 # function interpolate!(
-#     fp::AbstractArray{T,nd}, 
-#     fi::AbstractArray{T,nd}, 
-#     dec::NTuple{nd,Any}, 
-#     interp::AbstractInterpolation{T, edge, order,nd},
+#     fp::AbstractArray{T,2}, 
+#     fi::AbstractArray{T,2}, 
+#     dec::NTuple{2, Array{T, 2}}, 
+#     interp::AbstractInterpolation{T, edge, order, 2},
 #     tabmod=gettabmod.(size(fi))
-# ) where {T, edge, order, nd}
+# ) where {T, edge, order}
 
 #     res = sol(interp, fi)
 
-#     tabfct = gettabfct(interp)
+#     tabfct = interp.tabfct
 #     decint1 = Int.(floor.(dec[1]))
 #     decint2 = Int.(floor.(dec[2]))
 #     decfl1 = dec[1] - decint1
@@ -243,7 +206,6 @@ end
 #     dec2=origin+5size(fp,2)
 
 #     for i=1:size(fp,1), j=1:size(fp,2)
-        
 #         deb_i = i + decint1[i,j]+dec1
 #         end_i = deb_i+order
 #         deb_j = j+decint2[i,j]+dec2
@@ -253,9 +215,57 @@ end
 # # tab = tabdec1[:, tabmod[2][j+decint1[j]+size(fp,2)]] .* transpose(tabdec2[:, tabmod[1][i+decint1[i]+size(fp,1)]])
 #         fl_i = decfl1[i,j]
 #         fl_j = decfl2[i,j]
-#         tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
+# #        tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
+#         tab = dotprod(([f(fl_i) for f in tabfct], [f(fl_j) for f in tabfct]))
         
 # #            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
 #         fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
 #     end
 # end
+# OK pour n'importe quel nd
+function interpolate!(
+    fp::AbstractArray{T,nd}, 
+    fi::AbstractArray{T,nd}, 
+    dec::NTuple{nd,Any}, 
+    interp::AbstractInterpolation{T, edge, order,nd}
+) where {T, edge, order, nd}
+
+    sz = size(fp)
+    tabmod = gettabmod.(sz)
+
+    res = sol(interp, fi)
+
+ 
+    tabfct = interp.tabfct
+
+    origin = -div(order,2)
+    
+    decall = 5 .* sz .+ origin
+
+    decfl = zeros(T, nd)
+    oldfl = zeros(T, nd)
+    deb_i = zeros(Int, nd)
+    end_i = zeros(Int, nd)
+    tab = dotprod(ntuple(x -> [f(decfl[x]) for f in tabfct], nd))
+    for ind in CartesianIndices(sz)
+        for i=1:nd
+            dfl = dec[i](ind)
+            dint = Int(floor(dfl))
+            dfl -= dint
+            deb = ind.I[i] + dint+ decall[i]
+            end_i[i] = deb + order
+            deb_i[i] = deb
+            decfl[i] = dfl
+        end
+        if decfl != oldfl 
+            tab = dotprod(ntuple(x -> [f(decfl[x]) for f in tabfct], nd))
+            oldfl .= decfl
+        end
+#        c = ntuple(x -> deb_i[x]:end_i[x], nd)
+        c = ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], nd)
+        # if nd == 3
+        #     @show ind, size(tab), size(fi[c...])
+        # end 
+        fp[ind] = sum(tab .* fi[c...])
+    end
+end

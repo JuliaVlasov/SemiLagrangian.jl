@@ -104,7 +104,7 @@ function test_rotation(
     buf = zeros(T, sz)
     diffmax=0
     for ind=1:nbdt
-        interpolate!(buf, data, (dec1, dec2), interp)
+        interpolate!(buf, data, (x -> dec1[x],y -> dec2[y]), interp)
         copyto!(data, buf)
         exact!(tabref, mesh_sp, mesh_v, dt*ind)
         diff = norm(data .- tabref, Inf)

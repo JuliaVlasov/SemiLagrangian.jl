@@ -42,6 +42,45 @@ end
 function dotprodother(t_v::NTuple{N, Vector{T}}) where{N,T}
     return prod.(Iterators.product(t_v...))
 end
+# modone(x,n)=(x-1)%n+1
+# struct CircularArray{T,N} <: AbstractArray{T,N} #inherits from AbstractArray
+#     x::AbstractArray{T,N}
+#     tabmod::NTuple{N,Vector{Int}}
+#     function CircularArray(x::AbstractArray{T,N}) where {T,N} 
+# #creates the type only with a vector x
+#         sz = size(x)
+#         tabmod = ntuple( i -> modone.(1:10*sz[i], sz[i]), N)
+#         return new{T,N}(x, tabmod)
+#     end
+# end
+# modtabmod(tm::AbstractVector{Int}, i::Int)=tm[i]
+
+# Base.size(A::CircularArray) = 10 .* size(A.x) #important: use of Base.function
+
+# Base.length(A::CircularArray)=length(A.x)
+
+# function Base.getindex(A::CircularArray, I::Vararg{Int, N}) where N # implements A[I]
+#     return Base.getindex(A.x,modtabmod.(A.tabmod, I)...) #this is the magic operation
+# end
+# function Base.getindex(A::CircularArray, I::Tuple{N, Int}) where N # implements A[I]
+#      return Base.getindex(A.x,modtabmod.(A.tabmod, I)...) #this is the magic operation
+# end
+
+# Base.getindex(A::CircularArray{T,nd}, CI::CartesianIndex{nd}) where{T,nd}=getindex(A, CI.I)
+
+# Base.getindex(A::CircularArray, I) = (A[i] for i in I) #A[1:5], for example
+
+# function Base.setindex!(A::CircularArray,value,I::Vararg{Int, N}) where N # A[I] = value
+#     I2 = size(A)
+#     return Base.setindex!(A.x,value,modtabmod.(A.tabmod,I)...)
+# end
+# function Base.setindex!(A::CircularArray,value,I::Tuple{N, Int}) where N # A[I] = value
+#     I2 = size(A)
+#     return Base.setindex!(A.x,value,modtabmod.(A.tabmod,I)...)
+# end
+# Base.setindex!(A::CircularArray,value, CI::CartesianIndex)= setindex!(A,value,CI.I)
+
+# Base.IndexStyle(::Type{CircularArray}) = IndexCartesian()
 
 
 

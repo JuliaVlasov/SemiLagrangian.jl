@@ -161,13 +161,12 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where{T}
             && la.isLU == lb.isLU && la.band == lb.band 
             && (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols)))
 end
-function sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}
+function sol!(Y::AbstractVector, spA::LuSpline{T}, b::AbstractVector{T}) where{T}
     szb = size(spA.band,2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
     begrow = n-spA.ku
     begcol = n-spA.kl
-    Y = zeros(T, n)
-    Y = copy(b)
+    copyto!(Y, b)
     endmat = spA.iscirc ? begrow : n
     endmat2 = spA.iscirc ? begcol : n
     for i=2:endmat
@@ -201,6 +200,7 @@ function sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}
     end
     return X, Y
 end
+# sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}=sol!(zeros(size(b,1)), spA, b)
 # get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 
@@ -224,10 +224,10 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
+struct B_SplineLU{T, edge, order, nd} <: B_Spline{T, edge, order, nd}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
-    function B_SplineLU( order::Int, n::Int, T::DataType=Float64)
+    function B_SplineLU( order::Int, n::Int, T::DataType=Float64; nd=1)
         (order%2 == 0) && throw(ArgumentError("order=$order B_SplineLU for even  order is not implemented n=$n")) 
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
@@ -235,13 +235,31 @@ struct B_SplineLU{T, edge, order} <: B_Spline{T, edge, order}
         # N = typeof(bspline.fact_order)
         # tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=true, isLU=true)
-        return new{T, CircEdge, order}(ls, convert.(Polynomial{T}, tabfct_rat))
+        return new{T, CircEdge, order, nd}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
     B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
 end
 
 
-sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number}=sol(bsp.ls, b)[1]
+
+function sol!(Y::AbstractArray{T, nd}, bsp::B_SplineLU{T}, b::AbstractArray{T, nd}) where{T, nd}
+    if nd == 1
+        return sol!(Y, bsp.ls, b)
+    else
+        sz = size(Y)
+        buf = zeros(T, sz)
+        for i=1:sz[end]
+            sol!( selectdim( buf, nd, i), bsp, selectdim(b, nd, i))
+        end
+        for i in CartesianIndices(sz[1:end-1])
+            sol!(view(Y,i,:), bsp, view(b,i,:))
+        end
+    end
+end
+
+sol(bsp::B_SplineLU{T}, b::AbstractArray{T, nd}) where {T<:Number, nd}=sol!(zeros(T,size(b)), bsp, b)[1]
+
+
 # get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
 
 

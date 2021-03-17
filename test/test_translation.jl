@@ -59,37 +59,35 @@ function test_translation(
 
 end
 function test_translation(
-    sz::NTuple{2,Int},
-    interp::Lagrange{T, edge, order, 2}, 
+    sz::NTuple{nd,Int},
+    interp::Lagrange{T, edge, order, nd}, 
     nbdt::Int
-) where {T, edge, order}
-    spmin, spmax, nsp =  T(-5), T(5),  sz[1]
-    vmin, vmax, nv = -T(6.5), T(5), sz[2]
-
-    mesh_sp = UniformMesh( spmin, spmax, nsp)
-    mesh_v = UniformMesh( vmin, vmax, nv)
+) where {T, edge, order, nd}
 
     dt = T(1)
- 
-    v1=T(big"5.82545655467782872872782870029282982828737872878776717190927267611111")
-    v2=T(-big"3.915678101929276765616767176761671771766717828781828998101092981877817176")
 
-    @show v1, v2
+    vall = ntuple( x -> T(10rand(BigFloat) - 5), nd)
+
+    @show vall
 
     tabref = zeros(T,sz)
-    exact!(tabref, (v1, v2), T(0))
+    exact!(tabref, vall, T(0))
 
     data = copy(tabref)
 
     buf = zeros(T,sz)
 
-    dec1=fill(v1, sz)
-    dec2=fill(v2, sz)
+    # dec1 = fill(v1, sz)
+    # dec2 = fill(v2, sz)
+
+    vallfct = ntuple(i -> (x -> vall[i]), nd)
+
     diffmax=0
     for ind=1:nbdt
-        interpolate!(buf, data, (dec1, dec2), interp)
+        interpolate!(buf, data, vallfct, interp)
+#        interpolate!(buf, data, (dec1, dec2), interp)
         copyto!(data, buf)
-        exact!(tabref, (v1, v2), T(ind))
+        exact!(tabref, vall, T(ind))
         diff = norm(data .- tabref, Inf)
         diffmax = max(diffmax, diff)
         @show ind, diff
@@ -102,7 +100,8 @@ end
 
 @testset "test translation" begin
     T = Float64
-    @time @test test_translation((200, 220), Lagrange(5, T, nd=2), 11) < 1e-7
+    @time @test test_translation((400, 220), Lagrange(9, T, nd=2), 11) < 1e-7
+    @time @test test_translation((50, 60, 40), Lagrange(9, T, nd=3), 11) < 1e-5
     @time @test test_translation((200, 220), Lagrange(5, T), Lagrange(5, T), 11) < 1e-7
     @time @test test_translation((128, 256), B_SplineLU(5, 128, T), B_SplineLU(5, 256, T), 11) < 1e-8
     @time @test test_translation((128, 256), B_SplineFFT(5, 128, T), B_SplineFFT(5, 256, T), 11) < 1e-8

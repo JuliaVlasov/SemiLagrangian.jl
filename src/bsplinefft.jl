@@ -22,11 +22,11 @@ Type containing spline coefficients for b-spline interpolation based on fft, usi
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineFFT{T, order} <: B_Spline{T, CircEdge, order}
+struct B_SplineFFT{T, order, nd} <: B_Spline{T, CircEdge, order, nd}
     c_fft::Vector{Complex{T}}
     parfft::PrepareFftBig
     tabfct::Vector{Polynomial{T}}
-    function B_SplineFFT( order::Int, n::Int, T::DataType=Float64)
+    function B_SplineFFT( order::Int, n::Int, T::DataType=Float64; nd=1)
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         kl, ku = get_kl_ku(order)
@@ -38,7 +38,7 @@ struct B_SplineFFT{T, order} <: B_Spline{T, CircEdge, order}
             c[(dec+i)%n+1] = tab_coef[i]
         end
         c_fft = fftgen(parfft, c)
-        return new{T, order}(c_fft, parfft, convert.(Polynomial{T}, tabfct_rat))
+        return new{T, order, nd}(c_fft, parfft, convert.(Polynomial{T}, tabfct_rat))
     end
     B_SplineFFT(o::Int, n::Int, _::T) where {T}=B_SplineFFT(o, n, T)
 end

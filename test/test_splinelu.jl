@@ -123,6 +123,7 @@ function test_splu(n, order, iscirc, isLU; type=Rational{BigInt}, tol=NaN, perf=
         x2, y2 = sol(spB, b)
         
         if isnan(tol)
+#            @show norm(x-x2,Inf)
             @test x == x2
         else
             println("norm=$(norm(x-x2))")
@@ -154,13 +155,13 @@ function test_perf(n ,order, iscirc)
 end
 
 function test_interface()
-    getpar(bsp::B_SplineLU{T, tedge, order}) where {T, tedge, order, N}= (T, tedge, order)
+    getpar(bsp::B_SplineLU{T, tedge, order, nd}) where {T, tedge, order, nd}= (T, tedge, order, nd)
     for i = 3:2:29
         bsp= B_SplineLU(i,104,big"0.")
-        (_1, _2, order) = getpar(bsp)
+        (_1, _2, order, nd) = getpar(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test "B_SplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
+        @test "B_SplineLU{BigFloat,CircEdge,$order,$nd}" == replace("$bsp", " " => "")
     end
 end
     

@@ -200,7 +200,7 @@ function sol!(Y::AbstractVector, spA::LuSpline{T}, b::AbstractVector{T}) where{T
     end
     return X, Y
 end
-# sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}=sol!(zeros(size(b,1)), spA, b)
+sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}=sol!(zeros(T,size(b,1)), spA, b)
 # get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline)=sp.ku+sp.kl+1
 

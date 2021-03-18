@@ -15,13 +15,20 @@ Abstract supertype for all interpolation type
 - `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
 """
 abstract type AbstractInterpolation{T, edge, order, nd} end
-
+struct NullInterpoLation{T} <: AbstractInterpolation{T, CircEdge, 1, 0} end
 
 """
     get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
 Return the order of interpolation implementation       
 """
 get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}=order
+
+"""
+    get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
+Return the numer of dims of interpolation implementation       
+"""
+get_ndims(_::AbstractInterpolation{T, edge, order, nd}) where{T, edge, order, nd}=nd
+
 """
     sol(_::AbstractInterpolation, line::AbstractVector)
 

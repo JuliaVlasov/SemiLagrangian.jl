@@ -78,7 +78,8 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
     tab_fct=[identity,identity,identity],
     timeopt::TimeOptimization=NoTimeOpt
 ) where{T, Nsp, Nv}
-        Nsp <= Nv || throw(ArgumentError("Nsp=$Nsp must be less or equal to Nv=$Nv"))
+        Nsp == sum(get_ndims.(t_interp_sp)) ||throw(ArgumentError("the sum of dims incorrect for space"))
+       Nv == sum(get_ndims.(t_interp_v)) ||throw(ArgumentError("the sum of dims incorrect for velocity"))
         sizeall=length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
@@ -141,6 +142,7 @@ Mutable structure that contains variable parameters of advection series
 - `state_dim::Int` : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
 - `data:Array{T,Nsum}` : it is the working buffer
 - `bufdata::Vector{T}` : vector of the same size of the working buffer
+- `fmrtabdata::NTuple{Nsum,Array{T,Nsum}}` : tuple of array with the same size than data but with permutated dimensions
 - `t_buf::NTuple{Nsum, Array{T,2}}` : tuple of buffer that is used to get the linear data for interpolation, one buffer per thread
 - `cache_alpha::Union{T,Nothing}` : cache for precal, the precal is compute only when the alpha or decint values change
 - `cache_decint::Int64` : for precal cache

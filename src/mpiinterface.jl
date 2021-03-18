@@ -17,13 +17,13 @@ function mpibroadcast(mpid, t_split, data::Array{T,N}) where {T,N}
 
     MPI.Barrier(mpid.comm)
     if isbitstype(T)
-        # for Float64 or Double64 ... per example
+        # for Float64 or Double64 ... for example
         for i=1:mpid.nb
             vbcast = view(data, t_split[i])
             MPI.Bcast!(vbcast, i-1, mpid.comm)
         end
     else
-        # for BigFloat ... per example
+        # for BigFloat ... for example
         for i=1:mpid.nb
             vbcast = view(data, t_split[i])
             bufr = MPI.bcast(vbcast, i-1, mpid.comm)

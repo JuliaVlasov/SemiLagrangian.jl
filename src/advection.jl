@@ -158,7 +158,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     state_coef::Int # from 1 to length(adv.tab_coef)
     state_dim::Int # from 1 to N
     data::Array{T,Nsum}
-    bufdata::Vector{T}
+    bufdata::Array{T}
     t_buf::NTuple{Nsum, Array{T,2}}
     t_itr
     tt_split
@@ -292,7 +292,7 @@ function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Ns
         f = advd.data
     else
         ptr = pointer(advd.bufdata)
-        f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p])
+        f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
         permutedims!(f, advd.data, p)
     end
     return f
@@ -329,15 +329,21 @@ function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, 
     initcoef!(extdata, self)
     curind =  _getcurrentindice(self)
     f = getformdata(self)
+#    @show size(f)
     tabmod=gettabmod(size(f,1)) # just for optimization of interpolation!
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         local buf=view(tabbuf, :, 1)
 #        @inbounds for ind in getitr(self)
+    # fmrcpt=1
         for ind in getitr(self)
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
             local lgn = view(f,:,ind)
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
+        #    fmrcpt +=1
+        #     if fmrcpt == 30
+        #         GC.gc()
+        #     end
         end
     elseif timeopt == SimpleThreadsOpt
 #        @inbounds begin

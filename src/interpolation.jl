@@ -89,7 +89,7 @@ function interpolate!(
     fi::AbstractVector{T},
     decint::Int, 
     precal::Vector{T}, 
-    interp::AbstractInterpolation{T, CircEdge, order},
+    interp::AbstractInterpolation{T, CircEdge, order, 1},
     tabmod=gettabmod(length(fi))
 ) where {T, order}
     res = sol(interp,fi)

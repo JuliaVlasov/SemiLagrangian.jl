@@ -49,6 +49,7 @@ function test_translation(
     data = getdata(advdata)
     for ind=1:nbdt
         while advection!(advdata) end
+#        GC.gc()
         exact!(tabref, (v1, v2), T(ind))
         diff = norm(data .- tabref, Inf)
 #        @show v1, v2, ind, diff

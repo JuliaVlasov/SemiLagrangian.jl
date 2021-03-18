@@ -159,6 +159,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     state_dim::Int # from 1 to N
     data::Array{T,Nsum}
     bufdata::Array{T}
+    fmrtabdata::NTuple{Nsum,Array{T,Nsum}}
     t_buf::NTuple{Nsum, Array{T,2}}
     t_itr
     tt_split
@@ -177,6 +178,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
         datanew = Array{T,Nsum}(undef,s)
         bufdata = Vector{T}(undef, length(data))
+        fmrtabdata = ntuple(x-> zeros(T,s[getperm(parext,x)]), Nsum)
         copyto!(datanew, data)
         t_itr = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][2:Nsum])), Nsum)
         t_linind = ntuple(x -> LinearIndices(s[getperm(parext,x)]), Nsum)
@@ -186,7 +188,7 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
         ordmax = maximum(get_order.((adv.t_interp_sp..., adv.t_interp_v...)))
         return new{T, Nsp, Nv, Nsum, timeopt}(
     adv, 1, 1,  
-    datanew, bufdata, t_buf,
+    datanew, bufdata, fmrtabdata, t_buf,
 #    t_itrfirst, t_itrsecond, tt_split,
     t_itr, tt_split,
     nothing, 0, zeros(T,ordmax+1),
@@ -291,8 +293,9 @@ function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Ns
         # the case of identity permutation no copy is needed
         f = advd.data
     else
-        ptr = pointer(advd.bufdata)
-        f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
+        # ptr = pointer(advd.bufdata)
+        # f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
+        f = advd.fmrtabdata[_getcurrentindice(advd)]
         permutedims!(f, advd.data, p)
     end
     return f

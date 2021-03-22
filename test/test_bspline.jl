@@ -3,26 +3,27 @@
 using LinearAlgebra
 using Polynomials
 
-using SemiLagrangian: getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal, get_precal
+using SemiLagrangian:
+    getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal, get_precal
 
 function test_spline(order, prec)
     setprecision(prec) do
         @time @testset "test spline object of order $order" begin
-           p0 = getbspline(order,0)
-            p3 = getbspline(order,3)
-            @test p3 == decal(p0,3)
-            @test isapprox(sum(p0.(range(big"1.0",length=order+1))),1, atol=1e-60)
-            @test sum(p0.(range(one(Rational{BigInt}),length=order+1))) == 1             
+            p0 = getbspline(order, 0)
+            p3 = getbspline(order, 3)
+            @test p3 == decal(p0, 3)
+            @test isapprox(sum(p0.(range(big"1.0", length = order + 1))), 1, atol = 1e-60)
+            @test sum(p0.(range(one(Rational{BigInt}), length = order + 1))) == 1
             for i = 0:order
                 x = rand(BigFloat)
-                res0=p0(x+i)
-                res3=p3(x+i+3)
-                @test isapprox( res0, res3,atol=1e-60)
+                res0 = p0(x + i)
+                res3 = p3(x + i + 3)
+                @test isapprox(res0, res3, atol = 1e-60)
                 @test order == Polynomials.degree(p0[i])
                 pol1 = p0[i]
                 pol2 = p0[i+1]
-                for j=1:order
-                    @test pol1(i+1) == pol2(i+1)
+                for j = 1:order
+                    @test pol1(i + 1) == pol2(i + 1)
                     pol1 = derivative(pol1)
                     pol2 = derivative(pol2)
                 end
@@ -31,14 +32,14 @@ function test_spline(order, prec)
     end
 end
 for order = 1:15
-    test_spline( order, order < 20 ? 256 : 512 )
+    test_spline(order, order < 20 ? 256 : 512)
 end
 function nb_diff_tol(f1, f2, tol)
-    nb=0
-    for i=1:size(f1,1)
-        if abs(f1[i]-f2[i])> tol
-  #          println("indice=$i diff=$(abs(f1[i]-f2[i]))")
-            nb+=1
+    nb = 0
+    for i = 1:size(f1, 1)
+        if abs(f1[i] - f2[i]) > tol
+            #          println("indice=$i diff=$(abs(f1[i]-f2[i]))")
+            nb += 1
         end
     end
     return nb
@@ -68,7 +69,7 @@ B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
 ```
 
 """
-function bsplinerec(p, j, x::T) where{T}
+function bsplinerec(p, j, x::T) where {T}
 
     if p == 0
         if j == 0
@@ -87,16 +88,22 @@ end
 function test_bspline()
 
     @time @testset "test verify bspline" begin
-        tab_x=[1821//10000, 1//1234, 7677//8999, big"123456789"//big"234567890", 0//1]
-        for ord=1:10, x in tab_x
-            for i=0:(ord-1)
-                @test bsplinerec(ord,i,x) == getbspline(ord,i)(x)
+        tab_x = [
+            1821 // 10000,
+            1 // 1234,
+            7677 // 8999,
+            big"123456789" // big"234567890",
+            0 // 1,
+        ]
+        for ord = 1:10, x in tab_x
+            for i = 0:(ord-1)
+                @test bsplinerec(ord, i, x) == getbspline(ord, i)(x)
             end
         end
     end
 
 end
-       
+
 
 
 @testset "test get_kl_ku" begin
@@ -105,10 +112,7 @@ end
 
     kl, ku = get_kl_ku(6)
     @test kl == 2 && ku == 3
-#    @test kl == 3 && ku == 2
+    #    @test kl == 3 && ku == 2
 end
 
 test_bspline()
-
-
-

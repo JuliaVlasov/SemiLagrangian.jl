@@ -22,7 +22,7 @@ struct UniformMesh{T}
     width::T
 
     function UniformMesh(start::T, stop::T, length::Int) where {T}
-        pdeb = range(start, stop = stop, length = length+1)
+        pdeb = range(start, stop = stop, length = length + 1)
         points = pdeb[1:end-1]
         step_loc = step(pdeb)
         width = stop - start
@@ -40,7 +40,7 @@ Get the step of the mesh
 # Return
 - `step` : the step of the mesh that is the difference between two contiguous points
 """
-Base.step(mesh::UniformMesh)=mesh.step
+Base.step(mesh::UniformMesh) = mesh.step
 """
     Base.length(mesh::UniformMesh)
 
@@ -52,7 +52,7 @@ Get the length of the mesh
 # Return
 - `length` : the length of the mesh that is the number of points and cells
 """
-Base.length(mesh::UniformMesh)=length(mesh.points)
+Base.length(mesh::UniformMesh) = length(mesh.points)
 """
     points(mesh::UniformMesh)
 
@@ -64,7 +64,7 @@ Get the points of the mesh
 # Return
 - `points` : the points of the mesh that is the vector of all points of the mesh except the last
 """
-points(mesh::UniformMesh)=mesh.points
+points(mesh::UniformMesh) = mesh.points
 """
     width(mesh::UniformMesh)
 
@@ -76,7 +76,7 @@ Get the width of the mesh
 # Return
 - `width` : the width that is step*length or distance between left and right edges.
 """
-width(mesh::UniformMesh)=mesh.width
+width(mesh::UniformMesh) = mesh.width
 """
     vec_k_fft(mesh::UniformMesh{T}) where{T}
 
@@ -88,12 +88,9 @@ Get the fft coefficients of the mesh
 # Return
 - fft coefficients
 """
-function vec_k_fft(mesh::UniformMesh{T}) where{T}
-    midx = div(length(mesh),2)
+function vec_k_fft(mesh::UniformMesh{T}) where {T}
+    midx = div(length(mesh), 2)
     k = 2T(pi) / (width(mesh))
-    res =  k * vcat(0:midx-1, -midx:-1)
+    res = k * vcat(0:midx-1, -midx:-1)
     return res
 end
-
-
-

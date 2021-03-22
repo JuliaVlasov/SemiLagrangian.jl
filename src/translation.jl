@@ -1,10 +1,10 @@
 
 
-struct TranslationVar{T, Nsum} <: AbstractExtDataAdv{T, Nsum}
+struct TranslationVar{T,Nsum} <: AbstractExtDataAdv{T,Nsum}
     values::NTuple{Nsum,T}
 end
-function gettranslationvar(v::NTuple{Nsum,T}) where{T, Nsum}
-    return TranslationVar{T, Nsum}(v)
+function gettranslationvar(v::NTuple{Nsum,T}) where {T,Nsum}
+    return TranslationVar{T,Nsum}(v)
 end
 
 """
@@ -14,9 +14,9 @@ Implementation of the interface function that is called before each interpolatio
 
 """
 function getalpha(
-    pv::TranslationVar{T, Nsum}, 
-    self::AdvectionData{T, Nsp, Nv, Nsum},
-    ind
-) where {T, Nsp, Nv, Nsum}
-    return pv.values[_getcurrentindice(self)]*getcur_t(self)
+    pv::TranslationVar{T,Nsum},
+    self::AdvectionData{T,Nsp,Nv,Nsum},
+    ind,
+) where {T,Nsp,Nv,Nsum}
+    return pv.values[_getcurrentindice(self)] * getcur_t(self)
 end

@@ -8,7 +8,7 @@ using Polynomials
 using FFTW
 using Base.Threads
 
-include("nompiinterface.jl")
+include("mpiinterface.jl")
 
 include("util.jl")
 include("fftbig.jl")
@@ -27,9 +27,10 @@ include("translation.jl")
 
 export UniformMesh, Advection, AdvectionData, AbstractInterpolation, AbstractInterpolation2d
 export Lagrange, B_SplineLU, B_SplineFFT, interpolate!
-export compute_charge!, compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
-export dotprod, getpoissonvar, getrotationvar, gettranslationvar 
-export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt 
+export compute_charge!,
+    compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
+export dotprod, getpoissonvar, getrotationvar, gettranslationvar
+export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt
 export get_type, sizeall, getdata
 
 end

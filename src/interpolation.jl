@@ -1,4 +1,6 @@
-@enum EdgeType CircEdge=1 InsideEdge=2
+
+
+@enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
     AbstractInterpolation{T, edge, order, nd}
@@ -14,20 +16,14 @@ Abstract supertype for all interpolation type
 # Implementation constraint
 - `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
 """
-abstract type AbstractInterpolation{T, edge, order, nd} end
-struct NullInterpoLation{T} <: AbstractInterpolation{T, CircEdge, 1, 0} end
+abstract type AbstractInterpolation{T,edge,order} end
 
 """
     get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
 Return the order of interpolation implementation       
 """
-get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}=order
+get_order(_::AbstractInterpolation{T,edge,order}) where {T,edge,order} = order
 
-"""
-    get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
-Return the numer of dims of interpolation implementation       
-"""
-get_ndims(_::AbstractInterpolation{T, edge, order, nd}) where{T, edge, order, nd}=nd
 
 """
     sol(_::AbstractInterpolation, line::AbstractVector)
@@ -42,31 +38,109 @@ Interface method to transform the treated line, by default this method does noth
 The transformed line
 
 """
-sol(_::AbstractInterpolation, b::AbstractArray)=b
+sol(_::AbstractInterpolation, b::AbstractArray) = b
 
-isbspline(_::AbstractInterpolation)=false
+issolidentity(_::AbstractInterpolation) = true
 
-Base.show(io::IO, interp::AbstractInterpolation)=print(io, typeof(interp))
+isbspline(_::AbstractInterpolation) = false
 
+Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 
+# Provisoire
+using LinearAlgebra
+# create a band or circular matrix from a vector of non-zero data
+function topl(n, t, iscirc = true)
+    res = zeros(Rational{BigInt}, n, n)
+    kl, ku = get_kl_ku(size(t, 1))
+    for i = 1:n
+        for (j, v) in enumerate(t)
+            ind = i + j - kl - 1
+            if 1 <= ind <= n
+                res[i, ind] = v
+            elseif iscirc
+                if ind < 1
+                    ind += n
+                else
+                    ind -= n
+                end
+                res[i, ind] = v
+            end
+        end
+    end
+    return res
+end
+# Fin provisoire
 
+function sol!(
+    Y::AbstractArray{T,N},
+    interp_t::AbstractVector{I},
+    b::AbstractArray{T,N},
+) where {T,N,I<:AbstractInterpolation{T}}
+    sz = size(Y)
+    p = circshift(1:N, -1)
+    perm = p
+    bufout = b
+    for i = 1:N
+        interp = interp_t[i]
+        if issolidentity(interp)
+            if i == 1
+                bufout = b
+            else
+                perm = perm[p]
+            end
+        else
+            # order = get_order(interp)
+            # t = getbspline(big(order), 0).(1:order)
+            # A = topl(sz[1], t, true)
+        
+#            @show i, sz
+            bufin = (i == 1) ? b : permutedims(bufout, perm)
+            bufout = zeros(T, sz)
+            # diffmax = 0
+            for c in CartesianIndices(sz[2:end])
+                bo=view(bufout, :, c)
+                bi=view(bufin, :, c)
+#                bbi = copy(bi)
+                sol!(bo, interp, bi)
+                # diff = norm(bbi - A*bo)
+                # diffmax = max(diff,diffmax)
+            end
+#            @show diffmax
+            perm = p
+        end
+        sz = sz[p]
+    end
+    permutedims!(Y, bufout, p)
+    return Y
+end
+function sol(interp_t::AbstractVector{I}, b::AbstractArray{T,N}) where {T,N,I<:AbstractInterpolation{T}}
+    if all(issolidentity.(interp_t))
+        return b
+    else
+        return sol!(zeros(T, size(b)), interp_t, b)
+    end
+end
 
-@inline function get_precal(interp::AbstractInterpolation{T}, decf::T) where{T}
+@inline function get_precal(interp::AbstractInterpolation{T}, decf::T) where {T}
     return [T(fct(decf)) for fct in interp.tabfct]
 end
 
-@inline function get_precal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where{T}
-    v .= get_precal(bsp,decf)
+@inline function get_precal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where {T}
+    v .= get_precal(bsp, decf)
 end
 
 # modulo for "begin to one" array
-modone(ind, n)=(n+ind-1)%n+1
-gettabmod(lg)=modone.(1:10lg, lg) # 
-function get_allprecal(interp::AbstractInterpolation{T, InsideEdge,order}, decint::Int, decfloat::T) where {T,order}
+modone(ind, n) = (n + ind - 1) % n + 1
+gettabmod(lg) = modone.(1:10lg, lg) # 
+function get_allprecal(
+    interp::AbstractInterpolation{T,InsideEdge,order},
+    decint::Int,
+    decfloat::T,
+) where {T,order}
     origin = -div(order, 2)
-    indbeg = origin+decint
-    indend = indbeg+order
-    return [get_precal(interp, decfloat+i) for i=indbeg:indend]
+    indbeg = origin + decint
+    indend = indbeg + order
+    return [get_precal(interp, decfloat + i) for i = indbeg:indend]
 end
 
 """
@@ -91,23 +165,23 @@ decint and precal are precompute with get_precal method, the TypeEdge is CircEdg
 # Returns :
 - No return
 """
-function interpolate!( 
-    fp::AbstractVector{T}, 
+function interpolate!(
+    fp::AbstractVector{T},
     fi::AbstractVector{T},
-    decint::Int, 
-    precal::Vector{T}, 
-    interp::AbstractInterpolation{T, CircEdge, order, 1},
-    tabmod=gettabmod(length(fi))
-) where {T, order}
-    res = sol(interp,fi)
-    origin = -div(order,2)
+    decint::Int,
+    precal::Vector{T},
+    interp::AbstractInterpolation{T,CircEdge,order},
+    tabmod = gettabmod(length(fi)),
+) where {T,order}
+    res = sol(interp, fi)
+    origin = -div(order, 2)
     lg = length(fi)
-    for i=1:lg
-        indbeg=i+origin+decint+5lg
-        indend=indbeg+order
+    for i = 1:lg
+        indbeg = i + origin + decint + 5lg
+        indend = indbeg + order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
-    missing  
+    missing
 end
 """
     interpolate!( 
@@ -131,40 +205,42 @@ decint and precal are precompute with get_precal method, the TypeEdge is InsideE
 # Returns :
 - No return
 """
-function interpolate!( 
-    fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
-    allprecal::Vector{Vector{T}}, 
-    interp::AbstractInterpolation{T, InsideEdge, order},
-    tabmod=gettabmod(length(fi))
-) where {T, order}
-    res = sol(interp,fi)
-    origin = -div(order,2)
+function interpolate!(
+    fp::AbstractVector{T},
+    fi::AbstractVector{T},
+    decint::Int,
+    allprecal::Vector{Vector{T}},
+    interp::AbstractInterpolation{T,InsideEdge,order},
+    tabmod = gettabmod(length(fi)),
+) where {T,order}
+    res = sol(interp, fi)
+    origin = -div(order, 2)
     lg = length(fi)
     lgp = length(allprecal)
-    borne1=-decint-origin
-    borne2=lg-decint+origin-1
-    for i=1:borne1
-        indbeg=1
-        indend=order+1
-        ind=i
-#        @show 1, i, ind, indbeg, indend, decint, lgp
+    borne1 = -decint - origin
+    borne2 = lg - decint + origin - 1
+    for i = 1:borne1
+        indbeg = 1
+        indend = order + 1
+        ind = i
+        #        @show 1, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i=borne1+1:borne2
-        indbeg = i-borne1
-        indend = indbeg+order
-        ind = borne1+1
-#        @show 2, i, ind, indbeg, indend, decint, lgp
+    for i = borne1+1:borne2
+        indbeg = i - borne1
+        indend = indbeg + order
+        ind = borne1 + 1
+        #        @show 2, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i=borne2+1:lg
-        indbeg = lg-order
+    for i = borne2+1:lg
+        indbeg = lg - order
         indend = lg
-        ind = lgp-(lg-i)
-#        @show 3, i, ind, indbeg, indend, decint, lgp
+        ind = lgp - (lg - i)
+        #        @show 3, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    missing  
+    missing
 end
 
 """
@@ -181,13 +257,18 @@ apply the offset dec to the function fi interpolate by interp struct, the result
 # Returns :
 - No return
 """
-function interpolate!( fp, fi, dec, interp::AbstractInterpolation{T, edge, order}) where {T, edge, order}
-    decint = convert(Int, floor(dec)) 
+function interpolate!(
+    fp,
+    fi,
+    dec,
+    interp::AbstractInterpolation{T,edge,order},
+) where {T,edge,order}
+    decint = convert(Int, floor(dec))
     decfloat = dec - decint
     if edge == CircEdge
-        return interpolate!(fp, fi, decint, get_precal(interp, decfloat), interp )
+        return interpolate!(fp, fi, decint, get_precal(interp, decfloat), interp)
     else
-        return interpolate!(fp, fi, decint, get_allprecal(interp, decint, decfloat), interp )
+        return interpolate!(fp, fi, decint, get_allprecal(interp, decint, decfloat), interp)
     end
     missing
 end
@@ -224,55 +305,57 @@ end
 #         fl_j = decfl2[i,j]
 # #        tab = [f(fl_i) for f in tabfct] .* transpose([f(fl_j) for f in tabfct])
 #         tab = dotprod(([f(fl_i) for f in tabfct], [f(fl_j) for f in tabfct]))
-        
+
 # #            @show size(tab), size(fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
 #         fp[i,j] = sum( tab .* fi[tabmod[1][deb_i:end_i], tabmod[2][deb_j:end_j]])
 #     end
 # end
 # OK pour n'importe quel nd
 function interpolate!(
-    fp::AbstractArray{T,nd}, 
-    fi::AbstractArray{T,nd}, 
-    dec::NTuple{nd,Any}, 
-    interp::AbstractInterpolation{T, edge, order,nd}
-) where {T, edge, order, nd}
+    fp::AbstractArray{T,N},
+    fi::AbstractArray{T,N},
+    dec::NTuple{N,Function},
+    interp_t::AbstractVector{I},
+) where {T,N,I<:AbstractInterpolation{T}}
 
+    N == length(interp_t) || thrown(ArgumentError("The number of Interpolation $(length(interp_t)) is different of N=$N"))
     sz = size(fp)
     tabmod = gettabmod.(sz)
 
-    res = sol(interp, fi)
+    res = sol(interp_t, fi)
+
 
  
-    tabfct = interp.tabfct
-
-    origin = -div(order,2)
-    
+    order = get_order.(interp_t)
+    origin = -1 .* div.(order,(2,))
     decall = 5 .* sz .+ origin
 
-    decfl = zeros(T, nd)
-    oldfl = zeros(T, nd)
-    deb_i = zeros(Int, nd)
-    end_i = zeros(Int, nd)
-    tab = dotprod(ntuple(x -> [f(decfl[x]) for f in tabfct], nd))
+    decfl = zeros(T, N)
+    oldfl = zeros(T, N)
+    deb_i = zeros(Int, N)
+    end_i = zeros(Int, N)
+ 
+    tab = dotprod(ntuple(x -> [f(decfl[x]) for f in interp_t[x].tabfct], N))
+
     for ind in CartesianIndices(sz)
-        for i=1:nd
+        for i = 1:N
             dfl = dec[i](ind)
             dint = Int(floor(dfl))
             dfl -= dint
-            deb = ind.I[i] + dint+ decall[i]
-            end_i[i] = deb + order
+            deb = ind.I[i] + dint + decall[i]
+            end_i[i] = deb + order[i]
             deb_i[i] = deb
             decfl[i] = dfl
         end
-        if decfl != oldfl 
-            tab = dotprod(ntuple(x -> [f(decfl[x]) for f in tabfct], nd))
+        if decfl != oldfl
+            tab = dotprod(ntuple(x -> [f(decfl[x]) for f in interp_t[x].tabfct], N))
             oldfl .= decfl
         end
-#        c = ntuple(x -> deb_i[x]:end_i[x], nd)
-        c = ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], nd)
+        #        c = ntuple(x -> deb_i[x]:end_i[x], nd)
+        c = ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)
         # if nd == 3
         #     @show ind, size(tab), size(fi[c...])
         # end 
-        fp[ind] = sum(tab .* fi[c...])
+        fp[ind] = sum(tab .* res[c...])
     end
 end

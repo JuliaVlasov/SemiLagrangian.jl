@@ -33,7 +33,10 @@ include("../src/interpolation.jl")
 
 using DoubleFloats
 
-function printout(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, str) where {T,Nsp,Nv,Nsum,timeopt}
+function printout(
+    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    str,
+) where {T,Nsp,Nv,Nsum,timeopt}
     if timeopt != MPIOpt || advd.adv.mpid.ind == 1
         println(str)
     end
@@ -55,12 +58,16 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x - sin(tf) * y
         yn = sin(tf) * x + cos(tf) * y
-        f[i,j] = exp(-13*((xn)^2+(yn+T(6//5))^2))
+        f[i, j] = exp(-13 * ((xn)^2 + (yn + T(6 // 5))^2))
     end
     f
 end
 
-function trace_diffrotation(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t::T, n) where{T,Nsp,Nv,Nsum,timeopt}
+function trace_diffrotation(
+    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    t::T,
+    n,
+) where {T,Nsp,Nv,Nsum,timeopt}
 
     if t == 0
         printout(advd, "#nt\ttime\tnorm_2\tnorm_inf")
@@ -68,8 +75,8 @@ function trace_diffrotation(advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt}, t::T, n)
     ptr = pointer(advd.bufdata)
     f = unsafe_wrap(Array, ptr, sizeall(advd.adv))
     exact!(f, advd.adv.t_mesh_sp[1], advd.adv.t_mesh_v[1], t)
-    n2 = Float64(norm(advd.data-f))
-    ninf = Float64(norm(advd.data-f, Inf))
+    n2 = Float64(norm(advd.data - f))
+    ninf = Float64(norm(advd.data - f, Inf))
     printout(advd, "$n\t$(Float32(t))\t$n2\t$ninf")
 
 end
@@ -81,24 +88,32 @@ function rotation(advd::AdvectionData, nbdt)
 
     dt = advd.adv.dt_base
     trace_diffrotation(advd, zero(dt), 0)
-    for i=1:nbdt
+    for i = 1:nbdt
         while advection!(advd)
         end
-        trace_diffrotation(advd, i*dt, i)
+        trace_diffrotation(advd, i * dt, i)
     end
     println("#  end")
-# printall(cl_obs)
+    # printall(cl_obs)
 end
-function rotation1_1(T::DataType, nbdt, timeopt; sz=(64,64), interp=Lagrange(T, 21))
-    dt = T(2big(pi)/nbdt)
+function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrange(T, 21))
+    dt = T(2big(pi) / nbdt)
 
-    spmin, spmax, nsp =  T(-5), T(5),  sz[1]
+    spmin, spmax, nsp = T(-5), T(5), sz[1]
     vmin, vmax, nv = -T(5), T(5), sz[2]
 
-    mesh_sp = UniformMesh( spmin, spmax, nsp)
-    mesh_v = UniformMesh( vmin, vmax, nv)
-    
-    adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt=timeopt, tab_fct=[tan,sin,tan])
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+
+    adv = Advection(
+        (mesh_sp,),
+        (mesh_v,),
+        (interp,),
+        (interp,),
+        dt,
+        timeopt = timeopt,
+        tab_fct = [tan, sin, tan],
+    )
 
     data = zeros(T, sizeall(adv))
 
@@ -117,7 +132,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz=(64,64), interp=Lagrange(T, 
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
         printout(advd, "# nb threads : $(Threads.nthreads())")
     elseif timeopt == MPIOpt
-        printout(advd,"# nb process : $(adv.mpid.nb)")
+        printout(advd, "# nb process : $(adv.mpid.nb)")
     else
         printout(advd, "# monothread version")
     end
@@ -126,12 +141,12 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz=(64,64), interp=Lagrange(T, 
     # advdata = AdvectionData(adv, data, pvar)
 
     rotation(advd, nbdt)
-end   
+end
 
 
-T=Double64
-nbdt=1000
-dt=T(2big(pi))/nbdt
+T = Double64
+nbdt = 1000
+dt = T(2big(pi)) / nbdt
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 #rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 101))
-rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 5))
+rotation1_1(T, nbdt, MPIOpt, sz = (256, 256), interp = Lagrange(T, 5))

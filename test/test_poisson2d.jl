@@ -1,9 +1,23 @@
 using DoubleFloats
 using LinearAlgebra
 
-using SemiLagrangian: Advection, sizeall, AdvectionData, getdata, advection!, UniformMesh, getrotationvar, AbstractInterpolation, 
-Lagrange, B_SplineLU, B_SplineFFT, interpolate!, compute_charge!, compute_elfield!,
-compute_ee, compute_ke
+using SemiLagrangian:
+    Advection,
+    sizeall,
+    AdvectionData,
+    getdata,
+    advection!,
+    UniformMesh,
+    getrotationvar,
+    AbstractInterpolation,
+    Lagrange,
+    B_SplineLU,
+    B_SplineFFT,
+    interpolate!,
+    compute_charge!,
+    compute_elfield!,
+    compute_ee,
+    compute_ke
 # """
 
 #    exact(tf, mesh1, mesh2)
@@ -61,45 +75,45 @@ compute_ee, compute_ke
 # end
 
 function test_poisson2d(
-    sz::NTuple{2,Int}, 
+    sz::NTuple{2,Int},
     interp::AbstractInterpolation{T,edge,order,2},
     t_max::T,
-    nbdt::Int
-) where{T,edge,order}
-    spmin, spmax, nsp =  T(0), 4T(pi),  sz[1]
+    nbdt::Int,
+) where {T,edge,order}
+    spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-6), T(6), sz[2]
 
-    mesh_sp = UniformMesh( spmin, spmax, nsp)
-    mesh_v = UniformMesh( vmin, vmax, nv)
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
 
     t_max = T(100)
-    dt = t_max/nbdt
+    dt = t_max / nbdt
 
     # dec1 = -2tan(dt/2) / step(mesh_sp) * mesh_v.points
     # dec2 = 2tan(dt/2) / step(mesh_v) * mesh_sp.points
     dec1 = zeros(T, sz)
     dec2 = zeros(T, sz)
-    coef = 1/sqrt(2T(pi))
+    coef = 1 / sqrt(2T(pi))
     tabref = zeros(T, sz)
-    for i=1:sz[1], j=1:sz[2]
-        x = mesh_sp.points[i] 
+    for i = 1:sz[1], j = 1:sz[2]
+        x = mesh_sp.points[i]
         y = mesh_v.points[j]
-        dec1[i,j] = -dt/step(mesh_sp)*y
-        tabref[i,j] = coef * exp(-0.5 * y^2) *(1 + 0.001*cos(x/2))
+        dec1[i, j] = -dt / step(mesh_sp) * y
+        tabref[i, j] = coef * exp(-0.5 * y^2) * (1 + 0.001 * cos(x / 2))
     end
 
 
-#    @show dec1, dec2
+    #    @show dec1, dec2
 
-    rho = zeros(T,sz[1])
-    elf = zeros(T,sz[1])
+    rho = zeros(T, sz[1])
+    elf = zeros(T, sz[1])
 
 
     data = zeros(T, sz)
 
     copyto!(data, tabref)
 
-    compute_charge!(rho, (mesh_sp, ), data)
+    compute_charge!(rho, (mesh_sp,), data)
     compute_elfield!(elf, mesh_sp, rho)
     ee = compute_ee((mesh_sp,), (elf,))
     ke = compute_ke((mesh_sp,), (mesh_v,), data)
@@ -108,13 +122,13 @@ function test_poisson2d(
 
 
     buf = zeros(T, sz)
-    diffmax=0
-    for ind=1:2nbdt
-        dec2 = [ dt/step(mesh_v) * elf[i] for i=1:sz[1], j=1:sz[2]]
+    diffmax = 0
+    for ind = 1:2nbdt
+        dec2 = [dt / step(mesh_v) * elf[i] for i = 1:sz[1], j = 1:sz[2]]
         interpolate!(buf, data, (dec1, dec2), interp)
         copyto!(data, buf)
 
-        compute_charge!(rho, (mesh_sp, ), data)
+        compute_charge!(rho, (mesh_sp,), data)
         compute_elfield!(elf, mesh_sp, rho)
 
         ee = compute_ee((mesh_sp,), (elf,))
@@ -127,6 +141,6 @@ end
 
 @testset "test swirling" begin
     T = Double64
-    @time @test test_poisson2d((256, 200), Lagrange(11, T, nd=2), T(100), 10000) < 1e-3
+    @time @test test_poisson2d((256, 200), Lagrange(11, T, nd = 2), T(100), 10000) < 1e-3
 
 end

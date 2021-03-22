@@ -1,5 +1,5 @@
 
-@enum TimeOptimization NoTimeOpt=1 SimpleThreadsOpt=2 SplitThreadsOpt=3 MPIOpt=4
+@enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
 """
     Advection{T, Nsp, Nv, Nsum, timeopt}
@@ -56,34 +56,36 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection{T, Nsp, Nv, Nsum, timeopt}
-    sizeall
-    t_mesh_sp::NTuple{Nsp, UniformMesh{T}}
-    t_mesh_v::NTuple{Nv, UniformMesh{T}}
-    t_interp_sp::NTuple{Nsp, AbstractInterpolation{T, CircEdge}}
-    t_interp_v::NTuple{Nv, AbstractInterpolation{T, CircEdge}}
+struct Advection{T,Nsp,Nv,Nsum,timeopt}
+    sizeall::Any
+    t_mesh_sp::NTuple{Nsp,UniformMesh{T}}
+    t_mesh_v::NTuple{Nv,UniformMesh{T}}
+    t_interp_sp::NTuple{Nsp,AbstractInterpolation{T,CircEdge}}
+    t_interp_v::NTuple{Nv,AbstractInterpolation{T,CircEdge}}
     dt_base::T
-    tab_coef
-    tab_fct
-    v_square
-    nbsplit
-    mpid
+    tab_coef::Any
+    tab_fct::Any
+    v_square::Any
+    nbsplit::Any
+    mpid::Any
     function Advection(
-    t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
-    t_mesh_v::NTuple{Nv, UniformMesh{T}},
-    t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
-    t_interp_v::NTuple{Nv, AbstractInterpolation{T}},
-    dt_base::T;
-    tab_coef=[1//2, 1//1, 1//2],
-    tab_fct=[identity,identity,identity],
-    timeopt::TimeOptimization=NoTimeOpt
-) where{T, Nsp, Nv}
-        Nsp == sum(get_ndims.(t_interp_sp)) ||throw(ArgumentError("the sum of dims incorrect for space"))
-       Nv == sum(get_ndims.(t_interp_v)) ||throw(ArgumentError("the sum of dims incorrect for velocity"))
-        sizeall=length.((t_mesh_sp..., t_mesh_v...))
+        t_mesh_sp::NTuple{Nsp,UniformMesh{T}},
+        t_mesh_v::NTuple{Nv,UniformMesh{T}},
+        t_interp_sp::NTuple{Nsp,AbstractInterpolation{T}},
+        t_interp_v::NTuple{Nv,AbstractInterpolation{T}},
+        dt_base::T;
+        tab_coef = [1 // 2, 1 // 1, 1 // 2],
+        tab_fct = [identity, identity, identity],
+        timeopt::TimeOptimization = NoTimeOpt,
+    ) where {T,Nsp,Nv}
+        # Nsp == sum(get_ndims.(t_interp_sp)) ||
+        #     throw(ArgumentError("the sum of dims incorrect for space"))
+        # Nv == sum(get_ndims.(t_interp_v)) ||
+        #     throw(ArgumentError("the sum of dims incorrect for velocity"))
+        sizeall = length.((t_mesh_sp..., t_mesh_v...))
         Nsum = Nsp + Nv
         v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
-        mpid = timeopt == MPIOpt ? MPIData() : missing        
+        mpid = timeopt == MPIOpt ? MPIData() : missing
         nbsplit = if timeopt == MPIOpt
             mpid.nb
         elseif timeopt == SplitThreadsOpt
@@ -91,15 +93,19 @@ struct Advection{T, Nsp, Nv, Nsum, timeopt}
         else
             1
         end
-        return new{T, Nsp, Nv, Nsum, timeopt}(
-    sizeall,
-    t_mesh_sp, t_mesh_v, 
-    t_interp_sp, t_interp_v,
-    dt_base, tab_coef, tab_fct,
-    v_square,
-    nbsplit,
-    mpid
-)
+        return new{T,Nsp,Nv,Nsum,timeopt}(
+            sizeall,
+            t_mesh_sp,
+            t_mesh_v,
+            t_interp_sp,
+            t_interp_v,
+            dt_base,
+            tab_coef,
+            tab_fct,
+            v_square,
+            nbsplit,
+            mpid,
+        )
     end
 end
 """
@@ -110,10 +116,10 @@ Return a tuple of the sizes of each dimensions
 # Argument
 - `adv::Advection` : Advection structure.
 """
-sizeall(adv)=adv.sizeall
+sizeall(adv) = adv.sizeall
 
 # Interface of external data
-abstract type AbstractExtDataAdv{T, Nsum} end
+abstract type AbstractExtDataAdv{T,Nsum} end
 
 """
     AdvectionData{T,Nsp,Nv,Nsum,timeopt}
@@ -162,53 +168,71 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     data::Array{T,Nsum}
     bufdata::Array{T}
     fmrtabdata::NTuple{Nsum,Array{T,Nsum}}
-    t_buf::NTuple{Nsum, Array{T,2}}
-    t_itr
-    tt_split
+    t_buf::NTuple{Nsum,Array{T,2}}
+    t_itr::Any
+    tt_split::Any
     cache_alpha::Union{T,Nothing}
     cache_decint::Int64
     cache_precal::Vector{T}
     parext::AbstractExtDataAdv
     function AdvectionData(
-    adv::Advection{T,Nsp,Nv,Nsum,timeopt}, 
-    data::Array{T,Nsum},
-    parext::AbstractExtDataAdv, 
-) where{T,Nsp,Nv,Nsum,timeopt}
+        adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+        data::Array{T,Nsum},
+        parext::AbstractExtDataAdv,
+    ) where {T,Nsp,Nv,Nsum,timeopt}
         s = size(data)
-        s == sizeall(adv) || thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
-        nbthr = timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() : 1
+        s == sizeall(adv) ||
+            thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
+        nbthr =
+            timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() :
+            1
         t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
-        datanew = Array{T,Nsum}(undef,s)
+        datanew = Array{T,Nsum}(undef, s)
         bufdata = Vector{T}(undef, length(data))
-        fmrtabdata = ntuple(x-> zeros(T,s[getperm(parext,x)]), Nsum)
+        fmrtabdata = ntuple(x -> zeros(T, s[getperm(parext, x)]), Nsum)
         copyto!(datanew, data)
-        t_itr = ntuple(x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext,x)][2:Nsum])), Nsum)
-        t_linind = ntuple(x -> LinearIndices(s[getperm(parext,x)]), Nsum)
-        fbegin(x,y)=t_linind[x][1,t_itr[x][y][1]]
-        fend(x,y)=t_linind[x][end,t_itr[x][y][end]]
-        tt_split = ntuple(x -> ntuple(y -> (fbegin(x,y):fend(x,y)), adv.nbsplit), Nsum)
+        t_itr = ntuple(
+            x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext, x)][2:Nsum])),
+            Nsum,
+        )
+        t_linind = ntuple(x -> LinearIndices(s[getperm(parext, x)]), Nsum)
+        fbegin(x, y) = t_linind[x][1, t_itr[x][y][1]]
+        fend(x, y) = t_linind[x][end, t_itr[x][y][end]]
+        tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), Nsum)
         ordmax = maximum(get_order.((adv.t_interp_sp..., adv.t_interp_v...)))
-        return new{T, Nsp, Nv, Nsum, timeopt}(
-    adv, 1, 1,  
-    datanew, bufdata, fmrtabdata, t_buf,
-#    t_itrfirst, t_itrsecond, tt_split,
-    t_itr, tt_split,
-    nothing, 0, zeros(T,ordmax+1),
-    parext
-)
+        return new{T,Nsp,Nv,Nsum,timeopt}(
+            adv,
+            1,
+            1,
+            datanew,
+            bufdata,
+            fmrtabdata,
+            t_buf,
+            #    t_itrfirst, t_itrsecond, tt_split,
+            t_itr,
+            tt_split,
+            nothing,
+            0,
+            zeros(T, ordmax + 1),
+            parext,
+        )
     end
 end
 
 
-getext(self)=self.parext
-getdata(self)=self.data
-getcur_t(adv::Advection, state_coef::Int)=adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
+getext(self) = self.parext
+getdata(self) = self.data
+getcur_t(adv::Advection, state_coef::Int) =
+    adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
 getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_coef)
-getstate_dim(self)=self.state_dim
-isvelocity(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curid) where {T, Nsp, Nv, Nsum, timeopt} = (curid-1)%Nsum+1 > Nsp
-isvelocitystate(state_coef::Int)=state_coef%2 == 0
-isvelocitystate(self::AdvectionData)=isvelocitystate(self.state_coef)
-function getindsplit(self::AdvectionData{T,Nsp,Nv,Nsum,timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
+getstate_dim(self) = self.state_dim
+isvelocity(adv::Advection{T,Nsp,Nv,Nsum,timeopt}, curid) where {T,Nsp,Nv,Nsum,timeopt} =
+    (curid - 1) % Nsum + 1 > Nsp
+isvelocitystate(state_coef::Int) = state_coef % 2 == 0
+isvelocitystate(self::AdvectionData) = isvelocitystate(self.state_coef)
+function getindsplit(
+    self::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+) where {T,Nsp,Nv,Nsum,timeopt}
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
     else
@@ -216,10 +240,10 @@ function getindsplit(self::AdvectionData{T,Nsp,Nv,Nsum,timeopt}) where{T,Nsp,Nv,
     end
     return ind
 end
-function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where{T,Nsp,Nv,Nsum}
-    return isvelocitystate(self)*Nsp+self.state_dim
+function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+    return isvelocitystate(self) * Nsp + self.state_dim
 end
-getbufslgn(self::AdvectionData)=self.t_buf[_getcurrentindice(self)]
+getbufslgn(self::AdvectionData) = self.t_buf[_getcurrentindice(self)]
 function getinterp(self::AdvectionData)
     t = isvelocitystate(self) ? self.adv.t_interp_v : self.adv.t_interp_sp
     return t[self.state_dim]
@@ -230,14 +254,14 @@ function getprecal(self::AdvectionData, alpha)
         decint = convert(Int, floor(alpha))
         decfloat = alpha - decint
         self.cache_decint = decint
-#        self.cache_precal = get_precal(getinterp(self),decfloat)
-        get_precal!(self.cache_precal, getinterp(self),decfloat)
+        #        self.cache_precal = get_precal(getinterp(self),decfloat)
+        get_precal!(self.cache_precal, getinterp(self), decfloat)
     end
     return self.cache_decint, self.cache_precal
-end      
+end
 
-getitr(self)=self.t_itr[_getcurrentindice(self)][getindsplit(self)]
-gett_split(self)=self.tt_split[_getcurrentindice(self)]
+getitr(self) = self.t_itr[_getcurrentindice(self)][getindsplit(self)]
+gett_split(self) = self.tt_split[_getcurrentindice(self)]
 
 
 
@@ -253,11 +277,11 @@ Function called at the end of advection function to update internal state of Adv
 - `ret::Bool` : `true` if the series must continue
                 `false` at the end of the series.
 """
-function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+function nextstate!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     ret = true
-    if self.state_dim == [Nv,Nsp][self.state_coef%2+1]
+    if self.state_dim == [Nv, Nsp][self.state_coef%2+1]
         self.state_dim = 1
-        if self.state_coef == size(self.adv.tab_coef,1)
+        if self.state_coef == size(self.adv.tab_coef, 1)
             self.state_coef = 1
             ret = false
         else
@@ -270,17 +294,14 @@ function nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsu
     return ret
 end
 # default function of the interface
-initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)=missing
-function getperm(
-    _::AbstractExtDataAdv{T, Nsum},
-    curstate::Int
-) where{T, Nsum}
+initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
+function getperm(_::AbstractExtDataAdv{T,Nsum}, curstate::Int) where {T,Nsum}
     return transposition(1, curstate, Nsum)
 end
 function getperm(
     _::AbstractExtDataAdv,
-    advd::AdvectionData{T, Nsp, Nv, Nsum}
-) where{T, Nsp, Nv, Nsum}
+    advd::AdvectionData{T,Nsp,Nv,Nsum},
+) where {T,Nsp,Nv,Nsum}
     return transposition(1, _getcurrentindice(advd), Nsum)
 end
 # this interface function must always be defined
@@ -289,8 +310,8 @@ function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)
 end
 
 # data formating
-function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
-    p = getperm(getext(advd),advd)
+function getformdata(advd::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+    p = getperm(getext(advd), advd)
     if p == 1:Nsum
         # the case of identity permutation no copy is needed
         f = advd.data
@@ -302,7 +323,10 @@ function getformdata(advd::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Ns
     end
     return f
 end
-function copydata!(advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}, f) where{T, Nsp, Nv, Nsum, timeopt}
+function copydata!(
+    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    f,
+) where {T,Nsp,Nv,Nsum,timeopt}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
@@ -325,54 +349,56 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 - `true` : means that the advection series must continue
 - `false` : means that the advection series is ended.
 """
-function advection!(self::AdvectionData{T,Nsp, Nv, Nsum, timeopt}) where{T,Nsp, Nv, Nsum, timeopt}
+function advection!(
+    self::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+) where {T,Nsp,Nv,Nsum,timeopt}
     f = self.data
     tabbuf = getbufslgn(self)
 
     interp = getinterp(self)
     extdata = getext(self)
     initcoef!(extdata, self)
-    curind =  _getcurrentindice(self)
+    curind = _getcurrentindice(self)
     f = getformdata(self)
-#    @show size(f)
-    tabmod=gettabmod(size(f,1)) # just for optimization of interpolation!
+    #    @show size(f)
+    tabmod = gettabmod(size(f, 1)) # just for optimization of interpolation!
     if timeopt == NoTimeOpt || timeopt == MPIOpt
-        local buf=view(tabbuf, :, 1)
-#        @inbounds for ind in getitr(self)
-    # fmrcpt=1
+        local buf = view(tabbuf, :, 1)
+        #        @inbounds for ind in getitr(self)
+        # fmrcpt=1
         for ind in getitr(self)
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-            local lgn = view(f,:,ind)
+            local lgn = view(f, :, ind)
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
-        #    fmrcpt +=1
-        #     if fmrcpt == 30
-        #         GC.gc()
-        #     end
+            #    fmrcpt +=1
+            #     if fmrcpt == 30
+            #         GC.gc()
+            #     end
         end
     elseif timeopt == SimpleThreadsOpt
-#        @inbounds begin
-        Threads.@threads   for ind in collect(getitr(self))
-            local buf=view(tabbuf, :, Threads.threadid())
+        #        @inbounds begin
+        Threads.@threads for ind in collect(getitr(self))
+            local buf = view(tabbuf, :, Threads.threadid())
             local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-            local lgn = view(f,:,ind)
+            local lgn = view(f, :, ind)
             interpolate!(buf, lgn, decint, precal, interp, tabmod)
             lgn .= buf
         end
-#        end
+        #        end
     elseif timeopt == SplitThreadsOpt
-#        @inbounds begin
-        Threads.@threads  for indth=1:Threads.nthreads()
-            local buf=view(tabbuf, :, Threads.threadid())
-#           @inbounds for ind in getitr(self)
+        #        @inbounds begin
+        Threads.@threads for indth = 1:Threads.nthreads()
+            local buf = view(tabbuf, :, Threads.threadid())
+            #           @inbounds for ind in getitr(self)
             for ind in getitr(self)
                 local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-                local lgn = view(f,:,ind)
+                local lgn = view(f, :, ind)
                 interpolate!(buf, lgn, decint, precal, interp, tabmod)
                 lgn .= buf
             end
         end
-#        end
+        #        end
     end
     copydata!(self, f)
     return nextstate!(self)

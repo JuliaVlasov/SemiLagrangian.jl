@@ -20,10 +20,10 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 function _getpolylagrange(k::Int, order::Int, origin::Int) where {N<:Integer}
     0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     # the computed is made with big rational
-    result = Polynomials.Polynomial([big(1//1)])
-    for l=0:order
+    result = Polynomials.Polynomial([big(1 // 1)])
+    for l = 0:order
         if l != k
-            result *= Polynomials.Polynomial([-(l+origin),1//1] .// (k-l) )
+            result *= Polynomials.Polynomial([-(l + origin), 1 // 1] .// (k - l))
         end
     end
     return result
@@ -39,7 +39,6 @@ Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 - `T` : the type of data that is interpolate
 - `edge::EdgeType` : type of edge traitment
 - `order::Int`: order of lagrange interpolation
-- `nd::Int` : number of dimensions
 
 # Implementation :
 - `tabfct::Vector{Polynomial{T}}` : vector of all lagrange polynomial, per example the k-th Lagrange polynomial for the designed order is tabfct[k+1]
@@ -52,13 +51,13 @@ Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 - `edge::EdgeType=CircEdge` : type of edge traitment
 
 """
-struct Lagrange{T, edge, order, nd} <: AbstractInterpolation{T, edge, order, nd}
+struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
     tabfct::Vector{Polynomial{T}}
-    function Lagrange(order::Int, T::DataType=Float64; edge::EdgeType=CircEdge, nd=1) 
-        origin = -div(order,2)
-        tabfct_rat = collect([_getpolylagrange( i, order, origin) for i=0:order])
+    function Lagrange(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
+        origin = -div(order, 2)
+        tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
 
-        new{T, edge, order, nd}(convert.(Polynomial{T}, tabfct_rat)) 
+        new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
     end
 end
 

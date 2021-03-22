@@ -6,54 +6,54 @@ function decLULu(iscirc, band, lastcols, lastrows)
     kl, ku = get_kl_ku(wd)
     szb = size(band, 2)
     n = iscirc ? size(lastrows, 2) : szb
-    begrow = n-ku
-    begcol = n-kl
-    for k=1:(iscirc ? begrow : n)
+    begrow = n - ku
+    begcol = n - kl
+    for k = 1:(iscirc ? begrow : n)
         pivot = band[ku+1, k]
-        for i=ku+2:wd
-            band[i,k] /= pivot
+        for i = ku+2:wd
+            band[i, k] /= pivot
         end
         if iscirc
-            for i=1:ku
+            for i = 1:ku
                 lastrows[i, k] /= pivot
             end
         end
-#        println("trace1 k=$k")
-        for i=1:kl, j=1:ku
-            if k+j <= szb
-#                println("i=$i j=$j avant band=$(band[ku+1+i-j, k+j]) b1=$(band[ku+1+i, k]) b2=$(band[ku+1+j, k+j])")
+        #        println("trace1 k=$k")
+        for i = 1:kl, j = 1:ku
+            if k + j <= szb
+                #                println("i=$i j=$j avant band=$(band[ku+1+i-j, k+j]) b1=$(band[ku+1+i, k]) b2=$(band[ku+1+j, k+j])")
                 # A[k+i,k+j] -= A[k+i, k]*A[k, k+j]
                 band[ku+1+i-j, k+j] -= band[ku+1+i, k] * band[ku+1-j, k+j]
-#                println("i=$i j=$j apres band=$(band[ku+1+i-j, k+j])")
+                #                println("i=$i j=$j apres band=$(band[ku+1+i-j, k+j])")
             end
         end
         if iscirc
-            bkl = min(kl, begrow-k)
-            for i=1:kl, j=1:bkl
+            bkl = min(kl, begrow - k)
+            for i = 1:kl, j = 1:bkl
                 # A[k+j, begcol+i] = A[k+j, k]*A[k, begcol+i]
-                lastcols[k+j, i] -= band[ku+1+j, k]*lastcols[k, i]
+                lastcols[k+j, i] -= band[ku+1+j, k] * lastcols[k, i]
             end
-            bku = min(ku, szb-k)
-            for i=1:bku, j=1:ku
+            bku = min(ku, szb - k)
+            for i = 1:bku, j = 1:ku
                 # A[begrow+j, k+i] = A[begrow+j, k]*A[k, k+i]
-                lastrows[j, k+i] -= lastrows[j, k]* band[ku+1-i, k+i]
+                lastrows[j, k+i] -= lastrows[j, k] * band[ku+1-i, k+i]
             end
-            for i=1:ku, j=1:kl
+            for i = 1:ku, j = 1:kl
                 # A[begrow+i, begcol+j] = A[begrow+i, k]*A[k, begcol+j]
-                lastrows[i, begcol+j] -= lastrows[i, k]*lastcols[k, j]
+                lastrows[i, begcol+j] -= lastrows[i, k] * lastcols[k, j]
             end
         end
     end
     if iscirc
-        for k=begrow+1:n
-            i_k = k-begrow
+        for k = begrow+1:n
+            i_k = k - begrow
             pivot = lastrows[i_k, k]
-            for i=i_k+1:ku
-                lastrows[i,k] /= pivot
+            for i = i_k+1:ku
+                lastrows[i, k] /= pivot
             end
-            for i=i_k+1:ku, j=k+1:n
+            for i = i_k+1:ku, j = k+1:n
                 # A[i+begrow, j] -= A[i+begrow, k]*A[k, j]
-                lastrows[i, j] -= lastrows[i, k]*lastrows[k-begrow, j]
+                lastrows[i, j] -= lastrows[i, k] * lastrows[k-begrow, j]
             end
         end
     end
@@ -90,36 +90,36 @@ struct LuSpline{T}
     isLU::Bool
     lastcols::Union{Matrix{T},Missing} # missing when iscirc=false
     lastrows::Union{Matrix{T},Missing} # missing when iscirc=false
-    function LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
-        wd = size(t,1) # band width
+    function LuSpline(n, t::Vector{T}; iscirc = true, isLU = true) where {T}
+        wd = size(t, 1) # band width
         kl, ku = get_kl_ku(wd)
-        szb = iscirc ? n-kl : n
+        szb = iscirc ? n - kl : n
         band = zeros(T, wd, szb)
-        for i=1:wd
+        for i = 1:wd
             jbeg = i <= ku + 1 ? ku - i + 2 : 1
             if iscirc
                 jend = i >= kl + 2 ? szb - i + kl + 1 : szb
             else
                 jend = i >= ku + 2 ? n - i + ku + 1 : n
             end
-            for j=jbeg:jend
-                band[i,j] = t[i]
+            for j = jbeg:jend
+                band[i, j] = t[i]
             end
         end
         if iscirc
             lastrows = zeros(T, ku, n)
-            lastcols = zeros(T, n-ku, kl)
-            for i=1:ku
-                for ind=1:wd
-                    j=n-wd+i+ind
-                    lastrows[i,(j-1)%n+1] = t[ind]
+            lastcols = zeros(T, n - ku, kl)
+            for i = 1:ku
+                for ind = 1:wd
+                    j = n - wd + i + ind
+                    lastrows[i, (j-1)%n+1] = t[ind]
                 end
             end
-            for i=1:kl
-                for j=1:kl+1-i
-                    lastcols[j,j+i-1] = t[i]
-                    lastcols[n-kl-ku+i+j-1,j] = t[i]
-                 end
+            for i = 1:kl
+                for j = 1:kl+1-i
+                    lastcols[j, j+i-1] = t[i]
+                    lastcols[n-kl-ku+i+j-1, j] = t[i]
+                end
             end
         else
             lastcols = lastrows = missing
@@ -129,80 +129,88 @@ struct LuSpline{T}
         end
         return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
-"""
-    LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
+    """
+        LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
 
-Contructor from a matrix, for test only
+    Contructor from a matrix, for test only
 
-"""
-    function LuSpline( A::Matrix{T}, ku, kl; iscirc=true, isLU=false) where {T}
-        n = size(A,1)
+    """
+    function LuSpline(A::Matrix{T}, ku, kl; iscirc = true, isLU = false) where {T}
+        n = size(A, 1)
         if iscirc
-            lastrows = copy(A[end-ku+1:end,:])
-            lastcols = copy(A[1:end-ku,end-kl+1:end])
+            lastrows = copy(A[end-ku+1:end, :])
+            lastcols = copy(A[1:end-ku, end-kl+1:end])
         else
             lastcols = lastrows = missing
         end
-        szb = iscirc ? n-kl : n
-        wd = kl+ku+1
-        band = zeros(T,wd,szb)
-        for j=1:szb
-            for i=j-ku:j+kl
+        szb = iscirc ? n - kl : n
+        wd = kl + ku + 1
+        band = zeros(T, wd, szb)
+        for j = 1:szb
+            for i = j-ku:j+kl
                 if 1 <= i <= n - (iscirc ? ku : 0)
-                    band[ku+i+1-j,j] = A[i,j]
+                    band[ku+i+1-j, j] = A[i, j]
                 end
             end
         end
         return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
 end
-function ==(la::LuSpline{T}, lb::LuSpline{T}) where{T}
-    return (la.ku == lb.ku && la.kl == la.kl && la.iscirc == lb.iscirc 
-            && la.isLU == lb.isLU && la.band == lb.band 
-            && (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols)))
+function ==(la::LuSpline{T}, lb::LuSpline{T}) where {T}
+    return (
+        la.ku == lb.ku &&
+        la.kl == la.kl &&
+        la.iscirc == lb.iscirc &&
+        la.isLU == lb.isLU &&
+        la.band == lb.band &&
+        (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols))
+    )
 end
-function sol!(Y::AbstractVector, spA::LuSpline{T}, b::AbstractVector{T}) where{T}
-    szb = size(spA.band,2)
+function sol!(X::AbstractVector, spA::LuSpline{T}, Y::AbstractVector{T}) where {T}
+    szb = size(spA.band, 2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
-    begrow = n-spA.ku
-    begcol = n-spA.kl
-    copyto!(Y, b)
+    begrow = n - spA.ku
+    begcol = n - spA.kl
+#    copyto!(Y, b)
     endmat = spA.iscirc ? begrow : n
     endmat2 = spA.iscirc ? begcol : n
-    for i=2:endmat
-        fin = i-1
-        deb = max( 1, i-spA.kl)
-        Y[i] -= sum([ Y[j]*spA.band[spA.ku+1+i-j, j] for j=deb:fin])
+    for i = 2:endmat
+        fin = i - 1
+        deb = max(1, i - spA.kl)
+        Y[i] -= sum([Y[j] * spA.band[spA.ku+1+i-j, j] for j = deb:fin])
     end
     if spA.iscirc
-        for i=begrow+1:n
-            Y[i] -= sum( Y[1:i-1] .* spA.lastrows[i-begrow,1:i-1])
+        for i = begrow+1:n
+            Y[i] -= sum(Y[1:i-1] .* spA.lastrows[i-begrow, 1:i-1])
         end
     end
-    X = zeros(T,n)
+#    X = zeros(T, n)
+    fill!(X, T(0))
     if spA.iscirc
-        for i=n:-1:begrow+1
-            X[i] =(Y[i] - sum(X[i+1:n] .* spA.lastrows[i-begrow,i+1:n]))/spA.lastrows[i-begrow,i]
+        for i = n:-1:begrow+1
+            X[i] =
+                (Y[i] - sum(X[i+1:n] .* spA.lastrows[i-begrow, i+1:n])) /
+                spA.lastrows[i-begrow, i]
         end
     end
-    for i=endmat:-1:1
-        deb = i+1
-        fin = min(i+spA.ku, endmat2)
+    for i = endmat:-1:1
+        deb = i + 1
+        fin = min(i + spA.ku, endmat2)
         if deb <= fin
-            s = sum(spA.band[ spA.ku+1+i-j,j]   * X[j] for j=deb:fin)
+            s = sum(spA.band[spA.ku+1+i-j, j] * X[j] for j = deb:fin)
         else
             s = 0
         end
         if spA.iscirc
-            s += sum(spA.lastcols[i,1:spA.kl] .* X[end-spA.kl+1:end])
+            s += sum(spA.lastcols[i, 1:spA.kl] .* X[end-spA.kl+1:end])
         end
-        X[i] = (Y[i]-s)/spA.band[spA.ku+1,i]
+        X[i] = (Y[i] - s) / spA.band[spA.ku+1, i]
     end
     return X, Y
 end
-sol(spA::LuSpline{T}, b::AbstractVector{T}) where{T}=sol!(zeros(T,size(b,1)), spA, b)
+sol(spA::LuSpline{T}, b::AbstractVector{T}) where {T} = sol!(zeros(T, size(b, 1)), spA, copy(b))
 # get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
-get_order(sp::LuSpline)=sp.ku+sp.kl+1
+get_order(sp::LuSpline) = sp.ku + sp.kl + 1
 
 """
     B_SplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
@@ -224,42 +232,31 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineLU{T, edge, order, nd} <: B_Spline{T, edge, order, nd}
+struct B_SplineLU{T,edge,order} <: B_Spline{T,edge,order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
-    function B_SplineLU( order::Int, n::Int, T::DataType=Float64; nd=1)
-        (order%2 == 0) && throw(ArgumentError("order=$order B_SplineLU for even  order is not implemented n=$n")) 
+    function B_SplineLU(order::Int, n::Int, T::DataType = Float64)
+        (order % 2 == 0) && throw(
+            ArgumentError(
+                "order=$order B_SplineLU for even  order is not implemented n=$n",
+            ),
+        )
         bspline = getbspline(order, 0)
-        tabfct_rat = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
+        tabfct_rat = map(x -> bspline[order-x](Polynomial([order - x, 1])), 0:order)
         # bspline = SplineInt(order)
         # N = typeof(bspline.fact_order)
         # tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
-        ls = LuSpline(n,convert.(T, bspline.(1:order)), iscirc=true, isLU=true)
-        return new{T, CircEdge, order, nd}(ls, convert.(Polynomial{T}, tabfct_rat))
+        ls = LuSpline(n, convert.(T, bspline.(1:order)), iscirc = true, isLU = true)
+        return new{T,CircEdge,order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
-    B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}=B_SplineLU(o, n, T; kwargs...)
+    B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number} =
+        B_SplineLU(o, n, T; kwargs...)
 end
 
 
+sol!(X::AbstractVector{T}, bsp::B_SplineLU{T}, Y::AbstractVector{T}) where {T} = sol!(X, bsp.ls, Y)[1]
 
-function sol!(Y::AbstractArray{T, nd}, bsp::B_SplineLU{T}, b::AbstractArray{T, nd}) where{T, nd}
-    if nd == 1
-        return sol!(Y, bsp.ls, b)
-    else
-        sz = size(Y)
-        buf = zeros(T, sz)
-        for i=1:sz[end]
-            sol!( selectdim( buf, nd, i), bsp, selectdim(b, nd, i))
-        end
-        for i in CartesianIndices(sz[1:end-1])
-            sol!(view(Y,i,:), bsp, view(b,i,:))
-        end
-    end
-end
-
-sol(bsp::B_SplineLU{T}, b::AbstractArray{T, nd}) where {T<:Number, nd}=sol!(zeros(T,size(b)), bsp, b)[1]
+sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number} = sol!(zeros(T, length(b)), bsp, copy(b))
 
 
 # get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)
-
-

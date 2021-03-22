@@ -10,28 +10,32 @@
  # Argument
  - `self::AdvectionData` : mutable structure of variables data.
 """
-function compute_charge!(self::AdvectionData{T, Nsp, Nv, Nsum}) where {T, Nsp, Nv, Nsum}
-    Nsp+Nv == Nsum || thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum"))
+function compute_charge!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+    Nsp + Nv == Nsum ||
+        thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum"))
     pvar = getext(self)
     compute_charge!(pvar.rho, self.adv.t_mesh_v, self.data)
     missing
 end
 
-function _get_fctv_k(adv::Advection{T, Nsp, Nv, Nsum, timeopt}) where {T, Nsp, Nv, Nsum, timeopt}
+function _get_fctv_k(adv::Advection{T,Nsp,Nv,Nsum,timeopt}) where {T,Nsp,Nv,Nsum,timeopt}
     fct_k(v) = im / sum(v .^ 2)
     v_k = vec_k_fft.(adv.t_mesh_sp)
     sz = length.(adv.t_mesh_sp)
     fctv_k_gen = fct_k.(collect(Iterators.product(v_k...)))
     fctv_k_gen[1] = 0
-    return ntuple(x->reshape(v_k[x],tupleshape(x,Nsp,sz[x])) .* fctv_k_gen, Nsp)
+    return ntuple(x -> reshape(v_k[x], tupleshape(x, Nsp, sz[x])) .* fctv_k_gen, Nsp)
 end
 
-function _get_permpoisson(adv::Advection{T, Nsp, Nv, Nsum, timeopt}, curstate) where {T, Nsp, Nv, Nsum, timeopt}
+function _get_permpoisson(
+    adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+    curstate,
+) where {T,Nsp,Nv,Nsum,timeopt}
     if isvelocity(adv, curstate)
-        p = transposition(Nsp+1, curstate, Nsum)
+        p = transposition(Nsp + 1, curstate, Nsum)
         p = p[vcat(Nsp+1:Nsum, 1:Nsp)]
     else
-        p = transposition(curstate+Nsp, Nsum, Nsum)
+        p = transposition(curstate + Nsp, Nsum, Nsum)
         p = p[transposition(1, curstate, Nsum)]
     end
     return p
@@ -54,19 +58,19 @@ Constant data for the computation of poisson coefficients
 - `fctv_k` : Array of space dimensions of the inverse of the norm of fourier coefficients
 - `pfftbig` : Fourier data for space dimensions
 """
-struct PoissonConst{T, Nsp, Nv}
-    adv
-    fctv_k
-    pfftbig
-    t_perms
+struct PoissonConst{T,Nsp,Nv}
+    adv::Any
+    fctv_k::Any
+    pfftbig::Any
+    t_perms::Any
     function PoissonConst(
-    adv::Advection{T, Nsp, Nv, Nsum, timeopt}; 
-    isfftbig=true
-) where{T, Nsp, Nv, Nsum, timeopt}
+        adv::Advection{T,Nsp,Nv,Nsum,timeopt};
+        isfftbig = true,
+    ) where {T,Nsp,Nv,Nsum,timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
         fctv_k = _get_fctv_k(adv)
         pfftbig = if isfftbig && T != Float64
-            PrepareFftBig(sizeall(adv)[1:Nsp], T; numdims=Nsp, dims=ntuple(x->x,Nsp))
+            PrepareFftBig(sizeall(adv)[1:Nsp], T; numdims = Nsp, dims = ntuple(x -> x, Nsp))
         else
             missing
         end
@@ -74,8 +78,8 @@ struct PoissonConst{T, Nsp, Nv}
         return new{T,Nsp,Nv}(adv, fctv_k, pfftbig, t_perms)
     end
 end
-getperm(pc::PoissonConst,curstate::Int)=pc.t_perms[curstate]
-getperm(pc::PoissonConst,advd::AdvectionData)=pc.t_perms[_getcurrentindice(advd)]
+getperm(pc::PoissonConst, curstate::Int) = pc.t_perms[curstate]
+getperm(pc::PoissonConst, advd::AdvectionData) = pc.t_perms[_getcurrentindice(advd)]
 
 """
     PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv
@@ -91,20 +95,20 @@ mutable structure of variable data for the poisson computation
 - `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
 - `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
 """
-mutable struct PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv{T, Nsum}
-    pc::PoissonConst{T, Nsp, Nv}
-    rho::Array{T, Nsp}
-    t_elfield::Union{NTuple{Nsp, Array{T,Nsp}},Missing}
-    bufcur::Union{Array{T,Nsp}, Vector{T}, Missing}
-    function PoissonVar(pc::PoissonConst{T, Nsp, Nv}) where{T, Nsp, Nv}
+mutable struct PoissonVar{T,Nsp,Nv,Nsum} <: AbstractExtDataAdv{T,Nsum}
+    pc::PoissonConst{T,Nsp,Nv}
+    rho::Array{T,Nsp}
+    t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
+    bufcur::Union{Array{T,Nsp},Vector{T},Missing}
+    function PoissonVar(pc::PoissonConst{T,Nsp,Nv}) where {T,Nsp,Nv}
         sz = length.(pc.adv.t_mesh_sp)
-        rho = Array{T, Nsp}(undef, sz)
+        rho = Array{T,Nsp}(undef, sz)
         Nsum = Nsp + Nv
-        return new{T, Nsp, Nv, Nsum}(pc, rho, missing, missing)
+        return new{T,Nsp,Nv,Nsum}(pc, rho, missing, missing)
     end
 end
-getperm(pvar::PoissonVar, curstate::Int)=getperm(pvar.pc, curstate)
-getperm(pvar::PoissonVar, advd::AdvectionData)=getperm(pvar.pc, advd)
+getperm(pvar::PoissonVar, curstate::Int) = getperm(pvar.pc, curstate)
+getperm(pvar::PoissonVar, advd::AdvectionData) = getperm(pvar.pc, advd)
 
 """
     compute_elfield!( self:AdvectionData)
@@ -116,8 +120,8 @@ computation of electric field
  - `self::AdvectionData` : mutable structure of variables data.
 
 """
-function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
-    pv::PoissonVar{T, Nsp, Nv} = getext(self)
+function compute_elfield!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+    pv::PoissonVar{T,Nsp,Nv} = getext(self)
 
     sz = size(pv.rho)
     pfft = pv.pc.pfftbig
@@ -125,10 +129,7 @@ function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, 
     # for i=1:Nsp
     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
     # end
-    pv.t_elfield = ntuple(
-    x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
-    Nsp
-)
+    pv.t_elfield = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
     missing
 end
 
@@ -157,7 +158,10 @@ Implementation of the interface function that is called at the begining of each 
 
 """
 
-function initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+function initcoef!(
+    pv::PoissonVar{T,Nsp,Nv},
+    self::AdvectionData{T,Nsp,Nv,Nsum},
+) where {T,Nsp,Nv,Nsum}
     state_dim = getstate_dim(self)
     mesh_v = self.adv.t_mesh_v[state_dim]
     if isvelocitystate(self)
@@ -168,14 +172,14 @@ function initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, N
             compute_elfield!(self)
             # clockend(cl_obs, 5)
         end
-#        println("v trace init plus")
-        pv.bufcur = (getcur_t(self)/step(mesh_v))*pv.t_elfield[state_dim]
-#        @show minimum(pv.bufcur),maximum(pv.bufcur) 
+        #        println("v trace init plus")
+        pv.bufcur = (getcur_t(self) / step(mesh_v)) * pv.t_elfield[state_dim]
+        #        @show minimum(pv.bufcur),maximum(pv.bufcur) 
     else
         mesh_sp = self.adv.t_mesh_sp[state_dim]
-#        println("sp trace init moins")
-       pv.bufcur = (-getcur_t(self)/step(mesh_sp))*mesh_v.points
-#       @show minimum(pv.bufcur),maximum(pv.bufcur) 
+        #        println("sp trace init moins")
+        pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
+        #       @show minimum(pv.bufcur),maximum(pv.bufcur) 
 
     end
 end
@@ -184,9 +188,12 @@ function getpoissonvar(adv::Advection)
     return PoissonVar(pc)
 end
 
-function getalpha(pv::PoissonVar, self::AdvectionData{T, Nsp, Nv, Nsum}, ind) where {T, Nsp, Nv, Nsum}
-    return isvelocitystate(self) ? pv.bufcur[CartesianIndex(ind.I[Nsum-Nsp:Nsum-1])] : pv.bufcur[ind.I[end]]
-#    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
+function getalpha(
+    pv::PoissonVar,
+    self::AdvectionData{T,Nsp,Nv,Nsum},
+    ind,
+) where {T,Nsp,Nv,Nsum}
+    return isvelocitystate(self) ? pv.bufcur[CartesianIndex(ind.I[Nsum-Nsp:Nsum-1])] :
+           pv.bufcur[ind.I[end]]
+    #    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
 end
-
-    

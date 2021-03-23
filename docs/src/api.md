@@ -19,8 +19,8 @@ SemiLagrangian.B_SplineFFT
 ```
 ## Advection
 ```@docs
-SemiLagrangian.Advection
-SemiLagrangian.AdvectionData
+SemiLagrangian.Advection1d
+SemiLagrangian.Advection1dData
 SemiLagrangian.advection!
 ```
 

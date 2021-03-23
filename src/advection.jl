@@ -4,32 +4,27 @@
 """
     Advection{T}
     Advection(
-        t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
-        t_mesh_v::NTuple{Nv, UniformMesh{T}},
-        t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
-        t_interp_v::NTuple{Nv, AbstractInterpolation{T}},
+        t_mesh::NTuple{N,UniformMesh{T}},
+        t_interp::Vector{I}
         dt_base::T;
-        tab_coef=[1//2, 1//1, 1//2],
-        tab_fct=[identity, identity, identity],
-        timeopt::TimeOptimization=NoTimeOpt
-    )
+        tab_coef = [1 // 1],
+        tab_fct = missing,
+        timeopt::TimeOptimization = NoTimeOpt,
+    ) where {T, N, I <: AbstractInterpolation{T}}
 
 Immutable structure that contains constant parameters for multidimensional advection
 
 # Type parameters
 
 - `T::DataType` : type of data
-- `Nsp` : number of space dimensions
-- `Nv` : number of velocity dimensions
-- `Nsum` : the total number of dimensions (Nsum = Nsp + Nv)
+- `N` : number of dimensions
+- `I` : commun type of interpolation
 - `timeopt::TimeOptimization` : time optimization
 
 # Arguments
 
-- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes (one per space dimension)
-- `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes (one per velocity dimension)
-- `t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}}` : tuple of space interpolations (one per space dimension)
-- `t_interp_v::NTuple{Nv, AbstractInterpolation{T}}` : tuple of velocity interpolations(one per velocity dimension)
+- `t_mesh::NTuple{N, UniformMesh{T}}` : tuple of meshes (one for each dimension)
+- `t_interp::Vector{I}` : tuple of interpolations (one for each dimension)
 - `dt_base::T` : time delta for one advection series
 
 # Keywords
@@ -57,7 +52,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 
 """
 struct Advection{T, N, I}
-    sizeall
+    sizeall::NTuple{N, Int}
     t_mesh::NTuple{N,UniformMesh{T}}
     t_interp::Vector{I}
     dt_base::T
@@ -67,7 +62,7 @@ struct Advection{T, N, I}
     mpid::Any
     function Advection(
         t_mesh::NTuple{N,UniformMesh{T}},
-        t_interp::Vector{I}
+        t_interp::Vector{I},
         dt_base::T;
         tab_coef = [1 // 2, 1 // 1, 1 // 2],
         tab_fct = missing,

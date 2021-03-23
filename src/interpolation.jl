@@ -46,30 +46,7 @@ isbspline(_::AbstractInterpolation) = false
 
 Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 
-# Provisoire
-using LinearAlgebra
-# create a band or circular matrix from a vector of non-zero data
-function topl(n, t, iscirc = true)
-    res = zeros(Rational{BigInt}, n, n)
-    kl, ku = get_kl_ku(size(t, 1))
-    for i = 1:n
-        for (j, v) in enumerate(t)
-            ind = i + j - kl - 1
-            if 1 <= ind <= n
-                res[i, ind] = v
-            elseif iscirc
-                if ind < 1
-                    ind += n
-                else
-                    ind -= n
-                end
-                res[i, ind] = v
-            end
-        end
-    end
-    return res
-end
-# Fin provisoire
+
 
 function sol!(
     Y::AbstractArray{T,N},
@@ -270,7 +247,6 @@ function interpolate!(
     else
         return interpolate!(fp, fi, decint, get_allprecal(interp, decint, decfloat), interp)
     end
-    missing
 end
 
 # function interpolate!(

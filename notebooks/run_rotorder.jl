@@ -26,8 +26,8 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
 end
 
 function fctadv(interp, mesh1, mesh2, v1, v2, refdeb, refend, dt)
-    adv_x1 = Advection(mesh1, interp)
-    adv_x2 = Advection(mesh2, interp)
+    adv_x1 = Advection1d(mesh1, interp)
+    adv_x2 = Advection1d(mesh2, interp)
 
     f = copy(refdeb)
     ft = copy(refdeb)

@@ -2,8 +2,8 @@
 using DoubleFloats
 
 using SemiLagrangian:
-    Advection,
-    AdvectionData,
+    Advection1d,
+    Advection1dData,
     advection!,
     sizeall,
     getext,
@@ -54,7 +54,7 @@ function test_adv(T::DataType)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
     interp = Lagrange(3, T)
-    adv = Advection(
+    adv = Advection1d(
         t_meshsp,
         t_meshv,
         ntuple(x -> Lagrange(3, T), 3),
@@ -68,7 +68,7 @@ function test_adv(T::DataType)
 
     tab = rand(T, sizeall(adv))
 
-    advd = AdvectionData(adv, tab, getpoissonvar(adv))
+    advd = Advection1dData(adv, tab, getpoissonvar(adv))
 
 
     @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
@@ -141,17 +141,17 @@ function test_adv(T::DataType)
 
 end
 
-@testset "test Advection Float" begin
+@testset "test Advection1d Float" begin
 
     test_adv(Float64)
 
 end
-@testset "test Advection BigFloat" begin
+@testset "test Advection1d BigFloat" begin
 
     test_adv(BigFloat)
 
 end
-@testset "test Advection Double64" begin
+@testset "test Advection1d Double64" begin
 
     test_adv(Double64)
 
@@ -206,7 +206,7 @@ function test_itr(T::DataType)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
     interp = Lagrange(3, T)
-    adv = Advection(
+    adv = Advection1d(
         t_meshsp,
         t_meshv,
         ntuple(x -> Lagrange(3, T), 3),
@@ -222,7 +222,7 @@ function test_itr(T::DataType)
 
     @show size(tab)
 
-    advd = AdvectionData(adv, tab, getpoissonvar(adv))
+    advd = Advection1dData(adv, tab, getpoissonvar(adv))
 
     #    @show advd.t_itrfirst
 

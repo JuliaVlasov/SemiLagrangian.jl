@@ -24,16 +24,16 @@ function compute_ke(
     return (dsp * dv) * sum(dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
 end
 """
-    compute_ke(self::AdvectionData)
+    compute_ke(self::Advection1dData)
 
 kinetic Energie
 
 ∫∫ v^2 f(x,v,t) dv dx
 
 # Arguments
-- `self::AdvectionData` : mutable structure of variables data.
+- `self::Advection1dData` : mutable structure of variables data.
 """
-function compute_ke(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function compute_ke(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     Nsum == Nsp + Nv || "Nsp=$Nsp, Nv=$Nv, Nsum=$Nsum, we must have Nsum==Nsp+Nv"
     adv = self.adv
     szv = length.(adv.t_mesh_v)
@@ -76,10 +76,10 @@ computation of electric field
     ∇.e = - ρ
 
 # Argument
- - `self::AdvectionData` : mutable structure of variables data.
+ - `self::Advection1dData` : mutable structure of variables data.
 
 """
-# function compute_elfield!( self::AdvectionData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
+# function compute_elfield!( self::Advection1dData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
 #     pv::PoissonVar{T, Nsp, Nv} = getext(self)
 
 #     sz = size(pv.rho)
@@ -141,16 +141,16 @@ function compute_ee(
 end
 
 """
-    compute_ee(self::AdvectionData)
+    compute_ee(self::Advection1dData)
 
 compute electric enegie
 || E(t,.) ||_L2
 
 # Argument
-- `self::AdvectionData` : veriable advection data structure.
+- `self::Advection1dData` : veriable advection data structure.
 
 """
-function compute_ee(self::AdvectionData)
+function compute_ee(self::Advection1dData)
     adv = self.adv
     pvar = getext(self)
     dx = prod(step, adv.t_mesh_sp)

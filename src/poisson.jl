@@ -1,16 +1,16 @@
 
 
 """
-    compute_charge!( self::AdvectionData)
+    compute_charge!( self::Advection1dData)
 
  Compute charge density
 
  ρ(x,t) = ∫ f(x,v,t) dv
 
  # Argument
- - `self::AdvectionData` : mutable structure of variables data.
+ - `self::Advection1dData` : mutable structure of variables data.
 """
-function compute_charge!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function compute_charge!(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     Nsp + Nv == Nsum ||
         thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum"))
     pvar = getext(self)
@@ -18,7 +18,7 @@ function compute_charge!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsu
     missing
 end
 
-function _get_fctv_k(adv::Advection{T,Nsp,Nv,Nsum,timeopt}) where {T,Nsp,Nv,Nsum,timeopt}
+function _get_fctv_k(adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}) where {T,Nsp,Nv,Nsum,timeopt}
     fct_k(v) = im / sum(v .^ 2)
     v_k = vec_k_fft.(adv.t_mesh_sp)
     sz = length.(adv.t_mesh_sp)
@@ -28,7 +28,7 @@ function _get_fctv_k(adv::Advection{T,Nsp,Nv,Nsum,timeopt}) where {T,Nsp,Nv,Nsum
 end
 
 function _get_permpoisson(
-    adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+    adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
     curstate,
 ) where {T,Nsp,Nv,Nsum,timeopt}
     if isvelocity(adv, curstate)
@@ -44,16 +44,16 @@ end
 
 """
     PoissonConst{T, Nsp, Nv}
-    PoissonConst(adv::Advection{T, Nsp, Nv, Nsum}; isfftbig=true)
+    PoissonConst(adv::Advection1d{T, Nsp, Nv, Nsum}; isfftbig=true)
 
 Constant data for the computation of poisson coefficients
 
 # Arguments
-- `adv::Advection{T, Nsp, Nv, Nsum, timeopt}` : Advection constant data
+- `adv::Advection1d{T, Nsp, Nv, Nsum, timeopt}` : Advection1d constant data
 - `isfftbig=true`: if true compute the fttbig structure
 
 # Implementation
-- `adv` : Advection constant data
+- `adv` : Advection1d constant data
 - `v_k' : vector of vector of fourier coefficents for integration for each space dimension
 - `fctv_k` : Array of space dimensions of the inverse of the norm of fourier coefficients
 - `pfftbig` : Fourier data for space dimensions
@@ -64,7 +64,7 @@ struct PoissonConst{T,Nsp,Nv}
     pfftbig::Any
     t_perms::Any
     function PoissonConst(
-        adv::Advection{T,Nsp,Nv,Nsum,timeopt};
+        adv::Advection1d{T,Nsp,Nv,Nsum,timeopt};
         isfftbig = true,
     ) where {T,Nsp,Nv,Nsum,timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
@@ -79,7 +79,7 @@ struct PoissonConst{T,Nsp,Nv}
     end
 end
 getperm(pc::PoissonConst, curstate::Int) = pc.t_perms[curstate]
-getperm(pc::PoissonConst, advd::AdvectionData) = pc.t_perms[_getcurrentindice(advd)]
+getperm(pc::PoissonConst, advd::Advection1dData) = pc.t_perms[_getcurrentindice(advd)]
 
 """
     PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv
@@ -108,19 +108,19 @@ mutable struct PoissonVar{T,Nsp,Nv,Nsum} <: AbstractExtDataAdv{T,Nsum}
     end
 end
 getperm(pvar::PoissonVar, curstate::Int) = getperm(pvar.pc, curstate)
-getperm(pvar::PoissonVar, advd::AdvectionData) = getperm(pvar.pc, advd)
+getperm(pvar::PoissonVar, advd::Advection1dData) = getperm(pvar.pc, advd)
 
 """
-    compute_elfield!( self:AdvectionData)
+    compute_elfield!( self:Advection1dData)
 
 computation of electric field
     ∇.e = - ρ
 
 # Argument
- - `self::AdvectionData` : mutable structure of variables data.
+ - `self::Advection1dData` : mutable structure of variables data.
 
 """
-function compute_elfield!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function compute_elfield!(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     pv::PoissonVar{T,Nsp,Nv} = getext(self)
 
     sz = size(pv.rho)
@@ -133,7 +133,7 @@ function compute_elfield!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Ns
     missing
 end
 
-# function init!(pv::PoissonVar{T, Nsp, Nv}, advd::AdvectionData{T, Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
+# function init!(pv::PoissonVar{T, Nsp, Nv}, advd::Advection1dData{T, Nsp, Nv, Nsum, timeopt}) where{T,Nsp,Nv,Nsum,timeopt}
 
 #     itrfirst = _getitrfirst(pv, self)
 #     if timeopt == MPIOpt || timeopt == SplitThreadsOpt
@@ -151,7 +151,7 @@ end
 # end
 
 """
-    initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum})
+    initcoef!(pv::PoissonVar{T, Nsp, Nv}, self::Advection1dData{T, Nsp, Nv, Nsum})
 
 Implementation of the interface function that is called at the begining of each advection
     This is implementation for Vlasov-Poisson equation
@@ -160,7 +160,7 @@ Implementation of the interface function that is called at the begining of each 
 
 function initcoef!(
     pv::PoissonVar{T,Nsp,Nv},
-    self::AdvectionData{T,Nsp,Nv,Nsum},
+    self::Advection1dData{T,Nsp,Nv,Nsum},
 ) where {T,Nsp,Nv,Nsum}
     state_dim = getstate_dim(self)
     mesh_v = self.adv.t_mesh_v[state_dim]
@@ -183,14 +183,14 @@ function initcoef!(
 
     end
 end
-function getpoissonvar(adv::Advection)
+function getpoissonvar(adv::Advection1d)
     pc = PoissonConst(adv)
     return PoissonVar(pc)
 end
 
 function getalpha(
     pv::PoissonVar,
-    self::AdvectionData{T,Nsp,Nv,Nsum},
+    self::Advection1dData{T,Nsp,Nv,Nsum},
     ind,
 ) where {T,Nsp,Nv,Nsum}
     return isvelocitystate(self) ? pv.bufcur[CartesianIndex(ind.I[Nsum-Nsp:Nsum-1])] :

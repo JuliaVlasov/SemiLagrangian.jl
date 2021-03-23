@@ -35,7 +35,7 @@ function test_poisson(T::DataType, isfft = true)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
     interp = Lagrange(3, T)
-    adv = Advection(
+    adv = Advection1d(
         t_meshsp,
         t_meshv,
         ntuple(x -> interp, 3),
@@ -59,7 +59,7 @@ function test_poisson(T::DataType, isfft = true)
 
     pvar = PoissonVar(pc)
 
-    advdata = AdvectionData(adv, tab, pvar)
+    advdata = Advection1dData(adv, tab, pvar)
 
     advdata.state_coef = 2
     advdata.state_dim = 1

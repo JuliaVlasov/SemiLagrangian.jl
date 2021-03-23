@@ -2,7 +2,7 @@
 
 
 function _get_permrot(
-    adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+    adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
     curstate,
 ) where {T,Nsp,Nv,Nsum,timeopt}
     return if isvelocity(adv, curstate)
@@ -18,14 +18,14 @@ struct RotationConst{T,Nsp,Nv}
     adv::Any
     t_perms::Any
     function RotationConst(
-        adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+        adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
     ) where {T,Nsp,Nv,Nsum,timeopt}
         Nsp == Nv || thrown(ArgumentError("Nsp=$Nsp must be equal to Nv=$Nv"))
         t_perms = ntuple(x -> _get_permrot(adv, x), Nsum)
         return new{T,Nsp,Nv}(adv, t_perms)
     end
 end
-getperm(pc::RotationConst, advd::AdvectionData) = pc.t_perms[_getcurrentindice(advd)]
+getperm(pc::RotationConst, advd::Advection1dData) = pc.t_perms[_getcurrentindice(advd)]
 getperm(pc::RotationConst, curst::Int) = pc.t_perms[curst]
 
 
@@ -39,14 +39,14 @@ mutable struct RotationVar{T,Nsp,Nv,Nsum} <: AbstractExtDataAdv{T,Nsum}
         return new{T,Nsp,Nv,Nsum}(pc, missing)
     end
 end
-getperm(pvar::RotationVar, advd::AdvectionData) = getperm(pvar.pc, advd)
+getperm(pvar::RotationVar, advd::Advection1dData) = getperm(pvar.pc, advd)
 getperm(pvar::RotationVar, curst::Int) = getperm(pvar.pc, curst)
 
 
 
 
 """
-    initcoef!(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum})
+    initcoef!(pv::RotationVar{T, Nsp, Nv}, self::Advection1dData{T, Nsp, Nv, Nsum})
 
 Implementation of the interface function that is called at the begining of each advection
     This is implementation for Vlasov-Poisson equation
@@ -55,7 +55,7 @@ Implementation of the interface function that is called at the begining of each 
 
 function initcoef!(
     pv::RotationVar{T,Nsp,Nv},
-    self::AdvectionData{T,Nsp,Nv,Nsum},
+    self::Advection1dData{T,Nsp,Nv,Nsum},
 ) where {T,Nsp,Nv,Nsum}
     state_dim = getstate_dim(self)
     mesh_sp = self.adv.t_mesh_sp[state_dim]
@@ -69,15 +69,15 @@ function initcoef!(
         pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
     end
 end
-function getrotationvar(adv::Advection)
+function getrotationvar(adv::Advection1d)
     pc = RotationConst(adv)
     return RotationVar(pc)
 end
 
 """
-    getalpha(pv::RotationVar, self::AdvectionData, ind) 
+    getalpha(pv::RotationVar, self::Advection1dData, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection
 
 """
-getalpha(pv::RotationVar, self::AdvectionData, ind) = pv.bufcur[ind]
+getalpha(pv::RotationVar, self::Advection1dData, ind) = pv.bufcur[ind]

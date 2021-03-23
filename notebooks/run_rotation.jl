@@ -34,7 +34,7 @@ include("../src/interpolation.jl")
 using DoubleFloats
 
 function printout(
-    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
     str,
 ) where {T,Nsp,Nv,Nsum,timeopt}
     if timeopt != MPIOpt || advd.adv.mpid.ind == 1
@@ -64,7 +64,7 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
 end
 
 function trace_diffrotation(
-    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
     t::T,
     n,
 ) where {T,Nsp,Nv,Nsum,timeopt}
@@ -81,7 +81,7 @@ function trace_diffrotation(
 
 end
 
-function rotation(advd::AdvectionData, nbdt)
+function rotation(advd::Advection1dData, nbdt)
 
     # global cl_obs
     # clockreset(cl_obs)
@@ -105,7 +105,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    adv = Advection(
+    adv = Advection1d(
         (mesh_sp,),
         (mesh_v,),
         (interp,),
@@ -121,7 +121,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
 
     pvar = getrotationvar(adv)
 
-    advd = AdvectionData(adv, data, pvar)
+    advd = Advection1dData(adv, data, pvar)
 
     printout(advd, "# dt=$(Float64(dt)) nbdt=$nbdt size_x=$nsp size_v=$nv")
     printout(advd, "# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
@@ -138,7 +138,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
     end
     printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
-    # advdata = AdvectionData(adv, data, pvar)
+    # advdata = Advection1dData(adv, data, pvar)
 
     rotation(advd, nbdt)
 end

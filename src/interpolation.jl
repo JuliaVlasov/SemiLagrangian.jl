@@ -87,7 +87,7 @@ function sol!(
         end
         sz = sz[p]
     end
-    permutedims!(Y, bufout, p)
+    permutedims!(Y, bufout, perm)
     return Y
 end
 function sol(interp_t::AbstractVector{I}, b::AbstractArray{T,N}) where {T,N,I<:AbstractInterpolation{T}}

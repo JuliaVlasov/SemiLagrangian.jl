@@ -29,8 +29,8 @@ function landau_old(
     interp_x::AbstractInterpolation{T},
     interp_v::AbstractInterpolation{T},
 ) where {T,ndims}
-    adv_x = Advection(mesh_x, interp_x)
-    adv_v = Advection(mesh_v, interp_v)
+    adv_x = Advection1d(mesh_x, interp_x)
+    adv_v = Advection1d(mesh_v, interp_v)
 
     nx = mesh_x.length
     nv = mesh_v.length
@@ -132,7 +132,7 @@ function landau_old(
     printout(advd, "diff=$(maxall-minall)")
 end
 function printout(
-    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
     str,
 ) where {T,Nsp,Nv,Nsum,timeopt}
     if timeopt != MPIOpt || advd.adv.mpid.ind == 1
@@ -142,7 +142,7 @@ end
 printout(str) = println(str)
 
 function trace_energy(
-    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
     t,
 ) where {T,Nsp,Nv,Nsum,timeopt}
 
@@ -168,7 +168,7 @@ function trace_energy(
 end
 
 
-function landau(advd::AdvectionData, nbdt)
+function landau(advd::Advection1dData, nbdt)
 
     # global cl_obs
     # clockreset(cl_obs)
@@ -204,7 +204,7 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    adv = Advection((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt = timeopt)
+    adv = Advection1d((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt = timeopt)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -216,7 +216,7 @@ function landau1_1(
 
     pvar = getpoissonvar(adv)
 
-    advd = AdvectionData(adv, data, pvar)
+    advd = Advection1dData(adv, data, pvar)
 
     printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
     printout(advd, "# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
@@ -233,7 +233,7 @@ function landau1_1(
     end
     printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
-    # advdata = AdvectionData(adv, data, pvar)
+    # advdata = Advection1dData(adv, data, pvar)
 
     landau(advd, nbdt)
 end
@@ -261,7 +261,7 @@ function landau2_2(
     mesh2_v = UniformMesh(v2min, v2max, nv2)
 
 
-    adv = Advection(
+    adv = Advection1d(
         (mesh1_sp, mesh2_sp),
         (mesh1_v, mesh2_v),
         interpall[1:2],
@@ -282,8 +282,8 @@ function landau2_2(
 
     pvar = getpoissonvar(adv)
 
-    advd = AdvectionData(adv, data, pvar)
-    # advdata = AdvectionData(adv, data, pvar)
+    advd = Advection1dData(adv, data, pvar)
+    # advdata = Advection1dData(adv, data, pvar)
     printout(
         advd,
         "# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2",

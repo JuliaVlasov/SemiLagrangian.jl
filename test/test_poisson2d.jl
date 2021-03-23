@@ -2,9 +2,9 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian:
-    Advection,
+    Advection1d,
     sizeall,
-    AdvectionData,
+    Advection1dData,
     getdata,
     advection!,
     UniformMesh,
@@ -50,15 +50,15 @@ using SemiLagrangian:
 #     mesh_v = UniformMesh( vmin, vmax, nv)
 
 #     dt = T(2big(pi)/nbdt)
-#     adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_fct=[tan, sin, tan])
-# #    adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
+#     adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_fct=[tan, sin, tan])
+# #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
 #     sz = sizeall(adv)
 #     tabref = zeros(T,sz)
 #     exact!(tabref, mesh_sp, mesh_v, T(0))
 
 #     pvar = getrotationvar(adv)
 
-#     advdata = AdvectionData(adv, tabref, pvar)
+#     advdata = Advection1dData(adv, tabref, pvar)
 
 #     diffmax = 0
 #     data = getdata(advdata)

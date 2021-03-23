@@ -2,8 +2,8 @@
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
 """
-    Advection{T, Nsp, Nv, Nsum, timeopt}
-    Advection(
+    Advection1d{T, Nsp, Nv, Nsum, timeopt}
+    Advection1d(
         t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
         t_mesh_v::NTuple{Nv, UniformMesh{T}},
         t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
@@ -56,7 +56,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection{T,Nsp,Nv,Nsum,timeopt}
+struct Advection1d{T,Nsp,Nv,Nsum,timeopt}
     sizeall::Any
     t_mesh_sp::NTuple{Nsp,UniformMesh{T}}
     t_mesh_v::NTuple{Nv,UniformMesh{T}}
@@ -68,7 +68,7 @@ struct Advection{T,Nsp,Nv,Nsum,timeopt}
     v_square::Any
     nbsplit::Any
     mpid::Any
-    function Advection(
+    function Advection1d(
         t_mesh_sp::NTuple{Nsp,UniformMesh{T}},
         t_mesh_v::NTuple{Nv,UniformMesh{T}},
         t_interp_sp::NTuple{Nsp,AbstractInterpolation{T}},
@@ -109,12 +109,12 @@ struct Advection{T,Nsp,Nv,Nsum,timeopt}
     end
 end
 """
-    sizeall(adv::Advection)
+    sizeall(adv::Advection1d)
 
 Return a tuple of the sizes of each dimensions
 
 # Argument
-- `adv::Advection` : Advection structure.
+- `adv::Advection1d` : Advection1d structure.
 """
 sizeall(adv) = adv.sizeall
 
@@ -122,9 +122,9 @@ sizeall(adv) = adv.sizeall
 abstract type AbstractExtDataAdv{T,Nsum} end
 
 """
-    AdvectionData{T,Nsp,Nv,Nsum,timeopt}
-    AdvectionData(
-    adv::Advection{T,Nsp,Nv,Nsum,timeopt}, 
+    Advection1dData{T,Nsp,Nv,Nsum,timeopt}
+    Advection1dData(
+    adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}, 
     data::Array{T,Nsum},
     parext)
 
@@ -138,12 +138,12 @@ Mutable structure that contains variable parameters of advection series
 - `timeopt::TimeOptimization` : time optimization
 
 # Arguments
-- `adv::Advection{T,Nsp,Nv,Nsum}` : link to the constant data of this advection
+- `adv::Advection1d{T,Nsp,Nv,Nsum}` : link to the constant data of this advection
 - `data::Array{T,Nsum}` : Initial data of this advection
 - `parext` : external data of this advection to compute alpha of each interpolations
 
 # Implementation
-- `adv::Advection{T,Nsp,Nv,Nsum,timeopt}` : link to the constant data of this advection
+- `adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}` : link to the constant data of this advection
 - `state_coef::Int` : state that is the index of `tab_coef`, it is from one to lenth(tab_coef)
 - `state_dim::Int` : the dimension index, from 1 to Nsp in space states, from one to Nv in velocity state
 - `data:Array{T,Nsum}` : it is the working buffer
@@ -156,13 +156,13 @@ Mutable structure that contains variable parameters of advection series
 - `parext::ExtDataAdv` : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `initcoef!(parext::AbstractExtDataAdv, self::AdvectionData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
-- `getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)` : return the alpha number that is used for interpolation.
-- `getperm(parext::AbstractExtDataAdv, advd::AdvectionData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
+- `initcoef!(parext::AbstractExtDataAdv, self::Advection1dData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
+- `getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)` : return the alpha number that is used for interpolation.
+- `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
-mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
-    adv::Advection{T,Nsp,Nv,Nsum,timeopt}
+mutable struct Advection1dData{T,Nsp,Nv,Nsum,timeopt}
+    adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}
     state_coef::Int # from 1 to length(adv.tab_coef)
     state_dim::Int # from 1 to N
     data::Array{T,Nsum}
@@ -175,8 +175,8 @@ mutable struct AdvectionData{T,Nsp,Nv,Nsum,timeopt}
     cache_decint::Int64
     cache_precal::Vector{T}
     parext::AbstractExtDataAdv
-    function AdvectionData(
-        adv::Advection{T,Nsp,Nv,Nsum,timeopt},
+    function Advection1dData(
+        adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
         data::Array{T,Nsum},
         parext::AbstractExtDataAdv,
     ) where {T,Nsp,Nv,Nsum,timeopt}
@@ -222,16 +222,16 @@ end
 
 getext(self) = self.parext
 getdata(self) = self.data
-getcur_t(adv::Advection, state_coef::Int) =
+getcur_t(adv::Advection1d, state_coef::Int) =
     adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
-getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_coef)
+getcur_t(self::Advection1dData) = getcur_t(self.adv, self.state_coef)
 getstate_dim(self) = self.state_dim
-isvelocity(adv::Advection{T,Nsp,Nv,Nsum,timeopt}, curid) where {T,Nsp,Nv,Nsum,timeopt} =
+isvelocity(adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}, curid) where {T,Nsp,Nv,Nsum,timeopt} =
     (curid - 1) % Nsum + 1 > Nsp
 isvelocitystate(state_coef::Int) = state_coef % 2 == 0
-isvelocitystate(self::AdvectionData) = isvelocitystate(self.state_coef)
+isvelocitystate(self::Advection1dData) = isvelocitystate(self.state_coef)
 function getindsplit(
-    self::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
 ) where {T,Nsp,Nv,Nsum,timeopt}
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
@@ -240,15 +240,15 @@ function getindsplit(
     end
     return ind
 end
-function _getcurrentindice(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function _getcurrentindice(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     return isvelocitystate(self) * Nsp + self.state_dim
 end
-getbufslgn(self::AdvectionData) = self.t_buf[_getcurrentindice(self)]
-function getinterp(self::AdvectionData)
+getbufslgn(self::Advection1dData) = self.t_buf[_getcurrentindice(self)]
+function getinterp(self::Advection1dData)
     t = isvelocitystate(self) ? self.adv.t_interp_v : self.adv.t_interp_sp
     return t[self.state_dim]
 end
-function getprecal(self::AdvectionData, alpha)
+function getprecal(self::Advection1dData, alpha)
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
         decint = convert(Int, floor(alpha))
@@ -266,18 +266,18 @@ gett_split(self) = self.tt_split[_getcurrentindice(self)]
 
 
 """
-    nextstate!(self::AdvectionData{T, Nsp, Nv, Nsum})
+    nextstate!(self::Advection1dData{T, Nsp, Nv, Nsum})
 
-Function called at the end of advection function to update internal state of AdvectionData structure
+Function called at the end of advection function to update internal state of Advection1dData structure
 
 # Argument
-- `self::AdvectionData{T, Nsp, Nv, Nsum}` : object to update
+- `self::Advection1dData{T, Nsp, Nv, Nsum}` : object to update
 
 # return value
 - `ret::Bool` : `true` if the series must continue
                 `false` at the end of the series.
 """
-function nextstate!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function nextstate!(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     ret = true
     if self.state_dim == [Nv, Nsp][self.state_coef%2+1]
         self.state_dim = 1
@@ -294,23 +294,23 @@ function nextstate!(self::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     return ret
 end
 # default function of the interface
-initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
+initcoef!(parext::AbstractExtDataAdv, self::Advection1dData) = missing
 function getperm(_::AbstractExtDataAdv{T,Nsum}, curstate::Int) where {T,Nsum}
     return transposition(1, curstate, Nsum)
 end
 function getperm(
     _::AbstractExtDataAdv,
-    advd::AdvectionData{T,Nsp,Nv,Nsum},
+    advd::Advection1dData{T,Nsp,Nv,Nsum},
 ) where {T,Nsp,Nv,Nsum}
     return transposition(1, _getcurrentindice(advd), Nsum)
 end
 # this interface function must always be defined
-function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)
+function getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)
     throw(error("getalpha undefined for $(typeof(parext))"))
 end
 
 # data formating
-function getformdata(advd::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
+function getformdata(advd::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     p = getperm(getext(advd), advd)
     if p == 1:Nsum
         # the case of identity permutation no copy is needed
@@ -324,7 +324,7 @@ function getformdata(advd::AdvectionData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     return f
 end
 function copydata!(
-    advd::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
     f,
 ) where {T,Nsp,Nv,Nsum,timeopt}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
@@ -338,19 +338,19 @@ function copydata!(
     end
 end
 """
-    advection!(self::AdvectionData)
+    advection!(self::Advection1dData)
 
-Advection function of a multidimensional function `f` discretized on `mesh`
+Advection1d function of a multidimensional function `f` discretized on `mesh`
 
 # Argument
-- `self::AdvectionData` : mutable structure of variables data
+- `self::Advection1dData` : mutable structure of variables data
 
 # Return value
 - `true` : means that the advection series must continue
 - `false` : means that the advection series is ended.
 """
 function advection!(
-    self::AdvectionData{T,Nsp,Nv,Nsum,timeopt},
+    self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
 ) where {T,Nsp,Nv,Nsum,timeopt}
     f = self.data
     tabbuf = getbufslgn(self)

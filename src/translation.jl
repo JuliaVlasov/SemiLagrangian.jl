@@ -8,14 +8,14 @@ function gettranslationvar(v::NTuple{Nsum,T}) where {T,Nsum}
 end
 
 """
-    getalpha(pv::TranslationVar, self::AdvectionData, ind) 
+    getalpha(pv::TranslationVar, self::Advection1dData, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection
 
 """
 function getalpha(
     pv::TranslationVar{T,Nsum},
-    self::AdvectionData{T,Nsp,Nv,Nsum},
+    self::Advection1dData{T,Nsp,Nv,Nsum},
     ind,
 ) where {T,Nsp,Nv,Nsum}
     return pv.values[_getcurrentindice(self)] * getcur_t(self)

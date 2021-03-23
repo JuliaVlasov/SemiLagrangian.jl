@@ -2,9 +2,9 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian:
-    Advection,
+    Advection1d,
     sizeall,
-    AdvectionData,
+    Advection1dData,
     getdata,
     advection!,
     UniformMesh,
@@ -48,7 +48,7 @@ function test_translation(
     mesh_v = UniformMesh(vmin, vmax, nv)
 
     dt = T(1)
-    adv = Advection((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt)
+    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt)
     tabref = zeros(T, sz)
 
     v1 = T(big"0.83545655467782872872782870029282982828737872878776717190927267611111")
@@ -58,7 +58,7 @@ function test_translation(
 
     pvar = gettranslationvar((v1, v2))
 
-    advdata = AdvectionData(adv, tabref, pvar)
+    advdata = Advection1dData(adv, tabref, pvar)
 
     diffmax = 0
     data = getdata(advdata)
@@ -121,70 +121,79 @@ end
 
 @testset "test translation" begin
     T = Float64
-    @time @test test_translation((400, 220), [Lagrange(9, T), Lagrange(9, T)], 11) < 1e-7
-    @time @test test_translation((50, 60, 40), map(x -> Lagrange(9+2x, T),1:3), 11) < 1e-5
-    @time @test test_translation((200, 220), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-7
-    @time @test test_translation((128, 256), [B_SplineLU(9, 128, T), B_SplineLU(9, 256, T)], 11) < 1e-8
+    @time @test test_translation((150, 220), [Lagrange(9, T), Lagrange(9, T)], 11) < 1e-6
+    @time @test test_translation((50, 30, 40), map(x -> Lagrange(5+2x, T),1:3), 11) < 1e-4
+    @time @test test_translation((100, 120), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-5
+    @time @test test_translation((128, 64), [B_SplineLU(9, 128, T), B_SplineLU(9, 64, T)], 11) < 1e-6
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineLU(5, 128, T),
-        B_SplineLU(5, 256, T),
+        B_SplineLU(5, 64, T),
         11,
-    ) < 1e-8
+    ) < 1e-6
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineFFT(5, 128, T),
-        B_SplineFFT(5, 256, T),
+        B_SplineFFT(5, 64, T),
         11,
-    ) < 1e-8
+    ) < 1e-6
     T = Double64
-    @time @test test_translation((200, 220), [Lagrange(15, T), Lagrange(15, T)], 11) < 1e-18
-    @time @test test_translation((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-18
+    @time @test test_translation((100, 120), [Lagrange(15, T), Lagrange(15, T)], 11) < 1e-14
+    @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), 11) < 1e-14
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineLU(15, 128, T),
-        B_SplineLU(15, 256, T),
+        B_SplineLU(15, 64, T),
         11,
-    ) < 1e-22
+    ) < 1e-18
     @time @test test_translation(
-        (128, 256),
-        [B_SplineLU(15, 128, T), B_SplineLU(15, 256, T)],
+        (128, 64),
+        [B_SplineLU(15, 128, T), B_SplineLU(15, 64, T)],
         11,
-    ) < 1e-22
+    ) < 1e-17
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineFFT(15, 128, T),
-        B_SplineFFT(15, 256, T),
+        B_SplineFFT(15, 64, T),
         11,
-    ) < 1e-22
+    ) < 1e-17
     @time @test test_translation(
-        (128, 256),
-        [B_SplineFFT(15, 128, T), B_SplineFFT(15, 256, T)],
+        (128, 64),
+        [B_SplineFFT(15, 128, T), B_SplineFFT(15, 64, T)],
         11,
-    ) < 1e-22
+    ) < 1e-17
     T = BigFloat
-    @time @test test_translation((200, 190), [Lagrange(21, T), Lagrange(21, T)], 11) < 1e-23
-    @time @test test_translation((200, 190), Lagrange(25, T), Lagrange(25, T), 11) < 1e-28
+    @time @test test_translation((100, 90), [Lagrange(21, T), Lagrange(21, T)], 11) < 1e-17
+    @time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), 11) < 1e-20
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineLU(25, 128, T),
-        B_SplineLU(25, 256, T),
+        B_SplineLU(25, 64, T),
         11,
-    ) < 1e-34
+    ) < 1e-22
     @time @test test_translation(
-        (128, 256),
-        [B_SplineLU(21, 128, T), B_SplineLU(21, 256, T)],
+        (128, 64),
+        [B_SplineLU(21, 128, T), B_SplineLU(21, 64, T)],
         11,
-    ) < 1e-30
+    ) < 1e-22
     @time @test test_translation(
-        (128, 256),
+        (128, 64),
         B_SplineFFT(25, 128, T),
-        B_SplineFFT(25, 256, T),
+        B_SplineFFT(25, 64, T),
         11,
-    ) < 1e-34
+    ) < 1e-22
     @time @test test_translation(
-        (128, 256),
-        [B_SplineFFT(21, 128, T), B_SplineFFT(21, 256, T)],
+        (128, 64),
+        [B_SplineFFT(21, 128, T), B_SplineFFT(21, 64, T)],
         11,
-    ) < 1e-30
+    ) < 1e-22
+
+    T = Float64
+    @time @test test_translation((32, 38, 30),[ B_SplineLU(9, 32, T), Lagrange(9, T), Lagrange(9,T)], 11) < 1e-4
+    @time @test test_translation((38, 32, 30),[ Lagrange(9,T), B_SplineLU(9, 32, T), Lagrange(9, T)], 11) < 1e-4
+    @time @test test_translation((30, 38, 32),[ Lagrange(9, T), Lagrange(9,T), B_SplineLU(9, 32, T)], 11) < 1e-4
+    @time @test test_translation((32, 64, 30),[ B_SplineLU(9, 32, T), B_SplineFFT(9, 64, T), Lagrange(9,T)], 11) < 1e-4
+    @time @test test_translation((30, 32, 64),[ Lagrange(9,T), B_SplineLU(9, 32, T), B_SplineFFT(9, 64, T), ], 11) < 1e-4
+    @time @test test_translation((32, 30, 64),[ B_SplineLU(9, 32, T), Lagrange(9,T), B_SplineFFT(9, 64, T), ], 11) < 1e-4
+
 end

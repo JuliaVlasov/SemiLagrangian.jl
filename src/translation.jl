@@ -1,6 +1,6 @@
 
 
-struct TranslationVar{T,Nsum} <: AbstractExtDataAdv{T,Nsum}
+struct TranslationVar{T,Nsum} <: AbstractExtDataAdv1d{T,Nsum}
     values::NTuple{Nsum,T}
 end
 function gettranslationvar(v::NTuple{Nsum,T}) where {T,Nsum}

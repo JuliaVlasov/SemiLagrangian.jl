@@ -2,8 +2,8 @@
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
 """
-    Advection1d{T, Nsp, Nv, Nsum, timeopt}
-    Advection1d(
+    Advection{T}
+    Advection(
         t_mesh_sp::NTuple{Nsp, UniformMesh{T}},
         t_mesh_v::NTuple{Nv, UniformMesh{T}},
         t_interp_sp::NTuple{Nsp, AbstractInterpolation{T}},
@@ -56,35 +56,26 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection1d{T,Nsp,Nv,Nsum,timeopt}
-    sizeall::Any
-    t_mesh_sp::NTuple{Nsp,UniformMesh{T}}
-    t_mesh_v::NTuple{Nv,UniformMesh{T}}
-    t_interp_sp::NTuple{Nsp,AbstractInterpolation{T,CircEdge}}
-    t_interp_v::NTuple{Nv,AbstractInterpolation{T,CircEdge}}
+struct Advection{T, N, I}
+    sizeall
+    t_mesh::NTuple{N,UniformMesh{T}}
+    t_interp::Vector{I}
     dt_base::T
-    tab_coef::Any
-    tab_fct::Any
-    v_square::Any
-    nbsplit::Any
+    tab_coef::Vector{T}
+    tab_fct::Vector{Function}
+    nbsplit::Int
     mpid::Any
-    function Advection1d(
-        t_mesh_sp::NTuple{Nsp,UniformMesh{T}},
-        t_mesh_v::NTuple{Nv,UniformMesh{T}},
-        t_interp_sp::NTuple{Nsp,AbstractInterpolation{T}},
-        t_interp_v::NTuple{Nv,AbstractInterpolation{T}},
+    function Advection(
+        t_mesh::NTuple{N,UniformMesh{T}},
+        t_interp::Vector{I}
         dt_base::T;
         tab_coef = [1 // 2, 1 // 1, 1 // 2],
-        tab_fct = [identity, identity, identity],
+        tab_fct = missing,
         timeopt::TimeOptimization = NoTimeOpt,
-    ) where {T,Nsp,Nv}
-        # Nsp == sum(get_ndims.(t_interp_sp)) ||
-        #     throw(ArgumentError("the sum of dims incorrect for space"))
-        # Nv == sum(get_ndims.(t_interp_v)) ||
-        #     throw(ArgumentError("the sum of dims incorrect for velocity"))
-        sizeall = length.((t_mesh_sp..., t_mesh_v...))
-        Nsum = Nsp + Nv
-        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
+    ) where {T, N, I <: AbstractInterpolation{T}}
+        length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
+        sizeall = length.(t_mesh)
+#        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing
         nbsplit = if timeopt == MPIOpt
             mpid.nb
@@ -93,33 +84,32 @@ struct Advection1d{T,Nsp,Nv,Nsum,timeopt}
         else
             1
         end
-        return new{T,Nsp,Nv,Nsum,timeopt}(
+        nfct = ismissing(tab_fct) fill(identity, size(tab_coef)), tab_fct
+        return new{T,N,I}(
             sizeall,
-            t_mesh_sp,
-            t_mesh_v,
-            t_interp_sp,
-            t_interp_v,
+            t_mesh,
+            t_interp,
             dt_base,
             tab_coef,
-            tab_fct,
-            v_square,
+            nfct,
+#            v_square,
             nbsplit,
             mpid,
         )
     end
 end
 """
-    sizeall(adv::Advection1d)
+    sizeall(adv::Advection)
 
 Return a tuple of the sizes of each dimensions
 
 # Argument
-- `adv::Advection1d` : Advection1d structure.
+- `adv::Advection` : Advection structure.
 """
 sizeall(adv) = adv.sizeall
 
 # Interface of external data
-abstract type AbstractExtDataAdv1d{T,Nsum} end
+abstract type AbstractExtDataAdv{T,Nsum} end
 
 """
     Advection1dData{T,Nsp,Nv,Nsum,timeopt}
@@ -156,9 +146,9 @@ Mutable structure that contains variable parameters of advection series
 - `parext::ExtDataAdv` : external data of this advection to compute alpha of each interpolations
 
 # Methods to define
-- `initcoef!(parext::AbstractExtDataAdv1d, self::Advection1dData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
-- `getalpha(parext::AbstractExtDataAdv1d, self::Advection1dData, ind)` : return the alpha number that is used for interpolation.
-- `getperm(parext::AbstractExtDataAdv1d, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
+- `initcoef!(parext::AbstractExtDataAdv, self::Advection1dData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
+- `getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)` : return the alpha number that is used for interpolation.
+- `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
 mutable struct Advection1dData{T,Nsp,Nv,Nsum,timeopt}
@@ -174,11 +164,11 @@ mutable struct Advection1dData{T,Nsp,Nv,Nsum,timeopt}
     cache_alpha::Union{T,Nothing}
     cache_decint::Int64
     cache_precal::Vector{T}
-    parext::AbstractExtDataAdv1d
+    parext::AbstractExtDataAdv
     function Advection1dData(
         adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
         data::Array{T,Nsum},
-        parext::AbstractExtDataAdv1d,
+        parext::AbstractExtDataAdv,
     ) where {T,Nsp,Nv,Nsum,timeopt}
         s = size(data)
         s == sizeall(adv) ||
@@ -294,18 +284,18 @@ function nextstate!(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
     return ret
 end
 # default function of the interface
-initcoef!(parext::AbstractExtDataAdv1d, self::Advection1dData) = missing
-function getperm(_::AbstractExtDataAdv1d{T,Nsum}, curstate::Int) where {T,Nsum}
+initcoef!(parext::AbstractExtDataAdv, self::Advection1dData) = missing
+function getperm(_::AbstractExtDataAdv{T,Nsum}, curstate::Int) where {T,Nsum}
     return transposition(1, curstate, Nsum)
 end
 function getperm(
-    _::AbstractExtDataAdv1d,
+    _::AbstractExtDataAdv,
     advd::Advection1dData{T,Nsp,Nv,Nsum},
 ) where {T,Nsp,Nv,Nsum}
     return transposition(1, _getcurrentindice(advd), Nsum)
 end
 # this interface function must always be defined
-function getalpha(parext::AbstractExtDataAdv1d, self::Advection1dData, ind)
+function getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)
     throw(error("getalpha undefined for $(typeof(parext))"))
 end
 

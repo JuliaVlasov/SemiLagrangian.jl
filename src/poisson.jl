@@ -82,7 +82,7 @@ getperm(pc::PoissonConst, curstate::Int) = pc.t_perms[curstate]
 getperm(pc::PoissonConst, advd::Advection1dData) = pc.t_perms[_getcurrentindice(advd)]
 
 """
-    PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv
+    PoissonVar{T, Nsp, Nv, Nsum} <: AbstractExtDataAdv1d
     PoissonVar(pc::PoissonConst{T, Nsp, Nv})
 
 mutable structure of variable data for the poisson computation
@@ -95,7 +95,7 @@ mutable structure of variable data for the poisson computation
 - `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
 - `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
 """
-mutable struct PoissonVar{T,Nsp,Nv,Nsum} <: AbstractExtDataAdv{T,Nsum}
+mutable struct PoissonVar{T,Nsp,Nv,Nsum} <: AbstractExtDataAdv1d{T,Nsum}
     pc::PoissonConst{T,Nsp,Nv}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}

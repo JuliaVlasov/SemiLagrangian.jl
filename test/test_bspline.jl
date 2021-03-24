@@ -84,21 +84,6 @@ function bsplinerec(p, j, x::T) where {T}
     (w * bsplinerec(p - 1, j, x) + (1 - w1) * bsplinerec(p - 1, j + 1, x))
 
 end
-function bsplinerecmoins(p, j, x::T) where {T}
-
-    if p == 0
-        if j == 0
-            return one(T)
-        else
-            return zero(T)
-        end
-    else
-        w = (x - j) / p
-        w1 = (x - j - 1) / p
-    end
-    (w * bsplinerecmoins(p - 1, j, x) - (w1 - 1) * bsplinerecmoins(p - 1, j + 1, x))
-
-end
 
 function test_bspline()
 
@@ -111,9 +96,21 @@ function test_bspline()
             0 // 1,
         ]
         for ord = 1:10, x in tab_x
+            if ord >8
+                p1 = Polynomial([big(1//7),2//7,3//7])
+                p2 = Polynomial([-big(6//7), 2//7, 3//7])
+            else
+                p1 = Polynomial([1//7,2//7,3//7])
+                p2 = Polynomial([-6//7, 2//7, 3//7])
+            end
             for i = 0:(ord-1)
-                @test bsplinerec(ord, i, x) == getbspline(ord, i)(x)
-                @test bsplinerecmoins(ord, i, x) == getbspline(ord, i)(x)
+                bsp = getbspline(ord, i)
+                b1 = bsp*p1
+                b2 = bsp*p2
+                bspbis = b1 - b2
+                v = bsplinerec(ord, i, x)
+                @test  v == bsp(x)
+                @test v == bspbis(x)
             end
         end
     end

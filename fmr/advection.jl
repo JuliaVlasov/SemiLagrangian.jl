@@ -1,6 +1,13 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
+struct StateAdv{N}
+    perm::Vector{Int} # dimensions permutation
+    ndims::Int        # number of dimension
+    stcoef::Int   # state_coef
+    StateAdv(p, ndims, st)=new{length(p)}(p, ndims, st)
+end
+
 """
     Advection{T}
     Advection(
@@ -58,12 +65,14 @@ struct Advection{T, N, I}
     dt_base::T
     tab_coef::Vector{T}
     tab_fct::Vector{Function}
+    states::Vector{StateAdv{N}}
     nbsplit::Int
     mpid::Any
     function Advection(
         t_mesh::NTuple{N,UniformMesh{T}},
         t_interp::Vector{I},
-        dt_base::T;
+        dt_base::T,
+        states::Vector{StateAdv{N}};
         tab_coef = [1 // 2, 1 // 1, 1 // 2],
         tab_fct = missing,
         timeopt::TimeOptimization = NoTimeOpt,
@@ -85,6 +94,7 @@ struct Advection{T, N, I}
             t_mesh,
             t_interp,
             dt_base,
+            states,
             tab_coef,
             nfct,
 #            v_square,
@@ -105,6 +115,8 @@ sizeall(adv) = adv.sizeall
 
 # Interface of external data
 abstract type AbstractExtDataAdv{T,Nsum} end
+
+
 
 """
     AdvectionData{T,N,timeopt}
@@ -148,18 +160,19 @@ mutable struct AdvectionData{T,N,timeopt}
     adv::Advection{T,N}
     state_coef::Int # from 1 to length(adv.tab_coef)
     state_dim::Int # from 1 to N
-    data::Array{T,Nsum}
+    state_gen::Int # indice of the calls of advection!
+    data::Array{T,N}
     bufdata::Array{T}
-    fmrtabdata::NTuple{Nsum,Array{T,Nsum}}
-    t_buf::NTuple{Nsum,Array{T,2}}
+    fmrtabdata::NTuple{N,Array{T,N}}
+    t_buf::NTuple{N,Array{T,2}}
     t_itr::Any
     tt_split::Any
     cache_alpha::Union{T,Nothing}
     cache_decint::Int64
     cache_precal::Vector{T}
     parext::AbstractExtDataAdv
-    function Advection1dData(
-        adv::Advection1d{T,Nsp,Nv,Nsum,timeopt},
+    function AdvectionData(
+        adv::Advection{T,Nsp,Nv,Nsum,timeopt},
         data::Array{T,Nsum},
         parext::AbstractExtDataAdv,
     ) where {T,Nsp,Nv,Nsum,timeopt}
@@ -185,6 +198,7 @@ mutable struct AdvectionData{T,N,timeopt}
         ordmax = maximum(get_order.((adv.t_interp_sp..., adv.t_interp_v...)))
         return new{T,Nsp,Nv,Nsum,timeopt}(
             adv,
+            1,
             1,
             1,
             datanew,

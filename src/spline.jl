@@ -93,10 +93,10 @@ function (f::Spline{N})(x) where {N<:Signed}
         return zero(x)
     end
 end
-struct SplineInt{N} <: AbstractSpline{N}
-    fact_order::N
-    tabpol::Vector{Polynomials.Polynomial{N}}
-end
+# struct SplineInt{N} <: AbstractSpline{N}
+#     fact_order::N
+#     tabpol::Vector{Polynomials.Polynomial{N}}
+# end
 # function SplineInt(order)
 #     sp = getbspline(order, 0)
 #     N = order <= 13 ? Int64 : BigInt

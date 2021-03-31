@@ -42,9 +42,11 @@ function dotprod(t_v::NTuple{N,Vector{T}}) where {N,T}
     end
     return res
 end
+dotprod(t_v::Tuple{Vector{T}}) where {T}=t_v[1]
 function dotprodother(t_v::NTuple{N,Vector{T}}) where {N,T}
     return prod.(Iterators.product(t_v...))
 end
+# dotprod(v_v::Vector{Vector{T}}) where{T}=dotprod(totuple(v_v))
 # modone(x,n)=(x-1)%n+1
 # struct CircularArray{T,N} <: AbstractArray{T,N} #inherits from AbstractArray
 #     x::AbstractArray{T,N}

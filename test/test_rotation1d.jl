@@ -2,9 +2,9 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian:
-    Advection,
+    Advection1d,
     sizeall,
-    AdvectionData,
+    Advection1dData,
     getdata,
     advection!,
     UniformMesh,
@@ -33,7 +33,7 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
     end
 end
 
-function test_rotation(
+function test_rotation1d(
     sz::NTuple{2,Int},
     interp_sp::AbstractInterpolation{T},
     interp_v::AbstractInterpolation{T},
@@ -46,19 +46,21 @@ function test_rotation(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 end
-println("trace1")
+println("trace11d")
 @time begin
+
     dt = T(2big(pi) / nbdt)
-    adv = Advection(
-        (mesh_sp,mesh_v,),
-        [interp_sp, interp_v,],
-        dt,
-        [([1,2], 1, 1, true),([2,1], 1, 2, true),([1,2], 1, 3, true),];
+    adv = Advection1d(
+        (mesh_sp,),
+        (mesh_v,),
+        (interp_sp,),
+        (interp_v,),
+        dt;
         tab_fct = [tan, sin, tan],
     )
     #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
 end
-println("trace2")
+println("trace21d")
 @time begin
 
     sz = sizeall(adv)
@@ -67,13 +69,12 @@ println("trace2")
 
     pvar = getrotationvar(adv)
 
-    advdata = AdvectionData(adv, tabref, pvar)
+    advdata = Advection1dData(adv, tabref, pvar)
 
     diffmax = 0
     data = getdata(advdata)
 end
-println("trace3")
-
+println("trace31d")
 
     for ind = 1:nbdt
         while advection!(advdata)
@@ -83,12 +84,12 @@ println("trace3")
         diffmax = max(diffmax, diff)
         @show ind, diff
     end
-    println("test_rotation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
+    println("test_rotation1d sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
     return diffmax
 
 end
 
-function test_rotation(
+function test_rotation1d(
     sz::NTuple{2,Int},
     interp::Vector{I},
     nbdt::Int,
@@ -150,46 +151,45 @@ end
 
 @testset "test rotation" begin
     T = Float64
-#    @time @test test_rotation((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
-@time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
-@time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
-    @time @test test_rotation(
+#    @time @test test_rotation1d((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
+    @time @test test_rotation1d((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 256, T),
         11,
     ) < 1e-3
-    @time @test test_rotation(
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineFFT(5, 128, T),
         B_SplineFFT(5, 256, T),
         11,
     ) < 1e-3
     T = Double64
-#    @time @test test_rotation((100, 122), [Lagrange(15, T),Lagrange(15, T)], 11) < 1e-6
-    @time @test test_rotation((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-7
-    @time @test test_rotation(
+#    @time @test test_rotation1d((100, 122), [Lagrange(15, T),Lagrange(15, T)], 11) < 1e-6
+    @time @test test_rotation1d((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-7
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineLU(15, 128, T),
         B_SplineLU(15, 256, T),
         11,
     ) < 1e-8
-    @time @test test_rotation(
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineFFT(15, 128, T),
         B_SplineFFT(15, 256, T),
         11,
     ) < 1e-8
     T = BigFloat
-#    @time @test test_rotation((100, 122), [Lagrange(21, T),Lagrange(21, T)], 11) < 1e-7
-    @time @test test_rotation((200, 220), Lagrange(25, T), Lagrange(25, T), 11) < 1e-10
-    @time @test test_rotation(
+#    @time @test test_rotation1d((100, 122), [Lagrange(21, T),Lagrange(21, T)], 11) < 1e-7
+    @time @test test_rotation1d((200, 220), Lagrange(25, T), Lagrange(25, T), 11) < 1e-10
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineLU(25, 128, T),
         B_SplineLU(25, 256, T),
         11,
     ) < 1e-11
-    @time @test test_rotation(
+    @time @test test_rotation1d(
         (128, 256),
         B_SplineFFT(25, 128, T),
         B_SplineFFT(25, 256, T),

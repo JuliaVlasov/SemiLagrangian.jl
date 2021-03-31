@@ -220,15 +220,15 @@ mutable struct Advection1dData{T,Nsp,Nv,Nsum,timeopt}
 end
 
 
-getext(self) = self.parext
-getdata(self) = self.data
+# getext(self) = self.parext defined in advection.jl
+# getdata(self) = self.data defined in advection.jl
 getcur_t(adv::Advection1d, state_coef::Int) =
     adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
 getcur_t(self::Advection1dData) = getcur_t(self.adv, self.state_coef)
 getstate_dim(self) = self.state_dim
 isvelocity(adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}, curid) where {T,Nsp,Nv,Nsum,timeopt} =
     (curid - 1) % Nsum + 1 > Nsp
-isvelocitystate(state_coef::Int) = state_coef % 2 == 0
+# isvelocitystate(state_coef::Int) = state_coef % 2 == 0 defined in advection.jl
 isvelocitystate(self::Advection1dData) = isvelocitystate(self.state_coef)
 function getindsplit(
     self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
@@ -352,6 +352,7 @@ Advection1d function of a multidimensional function `f` discretized on `mesh`
 function advection!(
     self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
 ) where {T,Nsp,Nv,Nsum,timeopt}
+@time begin
     f = self.data
     tabbuf = getbufslgn(self)
 
@@ -360,21 +361,24 @@ function advection!(
     initcoef!(extdata, self)
     curind = _getcurrentindice(self)
     f = getformdata(self)
+end
     #    @show size(f)
     tabmod = gettabmod(size(f, 1)) # just for optimization of interpolation!
     if timeopt == NoTimeOpt || timeopt == MPIOpt
-        local buf = view(tabbuf, :, 1)
-        #        @inbounds for ind in getitr(self)
-        # fmrcpt=1
-        for ind in getitr(self)
-            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-            local lgn = view(f, :, ind)
-            interpolate!(buf, lgn, decint, precal, interp, tabmod)
-            lgn .= buf
-            #    fmrcpt +=1
-            #     if fmrcpt == 30
-            #         GC.gc()
-            #     end
+        @time begin
+            local buf = view(tabbuf, :, 1)
+            #        @inbounds for ind in getitr(self)
+            # fmrcpt=1
+            for ind in getitr(self)
+                local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+                local lgn = view(f, :, ind)
+                interpolate!(buf, lgn, decint, precal, interp, tabmod)
+                lgn .= buf
+                #    fmrcpt +=1
+                #     if fmrcpt == 30
+                #         GC.gc()
+                #     end
+            end
         end
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin

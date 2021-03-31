@@ -11,7 +11,6 @@ Abstract supertype for all interpolation type
 - `T` : type of number on witch interpolation works
 - `edge` : type of edge treatment
 - `order` : order of interpolation
-- `nd` : number of dimensions of the interpolation
 
 # Implementation constraint
 - `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
@@ -105,6 +104,9 @@ end
 @inline function get_precal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where {T}
     v .= get_precal(bsp, decf)
 end
+@inline function get_precal!(v::Array{T,N}, bsp::Vector{I}, decf::NTuple{N,T}) where {T, N, I <: AbstractInterpolation{T}}
+    v .= dotprod(ntuple(x -> get_precal(bsp[x], decf[x]), N))
+end
 
 # modulo for "begin to one" array
 modone(ind, n) = (n + ind - 1) % n + 1
@@ -126,7 +128,7 @@ end
         decint::Int, 
         precal::Vector{T}, 
         interp::AbstractInterpolation{T, CircEdge, order},
-        tabmod=gettabmod(length(fi)) ) where {T, order}
+        tabmod=gettabmod(size(fi)) ) where {T, order}
 
 apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
 decint and precal are precompute with get_precal method, the TypeEdge is CircEdge
@@ -159,6 +161,36 @@ function interpolate!(
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
     missing
+end
+function interpolate!(
+    fp::AbstractArray{T,N},
+    fi::AbstractArray{T,N},
+    decint::NTuple{N,Int},
+    precal::Array{T,N},
+    interp::Vector{I},
+    tabmod = gettabmod.(size(fi)),
+) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
+    res = sol(interp, fi)
+    order = get_order.(interp)
+    origin = -div.(order, (2,))
+    lg = size(fi)
+    lg5 = 5 .* lg
+    for i in CartesianIndices(lg)
+        indbeg = i.I .+ origin .+ decint .+ lg5
+        indend = indbeg .+ order
+        fp[i] = sum(res[ntuple(x -> tabmod[x][indbeg[x]:indend[x]], N)...] .* precal)
+    end
+    missing
+end
+@inline function interpolate!(
+    fp::AbstractArray{T,1},
+    fi::AbstractArray{T,1},
+    decint::NTuple{1,Int},
+    precal::Array{T,1},
+    interp::Vector{I},
+    tabmod = gettabmod.(size(fi)),
+) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
+    return interpolate!(fp, fi, decint[1], precal, interp[1],tabmod[1])
 end
 """
     interpolate!( 
@@ -287,51 +319,115 @@ end
 #     end
 # end
 # OK pour n'importe quel nd
+
+mutable struct CacheTabFct{T,N,I}
+    interps::Vector{I}
+    decfl::Vector{T}
+    precal::Vector{Vector{T}}
+    function CacheTabFct(interps::Vector{I}, x::T) where{T, I<:AbstractInterpolation{T}}
+        N=length(interps)
+        decfl = zeros(T,N)
+        @show get_order.(interps)
+        precal = get_precal.(interps, decfl)
+        return new{T,N,I}( interps, decfl, precal)
+    end
+end
+function getprecal!(cache::CacheTabFct{T,N}, decfl::AbstractVector{T})::NTuple{N,Vector{T}} where {T,N}
+    for i=1:N
+        if decfl[i] != cache.decfl[i]
+            cache.precal[i] = get_precal(cache.interps[i], decfl[i])
+            cache.decfl[i] = decfl[i]
+        end
+    end
+    return ntuple(x ->cache.precal[x],N)
+end
+function getprecal!(cache::CacheTabFct{T,1}, decfl::T)::Vector{T} where {T}
+    if decfl != cache.decfl[1]
+        cache.precal[1] = get_precal(cache.interps[1], decfl)
+        cache.decfl[1] = decfl
+    end
+    return cache.precal[1]
+end
+
 function interpolate!(
     fp::AbstractArray{T,N},
     fi::AbstractArray{T,N},
-    dec::NTuple{N,Function},
+    dec::Function,
     interp_t::AbstractVector{I},
+    tabmod = gettabmod.(size(fp)),
+#    cache::Union{CacheTabFct{T,N},Missing} = missing
 ) where {T,N,I<:AbstractInterpolation{T}}
 
     N == length(interp_t) || thrown(ArgumentError("The number of Interpolation $(length(interp_t)) is different of N=$N"))
     sz = size(fp)
-    tabmod = gettabmod.(sz)
-
+    
     res = sol(interp_t, fi)
-
-
  
     order = get_order.(interp_t)
-    origin = -1 .* div.(order,(2,))
+    origin = -div.(order,(2,))
     decall = 5 .* sz .+ origin
 
-    decfl = zeros(T, N)
-    oldfl = zeros(T, N)
-    deb_i = zeros(Int, N)
-    end_i = zeros(Int, N)
- 
-    tab = dotprod(ntuple(x -> [f(decfl[x]) for f in interp_t[x].tabfct], N))
+
+    decfl = ntuple(x->zero(T), N)
+    oldfl = decfl
+
+  #  cal = ismissing(cache) ? ntuple(x -> get_precal(interp_t[x], decfl[x]), N) : getprecal!(cache, decfl)
+
+    # if !ismissing(cache) && cal != map( x -> [f(decfl[x]) for f in interp_t[x].tabfct], 1:N)
+    #     println("ERROR !!!!")
+    # end
+
+    tab = dotprod(ntuple(x -> get_precal(interp_t[x], decfl[x]), N))
 
     for ind in CartesianIndices(sz)
-        for i = 1:N
-            dfl = dec[i](ind)
-            dint = Int(floor(dfl))
-            dfl -= dint
-            deb = ind.I[i] + dint + decall[i]
-            end_i[i] = deb + order[i]
-            deb_i[i] = deb
-            decfl[i] = dfl
-        end
+        dint, decfl = dec(ind)
+        deb_i = dint .+ decall .+ ind.I
+        end_i = deb_i + order
         if decfl != oldfl
-            tab = dotprod(ntuple(x -> [f(decfl[x]) for f in interp_t[x].tabfct], N))
-            oldfl .= decfl
+            tab = dotprod(ntuple(x -> get_precal(interp_t[x], decfl[x]), N))
+            oldfl = decfl
         end
-        #        c = ntuple(x -> deb_i[x]:end_i[x], nd)
-        c = ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)
-        # if nd == 3
-        #     @show ind, size(tab), size(fi[c...])
-        # end 
-        fp[ind] = sum(tab .* res[c...])
+        fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
     end
 end
+
+
+function interpolate!(
+    fp::AbstractVector{T},
+    fi::AbstractVector{T},
+    dec::Function,
+    interp_t::AbstractVector{I},
+    tabmod = gettabmod.(size(fp)),
+) where {T,I<:AbstractInterpolation{T}}
+    tabmod1=tabmod[1]
+    lg = length(fi)
+    interp = interp_t[1]
+    
+    res::Vector{T} = sol(interp, fi)
+ 
+    order = get_order(interp)
+    origin = -div(order,2)
+    decall = 5lg + origin
+
+    decfl = zero(T)
+    oldfl = zero(T)
+    tab::Vector{T} = get_precal(interp,decfl)
+
+    # if !ismissing(cache) && cal != map( x -> [f(decfl[x]) for f in interp_t[x].tabfct], 1:N)
+    #     println("ERROR !!!!")
+    # end
+
+    for ind in CartesianIndices((lg,))
+        (dint,), (decfl,) = dec(ind)
+#        @show decfl, dint
+        deb_i =  dint + decall + ind.I[1]
+        end_i = deb_i + order
+        if decfl != oldfl
+            tab = get_precal(interp,decfl)
+            oldfl = decfl
+        end
+        fp[ind] = sum(res[tabmod1[deb_i:end_i]] .* tab)
+    end
+end
+
+

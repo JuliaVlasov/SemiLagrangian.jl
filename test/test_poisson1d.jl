@@ -10,9 +10,12 @@ using SemiLagrangian:
     PoissonVar,
     initcoef!,
     compute_charge!,
-    compute_elfield
-
-
+    compute_elfield,
+    totuple,
+    Lagrange,
+    Advection1d,
+    Advection1dData,
+    PrepareFftBig
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size

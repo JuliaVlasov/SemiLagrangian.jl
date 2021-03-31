@@ -1,22 +1,28 @@
 
 
-struct TranslationVar{T,Nsum} <: AbstractExtDataAdv1d{T,Nsum}
-    values::NTuple{Nsum,T}
+mutable struct TranslationVar{T,N} <: AbstractExtDataAdv{T,N}
+    values::NTuple{N,T}
+    valok
 end
-function gettranslationvar(v::NTuple{Nsum,T}) where {T,Nsum}
-    return TranslationVar{T,Nsum}(v)
+function gettranslationvar(v::NTuple{N,T}) where {T,N}
+    return TranslationVar{T,N}(v, ntuple(x->zero(T),N))
+end
+
+function initcoef!(pv::TranslationVar{T,N}, self::AdvectionData{T,N},) where {T,N}
+    st = getst(self)
+    pv.valok = ntuple( i -> pv.values[st.perm[i]] * getcur_t(self), st.ndims)
 end
 
 """
-    getalpha(pv::TranslationVar, self::Advection1dData, ind) 
+    getalpha(pv::TranslationVar, self::AdvectionData, i, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection
 
 """
 function getalpha(
-    pv::TranslationVar{T,Nsum},
-    self::Advection1dData{T,Nsp,Nv,Nsum},
+    pv::TranslationVar{T,N},
+    self::AdvectionData{T,N},
     ind,
-) where {T,Nsp,Nv,Nsum}
-    return pv.values[_getcurrentindice(self)] * getcur_t(self)
+) where {T,N}
+    return pv.valok
 end

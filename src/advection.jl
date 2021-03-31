@@ -1,11 +1,12 @@
 
-@enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
+# @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
 struct StateAdv{N}
     perm::Vector{Int} # dimensions permutation
-    ndims::Int        # number of dimension
+    ndims::Int        # count of dimension
     stcoef::Int   # state_coef
-    StateAdv(p, ndims, st)=new{length(p)}(p, ndims, st)
+    isconstdec::Bool #true if constant dec
+    StateAdv(p, ndims, st, isconst)=new{length(p)}(p, ndims, st, isconst)
 end
 
 """
@@ -58,27 +59,30 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection{T, N, I}
+struct Advection{T, N, I, timeopt}
     sizeall::NTuple{N, Int}
     t_mesh::NTuple{N,UniformMesh{T}}
     t_interp::Vector{I}
     dt_base::T
+    states::Vector{StateAdv{N}}
     tab_coef::Vector{T}
     tab_fct::Vector{Function}
-    states::Vector{StateAdv{N}}
     nbsplit::Int
     mpid::Any
     function Advection(
         t_mesh::NTuple{N,UniformMesh{T}},
         t_interp::Vector{I},
         dt_base::T,
-        states::Vector{StateAdv{N}};
+        states::Vector{Tuple{Vector{Int}, Int, Int, Bool}};
         tab_coef = [1 // 2, 1 // 1, 1 // 2],
         tab_fct = missing,
         timeopt::TimeOptimization = NoTimeOpt,
     ) where {T, N, I <: AbstractInterpolation{T}}
         length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
         sizeall = length.(t_mesh)
+        indices=1
+        newstates=map( i -> StateAdv(states[i]...), 1:length(states))
+
 #        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing
         nbsplit = if timeopt == MPIOpt
@@ -89,12 +93,12 @@ struct Advection{T, N, I}
             1
         end
         nfct = ismissing(tab_fct) ? fill(identity, size(tab_coef)) : tab_fct
-        return new{T,N,I}(
+        return new{T, N, I, timeopt}(
             sizeall,
             t_mesh,
             t_interp,
             dt_base,
-            states,
+            newstates,
             tab_coef,
             nfct,
 #            v_square,
@@ -111,11 +115,12 @@ Return a tuple of the sizes of each dimensions
 # Argument
 - `adv::Advection` : Advection structure.
 """
-sizeall(adv) = adv.sizeall
+sizeall(adv::Advection) = adv.sizeall
+
+getst(adv::Advection, x) = adv.states[x]
 
 # Interface of external data
 abstract type AbstractExtDataAdv{T,Nsum} end
-
 
 
 """
@@ -158,48 +163,50 @@ Mutable structure that contains variable parameters of advection series
 """
 mutable struct AdvectionData{T,N,timeopt}
     adv::Advection{T,N}
-    state_coef::Int # from 1 to length(adv.tab_coef)
-    state_dim::Int # from 1 to N
     state_gen::Int # indice of the calls of advection!
     data::Array{T,N}
     bufdata::Array{T}
-    fmrtabdata::NTuple{N,Array{T,N}}
-    t_buf::NTuple{N,Array{T,2}}
+    fmrtabdata::Vector{Array{T,N}}
+    t_buf::Vector{Vector{Array{T}}}
     t_itr::Any
     tt_split::Any
-    cache_alpha::Union{T,Nothing}
-    cache_decint::Int64
-    cache_precal::Vector{T}
+    cache_alpha::Any
+    cache_decint::Any
+    cache_precal::Array{T}
     parext::AbstractExtDataAdv
     function AdvectionData(
-        adv::Advection{T,Nsp,Nv,Nsum,timeopt},
-        data::Array{T,Nsum},
+        adv::Advection{T,N,I, timeopt},
+        data::Array{T,N},
         parext::AbstractExtDataAdv,
-    ) where {T,Nsp,Nv,Nsum,timeopt}
+    ) where {T, N, I, timeopt}
         s = size(data)
         s == sizeall(adv) ||
             thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
+        nbst=size(adv.states,1)
         nbthr =
             timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() :
             1
-        t_buf = ntuple(x -> zeros(T, s[x], nbthr), Nsum)
-        datanew = Array{T,Nsum}(undef, s)
+        t_buf = map( x -> map(y -> zeros(T, s[getst(adv,x).perm][1:getst(adv,x).ndims]), 1:nbthr), 1:nbst)
+        datanew = Array{T,N}(undef, s)
         bufdata = Vector{T}(undef, length(data))
-        fmrtabdata = ntuple(x -> zeros(T, s[getperm(parext, x)]), Nsum)
+        fmrtabdata = map(x -> zeros(T, s[adv.states[x].perm]), 1:nbst)
         copyto!(datanew, data)
+        @show adv.nbsplit
         t_itr = ntuple(
-            x -> splitvec(adv.nbsplit, CartesianIndices(s[getperm(parext, x)][2:Nsum])),
-            Nsum,
+            x -> splitvec(adv.nbsplit, CartesianIndices(s[adv.states[x].perm][(adv.states[x].ndims + 1):N])),
+            nbst,
         )
-        t_linind = ntuple(x -> LinearIndices(s[getperm(parext, x)]), Nsum)
-        fbegin(x, y) = t_linind[x][1, t_itr[x][y][1]]
-        fend(x, y) = t_linind[x][end, t_itr[x][y][end]]
-        tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), Nsum)
-        ordmax = maximum(get_order.((adv.t_interp_sp..., adv.t_interp_v...)))
-        return new{T,Nsp,Nv,Nsum,timeopt}(
+#        @show t_itr
+        t_linind = ntuple(x -> LinearIndices(s[adv.states[x].perm]), nbst)
+        cartz(x)=CartesianIndices(s[adv.states[x].perm][1:adv.states[x].ndims])
+        fbegin(x, y) = t_linind[x][cartz(x)[1], t_itr[x][y][1]]
+        fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
+        tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
+
+
+        ordmax = maximum(get_order.(adv.t_interp))
+        return new{T,N,timeopt}(
             adv,
-            1,
-            1,
             1,
             datanew,
             bufdata,
@@ -208,9 +215,9 @@ mutable struct AdvectionData{T,N,timeopt}
             #    t_itrfirst, t_itrsecond, tt_split,
             t_itr,
             tt_split,
-            nothing,
+            Inf, # cache_alpha
             0,
-            zeros(T, ordmax + 1),
+            zeros(T, 1),
             parext,
         )
     end
@@ -219,17 +226,16 @@ end
 
 getext(self) = self.parext
 getdata(self) = self.data
-getcur_t(adv::Advection1d, state_coef::Int) =
+getnbdims(self::AdvectionData)=self.adv.states[self.state_gen].ndims
+getstcoef(self::AdvectionData)=self.adv.states[self.state_gen].stcoef
+getcur_t(adv::Advection, state_coef::Int) =
     adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
-getcur_t(self::Advection1dData) = getcur_t(self.adv, self.state_coef)
-getstate_dim(self) = self.state_dim
-isvelocity(adv::Advection1d{T,Nsp,Nv,Nsum,timeopt}, curid) where {T,Nsp,Nv,Nsum,timeopt} =
-    (curid - 1) % Nsum + 1 > Nsp
+getcur_t(self::AdvectionData) = getcur_t(self.adv, getst(self).stcoef)
 isvelocitystate(state_coef::Int) = state_coef % 2 == 0
-isvelocitystate(self::Advection1dData) = isvelocitystate(self.state_coef)
-function getindsplit(
-    self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
-) where {T,Nsp,Nv,Nsum,timeopt}
+isvelocity(adv::Advection, curid) = isvelocitystate(adv.states[curid].stcoef)
+isvelocitystate(self::AdvectionData) = isvelocitystate(getstcoef(self))
+_getcurrentindice(self::AdvectionData)=getst(self).perm[1]
+function getindsplit(self::AdvectionData)
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
     else
@@ -237,141 +243,151 @@ function getindsplit(
     end
     return ind
 end
-function _getcurrentindice(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
-    return isvelocitystate(self) * Nsp + self.state_dim
+
+getst(self::AdvectionData)=self.adv.states[self.state_gen]
+function getinterp(self::AdvectionData)
+    st = getst(self)
+    return self.adv.t_interp[st.perm[1:st.ndims]]
 end
-getbufslgn(self::Advection1dData) = self.t_buf[_getcurrentindice(self)]
-function getinterp(self::Advection1dData)
-    t = isvelocitystate(self) ? self.adv.t_interp_v : self.adv.t_interp_sp
-    return t[self.state_dim]
+function getinterp(adv::Advection, x)
+    st = adv.states[x]
+    return adv.t_interp[st.perm[1:st.ndims]]
 end
-function getprecal(self::Advection1dData, alpha)
+
+@inline function getprecal(self::AdvectionData, alpha::NTuple{N,T}) where{T, N}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
-        decint = convert(Int, floor(alpha))
-        decfloat = alpha - decint
-        self.cache_decint = decint
-        #        self.cache_precal = get_precal(getinterp(self),decfloat)
+        self.cache_decint = Int.(floor.(alpha))
+        decfloat = alpha .- self.cache_decint
+       #        self.cache_precal = get_precal(getinterp(self),decfloat)
         get_precal!(self.cache_precal, getinterp(self), decfloat)
     end
     return self.cache_decint, self.cache_precal
 end
-
-getitr(self) = self.t_itr[_getcurrentindice(self)][getindsplit(self)]
-gett_split(self) = self.tt_split[_getcurrentindice(self)]
+function getprecal(self::AdvectionData, alpha::T) where{T}
+    if alpha != self.cache_alpha
+        self.cache_alpha = alpha
+        self.cache_decint = Int(floor(alpha))
+        decfloat = alpha .- self.cache_decint
+       #        self.cache_precal = get_precal(getinterp(self),decfloat)
+        get_precal!(self.cache_precal, getinterp(self), decfloat)
+    end
+    return self.cache_decint, self.cache_precal
+end
+getitr(self::AdvectionData) = self.t_itr[self.state_gen][getindsplit(self)]
+gett_split(self::AdvectionData) = self.tt_split[self.state_gen]
 
 
 
 """
-    nextstate!(self::Advection1dData{T, Nsp, Nv, Nsum})
+    nextstate!(self::AdvectionData{T, N})
 
-Function called at the end of advection function to update internal state of Advection1dData structure
+Function called at the end of advection function to update internal state of AdvectionData structure
 
 # Argument
-- `self::Advection1dData{T, Nsp, Nv, Nsum}` : object to update
+- `self::AdvectionData{T, N}` : object to update
 
 # return value
 - `ret::Bool` : `true` if the series must continue
                 `false` at the end of the series.
 """
-function nextstate!(self::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
-    ret = true
-    if self.state_dim == [Nv, Nsp][self.state_coef%2+1]
-        self.state_dim = 1
-        if self.state_coef == size(self.adv.tab_coef, 1)
-            self.state_coef = 1
-            ret = false
-        else
-            self.state_coef += 1
-        end
+function nextstate!(self::AdvectionData)
+    self.cache_alpha = Inf # to force reinit
+    if self.state_gen < length(self.adv.states)
+        self.state_gen += 1
+        return true
     else
-        self.state_dim += 1
+        self.state_gen = 1
+        return false
     end
-    self.cache_alpha = nothing
-    return ret
 end
 # default function of the interface
-initcoef!(parext::AbstractExtDataAdv, self::Advection1dData) = missing
-function getperm(_::AbstractExtDataAdv{T,Nsum}, curstate::Int) where {T,Nsum}
-    return transposition(1, curstate, Nsum)
-end
-function getperm(
-    _::AbstractExtDataAdv,
-    advd::Advection1dData{T,Nsp,Nv,Nsum},
-) where {T,Nsp,Nv,Nsum}
-    return transposition(1, _getcurrentindice(advd), Nsum)
-end
+initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
+
 # this interface function must always be defined
-function getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)
+function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)
     throw(error("getalpha undefined for $(typeof(parext))"))
+end
+# If not defined we try with only external index
+function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext, ind)
+    return getalpha(parext, self, indext)
 end
 
 # data formating
-function getformdata(advd::Advection1dData{T,Nsp,Nv,Nsum}) where {T,Nsp,Nv,Nsum}
-    p = getperm(getext(advd), advd)
-    if p == 1:Nsum
-        # the case of identity permutation no copy is needed
-        f = advd.data
-    else
-        # ptr = pointer(advd.bufdata)
-        # f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
-        f = advd.fmrtabdata[_getcurrentindice(advd)]
-        permutedims!(f, advd.data, p)
-    end
+function getformdata(advd::AdvectionData)
+    # ptr = pointer(advd.bufdata)
+    # f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
+    f = advd.fmrtabdata[advd.state_gen]
+    permutedims!(f, advd.data, getst(advd).perm)
     return f
 end
 function copydata!(
-    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
+    advd::AdvectionData{T,N,timeopt},
     f,
-) where {T,Nsp,Nv,Nsum,timeopt}
+) where {T,N,timeopt}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
-    p = getperm(getext(advd), advd)
-    pinv = invperm(p)
-
-    if f != advd.data
-        permutedims!(advd.data, f, pinv)
-    end
+    permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
 """
-    advection!(self::Advection1dData)
+    advection!(self::AdvectionData)
 
-Advection1d function of a multidimensional function `f` discretized on `mesh`
+Advection function of a multidimensional function `f` discretized on `mesh`
 
 # Argument
-- `self::Advection1dData` : mutable structure of variables data
+- `self::AdvectionData` : mutable structure of variables data
 
 # Return value
 - `true` : means that the advection series must continue
 - `false` : means that the advection series is ended.
 """
 function advection!(
-    self::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
-) where {T,Nsp,Nv,Nsum,timeopt}
-    f = self.data
-    tabbuf = getbufslgn(self)
+    self::AdvectionData{T,N,timeopt},
+) where {T,N,timeopt}
+@time begin
 
+    f = self.data
     interp = getinterp(self)
     extdata = getext(self)
     initcoef!(extdata, self)
     curind = _getcurrentindice(self)
     f = getformdata(self)
-    #    @show size(f)
-    tabmod = gettabmod(size(f, 1)) # just for optimization of interpolation!
+    st=getst(self)
+    sz = size(f)[1:st.ndims]
+#    @show size(f)
+    tabmod = gettabmod.(sz) # just for optimization of interpolation!
+#    @show sz, timeopt
+end
     if timeopt == NoTimeOpt || timeopt == MPIOpt
-        local buf = view(tabbuf, :, 1)
-        #        @inbounds for ind in getitr(self)
-        # fmrcpt=1
-        for ind in getitr(self)
-            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-            local lgn = view(f, :, ind)
-            interpolate!(buf, lgn, decint, precal, interp, tabmod)
-            lgn .= buf
-            #    fmrcpt +=1
-            #     if fmrcpt == 30
-            #         GC.gc()
-            #     end
+        @time begin
+            #        @inbounds for ind in getitr(self)
+            # fmrcpt=1
+            local buf = self.t_buf[self.state_gen][1]
+            local coltuple = ntuple( x -> Colon(), st.ndims)
+
+            self.cache_precal = zeros(T, totuple(get_order.(interp) .+ 1))
+
+            itr = getitr(self)
+
+    #       @show itr
+            if getst(self).isconstdec
+                for ind in itr
+                    local decint, precal = getprecal(self, getalpha(extdata, self, ind))
+                    local slc = view(f, coltuple..., ind)
+                    interpolate!(buf, slc, decint, precal, interp, tabmod)
+                    slc .= buf
+                end           
+            else
+                for ind in itr
+                    local slc = view(f, coltuple..., ind)
+        #           @show ind
+                    interpolate!(buf, slc, indbuf -> getalpha(extdata, self, ind, indbuf), interp, tabmod)
+                    slc .= buf
+                end
+            end
+            
+
         end
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin

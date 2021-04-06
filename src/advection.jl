@@ -345,13 +345,13 @@ function advection!(
         if getst(self).isconstdec
             for indext in itr
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
-                local slc = view(f, coltuple..., ind)
+                local slc = view(f, coltuple..., indext)
                 interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
             end           
         else
             for indext in itr
-                local slc = view(f, coltuple..., ind)
+                local slc = view(f, coltuple..., indext)
     #           @show ind
                 interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
                 slc .= buf

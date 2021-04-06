@@ -4,7 +4,7 @@ using LinearAlgebra
 using Polynomials
 
 using SemiLagrangian:
-    getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal, get_precal
+    getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
     setprecision(prec) do

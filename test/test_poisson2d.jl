@@ -2,17 +2,18 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian:
-    Advection1d,
+    Advection,
     sizeall,
-    Advection1dData,
+    AdvectionData,
     getdata,
     advection!,
     UniformMesh,
-    getrotationvar,
     AbstractInterpolation,
     Lagrange,
     B_SplineLU,
     B_SplineFFT,
+    gettabmod,
+    CachePrecal,
     interpolate!,
     compute_charge!,
     compute_elfield!,
@@ -76,17 +77,16 @@ using SemiLagrangian:
 
 function test_poisson2d(
     sz::NTuple{2,Int},
-    interp::AbstractInterpolation{T,edge,order,2},
+    interp::Vector{I},
     t_max::T,
     nbdt::Int,
-) where {T,edge,order}
+) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-6), T(6), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    t_max = T(100)
     dt = t_max / nbdt
 
     # dec1 = -2tan(dt/2) / step(mesh_sp) * mesh_v.points
@@ -104,6 +104,8 @@ function test_poisson2d(
 
 
     #    @show dec1, dec2
+
+    cache = CachePrecal(interp, t_max)
 
     rho = zeros(T, sz[1])
     elf = zeros(T, sz[1])
@@ -123,9 +125,10 @@ function test_poisson2d(
 
     buf = zeros(T, sz)
     diffmax = 0
+    tabmod = gettabmod.(sz)
     for ind = 1:2nbdt
         dec2 = [dt / step(mesh_v) * elf[i] for i = 1:sz[1], j = 1:sz[2]]
-        interpolate!(buf, data, (dec1, dec2), interp)
+        interpolate!(buf, data, ind->(dec1[ind], dec2[ind]), interp, tabmod, cache)
         copyto!(data, buf)
 
         compute_charge!(rho, (mesh_sp,), data)
@@ -141,6 +144,5 @@ end
 
 @testset "test swirling" begin
     T = Double64
-    @time @test test_poisson2d((256, 200), Lagrange(11, T, nd = 2), T(100), 10000) < 1e-3
-
+    @time @test test_poisson2d((256, 200), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
 end

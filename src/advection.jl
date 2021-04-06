@@ -1,12 +1,13 @@
 
-# @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
+@enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 
 struct StateAdv{N}
     perm::Vector{Int} # dimensions permutation
+    invp::Vector{Int} # inverse of dimension permutation
     ndims::Int        # count of dimension
     stcoef::Int   # state_coef
     isconstdec::Bool #true if constant dec
-    StateAdv(p, ndims, st, isconst)=new{length(p)}(p, ndims, st, isconst)
+    StateAdv(p, ndims, st, isconst)=new{length(p)}(p, invperm(p), ndims, st, isconst)
 end
 
 """
@@ -120,7 +121,7 @@ sizeall(adv::Advection) = adv.sizeall
 getst(adv::Advection, x) = adv.states[x]
 
 # Interface of external data
-abstract type AbstractExtDataAdv{T,Nsum} end
+abstract type AbstractExtDataAdv{T,N} end
 
 
 """
@@ -170,9 +171,7 @@ mutable struct AdvectionData{T,N,timeopt}
     t_buf::Vector{Vector{Array{T}}}
     t_itr::Any
     tt_split::Any
-    cache_alpha::Any
-    cache_decint::Any
-    cache_precal::Array{T}
+    t_cache::Vector{CachePrecal{T}}
     parext::AbstractExtDataAdv
     function AdvectionData(
         adv::Advection{T,N,I, timeopt},
@@ -202,9 +201,7 @@ mutable struct AdvectionData{T,N,timeopt}
         fbegin(x, y) = t_linind[x][cartz(x)[1], t_itr[x][y][1]]
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
         tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
-
-
-        ordmax = maximum(get_order.(adv.t_interp))
+        t_cache = map(x->CachePrecal(getinterp(adv,x), zero(T)), 1:nbst)
         return new{T,N,timeopt}(
             adv,
             1,
@@ -215,9 +212,7 @@ mutable struct AdvectionData{T,N,timeopt}
             #    t_itrfirst, t_itrsecond, tt_split,
             t_itr,
             tt_split,
-            Inf, # cache_alpha
-            0,
-            zeros(T, 1),
+            t_cache,
             parext,
         )
     end
@@ -254,26 +249,7 @@ function getinterp(adv::Advection, x)
     return adv.t_interp[st.perm[1:st.ndims]]
 end
 
-@inline function getprecal(self::AdvectionData, alpha::NTuple{N,T}) where{T, N}
-    if alpha != self.cache_alpha
-        self.cache_alpha = alpha
-        self.cache_decint = Int.(floor.(alpha))
-        decfloat = alpha .- self.cache_decint
-       #        self.cache_precal = get_precal(getinterp(self),decfloat)
-        get_precal!(self.cache_precal, getinterp(self), decfloat)
-    end
-    return self.cache_decint, self.cache_precal
-end
-function getprecal(self::AdvectionData, alpha::T) where{T}
-    if alpha != self.cache_alpha
-        self.cache_alpha = alpha
-        self.cache_decint = Int(floor(alpha))
-        decfloat = alpha .- self.cache_decint
-       #        self.cache_precal = get_precal(getinterp(self),decfloat)
-        get_precal!(self.cache_precal, getinterp(self), decfloat)
-    end
-    return self.cache_decint, self.cache_precal
-end
+
 getitr(self::AdvectionData) = self.t_itr[self.state_gen][getindsplit(self)]
 gett_split(self::AdvectionData) = self.tt_split[self.state_gen]
 
@@ -292,7 +268,6 @@ Function called at the end of advection function to update internal state of Adv
                 `false` at the end of the series.
 """
 function nextstate!(self::AdvectionData)
-    self.cache_alpha = Inf # to force reinit
     if self.state_gen < length(self.adv.states)
         self.state_gen += 1
         return true
@@ -305,7 +280,7 @@ end
 initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
 
 # this interface function must always be defined
-function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, ind)
+function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext)
     throw(error("getalpha undefined for $(typeof(parext))"))
 end
 # If not defined we try with only external index
@@ -345,7 +320,6 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 function advection!(
     self::AdvectionData{T,N,timeopt},
 ) where {T,N,timeopt}
-@time begin
 
     f = self.data
     interp = getinterp(self)
@@ -358,36 +332,30 @@ function advection!(
 #    @show size(f)
     tabmod = gettabmod.(sz) # just for optimization of interpolation!
 #    @show sz, timeopt
-end
+
     if timeopt == NoTimeOpt || timeopt == MPIOpt
-        @time begin
-            #        @inbounds for ind in getitr(self)
-            # fmrcpt=1
-            local buf = self.t_buf[self.state_gen][1]
-            local coltuple = ntuple( x -> Colon(), st.ndims)
+        #        @inbounds for ind in getitr(self)
+        # fmrcpt=1
+        local buf = self.t_buf[self.state_gen][1]
+        local coltuple = ntuple( x -> Colon(), st.ndims)
+        local cache = self.t_cache[self.state_gen]
+        itr = getitr(self)
 
-            self.cache_precal = zeros(T, totuple(get_order.(interp) .+ 1))
-
-            itr = getitr(self)
-
-    #       @show itr
-            if getst(self).isconstdec
-                for ind in itr
-                    local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-                    local slc = view(f, coltuple..., ind)
-                    interpolate!(buf, slc, decint, precal, interp, tabmod)
-                    slc .= buf
-                end           
-            else
-                for ind in itr
-                    local slc = view(f, coltuple..., ind)
-        #           @show ind
-                    interpolate!(buf, slc, indbuf -> getalpha(extdata, self, ind, indbuf), interp, tabmod)
-                    slc .= buf
-                end
+#       @show itr
+        if getst(self).isconstdec
+            for indext in itr
+                local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                local slc = view(f, coltuple..., ind)
+                interpolate!(buf, slc, decint, precal, interp, tabmod)
+                slc .= buf
+            end           
+        else
+            for indext in itr
+                local slc = view(f, coltuple..., ind)
+    #           @show ind
+                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                slc .= buf
             end
-            
-
         end
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin

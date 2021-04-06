@@ -40,6 +40,7 @@ function test_translation(
     interp_sp::AbstractInterpolation{T},
     interp_v::AbstractInterpolation{T},
     nbdt::Int,
+    type=1
 ) where {T}
 @time begin
     spmin, spmax, nsp = T(-5), T(5), sz[1]
@@ -51,12 +52,39 @@ end
 println("trace1")
 @time begin
     dt = T(1)
-    adv = Advection(
+    adv = if type == 1
+            Advection(
         (mesh_sp, mesh_v),
         [interp_sp, interp_v],
         dt,
         [([1, 2], 1, 1, true), ([2, 1], 1, 2, true), ([1, 2], 1, 3, true)],
     )
+    elseif type == 2
+        c=BigFloat(2)^(1//3)
+        c1 = 1/(2(2-c))
+        c2 = (1-c)/(2(2-c))
+        d1 = 1/(2-c)
+        d2 = -c/(2-c)
+        tc = [c1, d1, c2, d2, c2, d1, c1]
+        @show tc
+        Advection(
+            (mesh_sp, mesh_v),
+            [interp_sp, interp_v],
+            dt,
+            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true), ([1, 2], 1, 3, true), ([2, 1], 1, 4, true),
+            ([1, 2], 1, 5, true), ([2, 1], 1, 6, true), ([1, 2], 1, 7, true)],
+            tab_coef=tc,
+        )
+    elseif type == 3
+        Advection(
+            (mesh_sp, mesh_v),
+            [interp_sp, interp_v],
+            dt,
+            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)],
+            tab_coef=[1, 1]
+        )
+    
+    end
     tabref = zeros(T, sz)
 
     v1 = T(big"0.83545655467782872872782870029282982828737872878776717190927267611111")
@@ -87,7 +115,7 @@ println("trace3")
         diffmax = max(diffmax, diff)
     end
     println(
-        "test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax",
+        "type=$type test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax",
     )
     return diffmax
 
@@ -127,7 +155,7 @@ function test_translation(
         diffmax = max(diffmax, diff)
         @show ind, diff
     end
-    println("test_translation sz=$sz interp=$interp_t nbdt=$nbdt diffmax=$diffmax")
+    println("test_translation type=$type sz=$sz interp=$interp_t nbdt=$nbdt diffmax=$diffmax")
     return diffmax
 
 end
@@ -150,11 +178,29 @@ end
         Lagrange(5, T),
         11,
     ) < 1e-3
-     @time @test test_translation(
+    @time @test test_translation(
+        (200, 300),
+        Lagrange(5, T),
+        Lagrange(5, T),
+        11, 2
+    ) < 1e-3
+    @time @test test_translation(
+        (200, 300),
+        Lagrange(5, T),
+        Lagrange(5, T),
+        11, 3
+    ) < 1e-3
+    @time @test test_translation(
         (128, 64),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 64, T),
         11,
+    ) < 1e-6
+    @time @test test_translation(
+        (128, 64),
+        B_SplineLU(5, 128, T),
+        B_SplineLU(5, 64, T),
+        11, 2
     ) < 1e-6
     @time @test test_translation(
         (128, 64),

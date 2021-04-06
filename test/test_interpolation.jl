@@ -8,7 +8,7 @@ using SemiLagrangian:
     interpolate!,
     isbspline,
     getbspline,
-    get_precal,
+    getprecal,
     get_allprecal,
     get_order,
     EdgeType,
@@ -45,7 +45,7 @@ function test_interp(
             res2 = zeros(Rational{BigInt}, sz)
             decint = convert(Int, floor(dec))
             decfloat = dec - decint
-            precal = get_precal(interp, decfloat)
+            precal = getprecal(interp, decfloat)
             # println("outside : precal=$precal decint=$decint decfloat=$decfloat")
             # println("order=$(get_order(interp)) order from precal=$(size(precal,1)-1)")   
             interpolate!(res2, deb, decint, precal, interp)
@@ -119,7 +119,7 @@ end
 #                     decint += 1
 #                 end
 #             end
-#             precal = get_precal(sp, value)
+#             precal = getprecal(sp, value)
 #             nmax=0
 #             fp .= fct.(T.(collect(1:n)),n)
 # #            @show typeof(fp), ifct, ival
@@ -183,7 +183,7 @@ function test_interpfloat(
                 continue
             end
             precal =
-                edge == CircEdge ? get_precal(interp, value) :
+                edge == CircEdge ? getprecal(interp, value) :
                 get_allprecal(interp, decint, value)
             for i = 1:nb
                 fi .= fp

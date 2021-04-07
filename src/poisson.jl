@@ -48,7 +48,8 @@ Constant data for the computation of poisson coefficients
 struct PoissonConst{T,N, Nsp,Nv}
     adv::Advection
     fctv_k::Any
-    pfftbig::Any
+    v_square::Array{T,Nv}
+     pfftbig::Any
     function PoissonConst(
         adv::Advection{T,N,timeopt};
         isfftbig = true,
@@ -56,14 +57,14 @@ struct PoissonConst{T,N, Nsp,Nv}
         N%2 == 0 || thrown(ArgumentError("N=$N must be a multiple of 2"))
 
         Nsp = Nv = div(N,2)
-
         fctv_k = _get_fctv_k(adv)
+        v_square = dotprod(points.(adv.t_mesh[(Nsp+1):N])) .^ 2 # precompute for ke
         pfftbig = if isfftbig && T != Float64
             PrepareFftBig(sizeall(adv)[1:Nsp], T; numdims = Nsp, dims = ntuple(x -> x, Nsp))
         else
             missing
         end
-        return new{T,N, Nsp,Nv}(adv, fctv_k, pfftbig)
+        return new{T,N, Nsp,Nv}(adv, fctv_k, v_square, pfftbig)
     end
 end
 getNspNv(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N, Nsp, Nv}= (Nsp, Nv)
@@ -159,14 +160,16 @@ function initcoef!(
         #        println("v trace init plus")
 #        pv.bufcur = (getcur_t(self) / step(mesh_v)) * pv.t_elfield[state_dim]
         pv.bufcur = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * pv.t_elfield[st.invp[x]-Nsp], st.ndims)
+#        @show typeof(pv.bufcur)
         #        @show minimum(pv.bufcur),maximum(pv.bufcur) 
     else
 #        mesh_sp = self.adv.t_mesh[state_dim]
         #        println("sp trace init moins")
 #        pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
-        pv.tupleind = ntuple( x -> st.perm[st.invp[x]+Nsp], st.dims)
+        pv.tupleind = ntuple( x -> st.perm[st.invp[x]+Nsp]-st.ndims, st.ndims)
         pv.bufcur = ntuple( x -> (-getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * adv.t_mesh[st.invp[x]+Nsp].points, st.ndims)
         #       @show minimum(pv.bufcur),maximum(pv.bufcur) 
+#        @show typeof(pv.bufcur)
 
     end
 end
@@ -181,6 +184,7 @@ function getalpha(
     ind,
 ) where {T,N,Nsp,Nv}
     st = getst(self)
+#    @show N,Nsp,Nv, ind.I, pv.tupleind
     if isvelocitystate(self) 
         ntuple(x -> pv.bufcur[x][CartesianIndex(ind.I[end-Nsp+1:end])], size(pv.bufcur,1))
     else

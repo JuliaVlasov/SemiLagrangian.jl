@@ -29,7 +29,7 @@ include("rotation.jl")
 # include("translation1d.jl")
 include("translation.jl")
 
-export UniformMesh, AbstractInterpolation
+export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
 export Lagrange, B_SplineLU, B_SplineFFT, interpolate!
 export compute_charge!,

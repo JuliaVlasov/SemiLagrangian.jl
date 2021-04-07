@@ -19,122 +19,122 @@ using DoubleFloats
 # using SemiLagMPI
 using SemiLagrangian
 
-function landau_old(
-    dt::T,
-    epsilon::T,
-    nbdt,
-    tabcoef::Vector{T},
-    mesh_x::UniformMesh{T},
-    mesh_v::UniformMesh{T},
-    interp_x::AbstractInterpolation{T},
-    interp_v::AbstractInterpolation{T},
-) where {T,ndims}
-    adv_x = Advection1d(mesh_x, interp_x)
-    adv_v = Advection1d(mesh_v, interp_v)
+# function landau_old(
+#     dt::T,
+#     epsilon::T,
+#     nbdt,
+#     tabcoef::Vector{T},
+#     mesh_x::UniformMesh{T},
+#     mesh_v::UniformMesh{T},
+#     interp_x::AbstractInterpolation{T},
+#     interp_v::AbstractInterpolation{T},
+# ) where {T,ndims}
+#     adv_x = Advection1d(mesh_x, interp_x)
+#     adv_v = Advection1d(mesh_v, interp_v)
 
-    nx = mesh_x.length
-    nv = mesh_v.length
+#     nx = mesh_x.length
+#     nv = mesh_v.length
 
-    t_coef = vcat(tabcoef, tabcoef[end-1:-1:1])
-    nbcoef = size(t_coef, 1)
+#     t_coef = vcat(tabcoef, tabcoef[end-1:-1:1])
+#     nbcoef = size(t_coef, 1)
 
-    fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
-    fct_x(x) = epsilon * cos(x / 2) + 1
-    lgn_x = fct_x.(mesh_x.points)
-    lgn_v = fct_v.(mesh_v.points)
+#     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
+#     fct_x(x) = epsilon * cos(x / 2) + 1
+#     lgn_x = fct_x.(mesh_x.points)
+#     lgn_v = fct_v.(mesh_v.points)
 
-    v = mesh_v.points
+#     v = mesh_v.points
 
-    if ndims == 1
-        nxtp = (nx)
-        nvtp = (nv)
-        fxv = zeros(T, (nx, nv))
-        fvx = zeros(T, (nv, nx))
-        fxv .= lgn_x .* reshape(lgn_v, (1, nv))
-        #        fxv .= fct_x.(mesh_x.points)  .* transpose(fct_v.(mesh_v.points))
-        perm = [2, 1]
-    elseif ndims == 2
-        nxtp = (nx, nx)
-        nvtp = (nv, nv)
-        fxv = zeros(nx, nx, nx, nv)
-        fvx = zeros(nv, nv, nx, nx)
-        fxv =
-            lgn_x .* reshape(lgn_x, (1, nx)) .* reshape(lgn_v, (1, 1, nv)) .*
-            reshape(lgn_v, (1, 1, 1, nv))
-        perm = [3, 4, 1, 2]
-    else
-        println("not yet implemented !!!")
-    end
-    elf = Array{T,ndims}(undef, nxtp)
-    rho = Array{T,ndims}(undef, nxtp)
-    printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nx size_v=$nv")
-    printout(advd, "# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
-    printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    printout(advd, "# interpolation : $(get_type(interp_x)) order=$(get_order(interp_x))")
-    printout(advd, "# type=$T precision = $(precision(T))")
-    printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
+#     if ndims == 1
+#         nxtp = (nx)
+#         nvtp = (nv)
+#         fxv = zeros(T, (nx, nv))
+#         fvx = zeros(T, (nv, nx))
+#         fxv .= lgn_x .* reshape(lgn_v, (1, nv))
+#         #        fxv .= fct_x.(mesh_x.points)  .* transpose(fct_v.(mesh_v.points))
+#         perm = [2, 1]
+#     elseif ndims == 2
+#         nxtp = (nx, nx)
+#         nvtp = (nv, nv)
+#         fxv = zeros(nx, nx, nx, nv)
+#         fvx = zeros(nv, nv, nx, nx)
+#         fxv =
+#             lgn_x .* reshape(lgn_x, (1, nx)) .* reshape(lgn_v, (1, 1, nv)) .*
+#             reshape(lgn_v, (1, 1, 1, nv))
+#         perm = [3, 4, 1, 2]
+#     else
+#         println("not yet implemented !!!")
+#     end
+#     elf = Array{T,ndims}(undef, nxtp)
+#     rho = Array{T,ndims}(undef, nxtp)
+#     printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nx size_v=$nv")
+#     printout(advd, "# x : from $(Float64(mesh_x.start)) to $(Float64(mesh_x.stop))")
+#     printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
+#     printout(advd, "# interpolation : $(get_type(interp_x)) order=$(get_order(interp_x))")
+#     printout(advd, "# type=$T precision = $(precision(T))")
+#     printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
 
-    #   transpose!(fvx, fxv)
-    permutedims!(fvx, fxv, perm)
-    compute_charge!(rho, mesh_v, fvx)
-    compute_elfield!(elf, mesh_x, rho)
-    elenergy = Float64(compute_ee(mesh_x, elf))
-    kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
-    energyall = elenergy + kinenergy
-    printout(advd, "$(Float64(0.))\t$elenergy\t$kinenergy\t$energyall")
+#     #   transpose!(fvx, fxv)
+#     permutedims!(fvx, fxv, perm)
+#     compute_charge!(rho, mesh_v, fvx)
+#     compute_elfield!(elf, mesh_x, rho)
+#     elenergy = Float64(compute_ee(mesh_x, elf))
+#     kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+#     energyall = elenergy + kinenergy
+#     printout(advd, "$(Float64(0.))\t$elenergy\t$kinenergy\t$energyall")
 
-    minall = 10000000
-    maxall = 0
-    t_coef *= dt
-    fltraceend = true
-    for i = 1:nbdt
-        # advection!(adv_x, fxv, v, dt/2)
-        # transpose!(fvx, fxv)
-        # compute_charge!(rho, mesh_v, fvx)
-        # compute_elfield!(elf, mesh_x, rho)
-        # advection!(adv_v, fvx, elf, dt)
-        # transpose!(fxv, fvx)
-        # advection!(adv_x, fxv, v, dt/2)
-        # transpose!(fvx, fxv)
-        # compute_charge!(rho, mesh_v, fvx)
-        # compute_elfield!(elf, mesh_x, rho)
-        # elenergy = Float64(compute_ee(mesh_x, elf))
-        # kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
-        # energyall = elenergy + kinenergy
-        # if (i%modulo == 0)
-        #     println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
-        # end
-        # minall=min(energyall,minall)
-        # maxall=max(energyall,maxall)
+#     minall = 10000000
+#     maxall = 0
+#     t_coef *= dt
+#     fltraceend = true
+#     for i = 1:nbdt
+#         # advection!(adv_x, fxv, v, dt/2)
+#         # transpose!(fvx, fxv)
+#         # compute_charge!(rho, mesh_v, fvx)
+#         # compute_elfield!(elf, mesh_x, rho)
+#         # advection!(adv_v, fvx, elf, dt)
+#         # transpose!(fxv, fvx)
+#         # advection!(adv_x, fxv, v, dt/2)
+#         # transpose!(fvx, fxv)
+#         # compute_charge!(rho, mesh_v, fvx)
+#         # compute_elfield!(elf, mesh_x, rho)
+#         # elenergy = Float64(compute_ee(mesh_x, elf))
+#         # kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+#         # energyall = elenergy + kinenergy
+#         # if (i%modulo == 0)
+#         #     println("$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+#         # end
+#         # minall=min(energyall,minall)
+#         # maxall=max(energyall,maxall)
 
-        for k = 1:size(t_coef, 1)
-            if k % 2 == 1
-                advection!(adv_x, fxv, v, t_coef[k])
-                permutedims!(fvx, fxv, perm)
-                if fltraceend || k != size(t_coef, 1)
-                    compute_charge!(rho, mesh_v, fvx)
-                    compute_elfield!(elf, mesh_x, rho)
-                end
-            else
-                advection!(adv_v, fvx, elf, t_coef[k])
-                permutedims!(fxv, fvx, perm)
-            end
-        end
-        if fltraceend
-            elenergy = Float64(compute_ee(mesh_x, elf))
-            kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
-            energyall = elenergy + kinenergy
-            printout(advd, "$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
-        end
-        minall = min(energyall, minall)
-        maxall = max(energyall, maxall)
-    end
-    printout(advd, "diff=$(maxall-minall)")
-end
+#         for k = 1:size(t_coef, 1)
+#             if k % 2 == 1
+#                 advection!(adv_x, fxv, v, t_coef[k])
+#                 permutedims!(fvx, fxv, perm)
+#                 if fltraceend || k != size(t_coef, 1)
+#                     compute_charge!(rho, mesh_v, fvx)
+#                     compute_elfield!(elf, mesh_x, rho)
+#                 end
+#             else
+#                 advection!(adv_v, fvx, elf, t_coef[k])
+#                 permutedims!(fxv, fvx, perm)
+#             end
+#         end
+#         if fltraceend
+#             elenergy = Float64(compute_ee(mesh_x, elf))
+#             kinenergy = Float64(compute_ke(mesh_v, mesh_x, fvx))
+#             energyall = elenergy + kinenergy
+#             printout(advd, "$(Float64(i*dt))\t$elenergy\t$kinenergy\t$energyall")
+#         end
+#         minall = min(energyall, minall)
+#         maxall = max(energyall, maxall)
+#     end
+#     printout(advd, "diff=$(maxall-minall)")
+# end
 function printout(
-    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
+    advd::AdvectionData{T,N,timeopt},
     str,
-) where {T,Nsp,Nv,Nsum,timeopt}
+) where {T,N,timeopt}
     if timeopt != MPIOpt || advd.adv.mpid.ind == 1
         println(str)
     end
@@ -142,9 +142,9 @@ end
 printout(str) = println(str)
 
 function trace_energy(
-    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
+    advd::AdvectionData{T,N,timeopt},
     t,
-) where {T,Nsp,Nv,Nsum,timeopt}
+) where {T,N,timeopt}
 
     if t == 0
         printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
@@ -168,7 +168,7 @@ function trace_energy(
 end
 
 
-function landau(advd::Advection1dData, nbdt)
+function landau(advd::AdvectionData, nbdt)
 
     # global cl_obs
     # clockreset(cl_obs)
@@ -193,7 +193,7 @@ function landau1_1(
     timeopt;
     sz = (64, 64),
     dt = big"0.1",
-    interp = Lagrange(T, 21),
+    interp = Lagrange(21, T),
 )
     epsilon = T(0.001)
     dt = T(dt)
@@ -204,7 +204,16 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    adv = Advection1d((mesh_sp,), (mesh_v,), (interp,), (interp,), dt, timeopt = timeopt)
+    adv = Advection(
+        (mesh_sp,mesh_v,), 
+        [interp,interp], 
+        dt, 
+        [
+         ([1,2], 1, 1, true),
+         ([2,1], 1, 2, true),
+         ([1,2], 1, 3, true),
+        ],       
+        timeopt = timeopt)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -216,12 +225,12 @@ function landau1_1(
 
     pvar = getpoissonvar(adv)
 
-    advd = Advection1dData(adv, data, pvar)
+    advd = AdvectionData(adv, data, pvar)
 
     printout(advd, "# dt=$(Float64(dt)) eps=$(Float64(epsilon)) size_x=$nsp size_v=$nv")
-    printout(advd, "# sp : from $(Float64(mesh_sp.start)) to $(Float64(mesh_sp.stop))")
-    printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
-    printout(advd, "# interpolation : $(get_type(interp)) order=$(get_order(interp))")
+    printout(advd, "# sp : from $(Float64(start(mesh_sp))) to $(Float64(stop(mesh_sp)))")
+    printout(advd, "# v : from $(Float64(start(mesh_v))) to $(Float64(stop(mesh_v)))")
+    printout(advd, "# interpolation : $interp order=$(get_order(interp))")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
@@ -243,7 +252,7 @@ function landau2_2(
     timeopt;
     sz = (32, 32, 32, 32),
     dt = big"0.1",
-    interpall = ntuple(x -> Lagrange(T, 19), 4),
+    interpall = ntuple(x -> Lagrange(19, T), 4),
 )
     epsilon = T(0.5)
     dt = T(dt)
@@ -326,18 +335,18 @@ end
 # landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
 T = Float64
 # landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
-# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(T, 5))
+# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(5, T))
 # @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
-sz = (32, 32, 20, 22)
-@time landau2_2(
-    T,
-    10,
-    MPIOpt,
-    sz = sz,
-    dt = big"0.1",
-    interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
-)
-## @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(T,5))
-# landau1_1(T, 10000, MPIOpt, sz=(128,128), dt=big"0.01")
+# sz = (32, 32, 20, 22)
+# @time landau2_2(
+#     T,
+#     10,
+#     MPIOpt,
+#     sz = sz,
+#     dt = big"0.1",
+#     interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
+# )
+## @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
+landau1_1(T, 10000, NoTimeOpt, sz=(128,128), dt=big"0.01")
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
-# landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(T, 27))
+# landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

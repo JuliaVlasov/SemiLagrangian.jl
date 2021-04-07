@@ -34,13 +34,14 @@ kinetic Energie
 - `self::AdvectionData` : mutable structure of variables data.
 """
 function compute_ke(self::AdvectionData{T,N}) where {T,N}
-    Nsp, Nv = getNspNv(getext(self))
+    pvar::PoissonVar = getext(self)
+    Nsp, Nv = getNspNv(pvar)
     adv = self.adv
     szv = length.(adv.t_mesh[1:Nsp])
     dsp = prod(step, adv.t_mesh[1:Nsp])
     dv = prod(step, adv.t_mesh[1:Nv])
     sum_sp = reshape(sum(getdata(self), dims = ntuple(x -> x, Nsp)), szv)
-    return (dsp * dv) * sum(adv.v_square .* sum_sp)
+    return (dsp * dv) * sum(pvar.pc.v_square .* sum_sp)
 end
 
 """

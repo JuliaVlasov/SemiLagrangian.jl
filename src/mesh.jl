@@ -41,6 +41,9 @@ Get the step of the mesh
 - `step` : the step of the mesh that is the difference between two contiguous points
 """
 Base.step(mesh::UniformMesh) = mesh.step
+
+start(mesh::UniformMesh) = mesh.points[1]
+stop(mesh::UniformMesh) = mesh.points[end]+mesh.step
 """
     Base.length(mesh::UniformMesh)
 

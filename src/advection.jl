@@ -7,7 +7,7 @@ struct StateAdv{N}
     ndims::Int        # count of dimension
     stcoef::Int   # state_coef
     isconstdec::Bool #true if constant dec
-    StateAdv(p, ndims, st, isconst)=new{length(p)}(p, invperm(p), ndims, st, isconst)
+    StateAdv(p, ndims, stc, isconst)=new{length(p)}(p, invperm(p), ndims, stc, isconst)
 end
 
 """

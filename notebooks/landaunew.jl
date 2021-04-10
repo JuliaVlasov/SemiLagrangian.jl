@@ -194,6 +194,7 @@ function landau1_1(
     sz = (64, 64),
     dt = big"0.1",
     interp = Lagrange(21, T),
+    tab_coef=[1//2, 1, 1//2]
 )
     epsilon = T(0.001)
     dt = T(dt)
@@ -204,15 +205,14 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
+    tabst = map(x -> ((x%2==1) ? [1,2] : [2,1], 1, x, true),1:size(tab_coef,1))
+
     adv = Advection(
         (mesh_sp,mesh_v,), 
         [interp,interp], 
-        dt, 
-        [
-         ([1,2], 1, 1, true),
-         ([2,1], 1, 2, true),
-         ([1,2], 1, 3, true),
-        ],       
+        dt,
+        tabst,
+        tab_coef=tab_coef, 
         timeopt = timeopt)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -231,6 +231,7 @@ function landau1_1(
     printout(advd, "# sp : from $(Float64(start(mesh_sp))) to $(Float64(stop(mesh_sp)))")
     printout(advd, "# v : from $(Float64(start(mesh_v))) to $(Float64(stop(mesh_v)))")
     printout(advd, "# interpolation : $interp order=$(get_order(interp))")
+    printout(advd, "# tab_coef : $tab_coef")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
@@ -313,7 +314,8 @@ function landau2_2(
         advd,
         "# v2 : from $(Float64(mesh2_v.points[1])) to $(Float64(mesh2_v.points[end]))",
     )
-    printout(advd, "# interpolation : $interpall)")
+    printout(advd, "# interpolation : $interpall")
+    printout(advd, "# tab_coef : $tab_coef")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
@@ -347,6 +349,13 @@ T = Float64
 #     interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
 # )
 ## @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
-landau1_1(T, 10000, NoTimeOpt, sz=(128,128), dt=big"0.01")
+
+c=BigFloat(2)^(1//3)
+c1 = 1/(2(2-c))
+c2 = (1-c)/(2(2-c))
+d1 = 1/(2-c)
+d2 = -c/(2-c)
+tc = [c1, d1, c2, d2, c2, d1, c1]
+landau1_1(T, 10000, NoTimeOpt, sz=(128,128), dt=big"0.01", tab_coef=tc)
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

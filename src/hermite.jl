@@ -1,35 +1,34 @@
 
 using Polynomials
 
-struct PrecalHermite{ord,d}
-    L::Vector{Polynomial{Rational{BigInt}}}
-    Lprim::Vector{Rational{BigInt}}
-    K::Vector{Polynomial{Rational{BigInt}}}
-    H::Vector{Polynomial{Rational{BigInt}}}
-    bplus::Vector{Rational{BigInt}}
-    bminus::Vector{Rational{BigInt}}
-end
 
 
 
 function _L(i, ord)
     ord % 2 == 1 || throw(DomainError("ord=$ord must be odd"))
     d = div(ord,2)
-    return _getpolylagrange(i+d, ord, -d)
+    result = Polynomials.Polynomial([big(1 // 1)])
+    for j = -d:d+1
+        if j != i
+            result *= Polynomials.Polynomial([-j, 1 // 1] .// (i - j))
+        end
+    end
+    return result
 end
 
+
 function _Lprim(i, ord)
-    result = big(1//1)
+    result = big(0//1)
     d = div(ord,2)
     for j = -d:d+1
         if i != j 
-            result *= 1//(i-j)
+            result += 1//(i-j)
         end
     end
     return result
 end
 _K(i,ord)=_L(i,ord)^2*Polynomial([-i,1//1])
-_H(i,ord)=_L(i,ord)^2*(1-_Lprim(i,ord)*Polynomial([-i,1//1]))
+_H(i,ord)=_L(i,ord)^2*(1-2*_Lprim(i,ord)*Polynomial([-i,1//1]))
 # function bplusbis(i,ord)
 #     i != 0 || throw(DomainError("i=$i must be different of zero"))
 #     result=big(1//1)
@@ -84,16 +83,16 @@ struct PrecalHermite{ord,d}
         sminus = -rplus
 
 # ref        bplus = map(i-> i != 0 ? _bplus(i,ord) : 0 , -d:d+1)
-        bplus = map(i-> i != 0 ? _bplus(i,ord, rplus, splus) : 0 , rplus:splus)
+        bplus = map(i-> i != 0 ? _bplus(i, rplus, splus) : 0 , rplus:splus)
 # ref        bminus = map(i-> i != 0 ? _bminus(i,ord) : 0 , -d-1:d)
-        bminus = map(i-> i != 0 ? _bminus(i,ord, rminus, sminus) : 0 , rminus:sminus)
+        bminus = map(i-> i != 0 ? _bminus(i, rminus, sminus) : 0 , rminus:sminus)
         bplus[1-rplus] = -sum(bplus) 
         bminus[1-rminus] = -sum(bminus)
         return new{ord,d}(L,Lprim,K,H,bplus,bminus, rplus, splus, rminus, sminus)
     end
 end
 L(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.L[d+1+i]
-Lprim(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.L[d+1+i]
+Lprim(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.Lprim[d+1+i]
 K(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.K[d+1+i]
 H(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.H[d+1+i]
 bplus(ph::PrecalHermite{ord,d}, i) where{ord,d} =ph.bplus[1-ph.rplus+i]
@@ -121,8 +120,8 @@ struct Hermite{T, edge, order} <: AbstractInterpolation{T,edge,order}
                 tabfct[decal+i+k] += bplus(ph,k)*K(ph,i)
             end
         end
-        for i=0:d+1
-            for k=ph.rminus:ph.rplus
+        for i=1:d+1
+            for k=ph.rminus:ph.sminus
                 tabfct[decal+i+k] += bminus(ph,k)*K(ph,i)
             end
         end

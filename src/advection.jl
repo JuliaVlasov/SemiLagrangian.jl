@@ -171,7 +171,7 @@ mutable struct AdvectionData{T,N,timeopt}
     t_buf::Vector{Vector{Array{T}}}
     t_itr::Any
     tt_split::Any
-    t_cache::Vector{CachePrecal{T}}
+    t_cache::Vector{Vector{CachePrecal{T}}}
     parext::AbstractExtDataAdv
     function AdvectionData(
         adv::Advection{T,N,I, timeopt},
@@ -201,7 +201,7 @@ mutable struct AdvectionData{T,N,timeopt}
         fbegin(x, y) = t_linind[x][cartz(x)[1], t_itr[x][y][1]]
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
         tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
-        t_cache = map(x->CachePrecal(getinterp(adv,x), zero(T)), 1:nbst)
+        t_cache = map(x->map( i -> CachePrecal(getinterp(adv,x), zero(T)), 1:nbthr), 1:nbst)
         return new{T,N,timeopt}(
             adv,
             1,
@@ -230,7 +230,7 @@ isvelocitystate(state_coef::Int) = state_coef % 2 == 0
 isvelocity(adv::Advection, curid) = isvelocitystate(adv.states[curid].stcoef)
 isvelocitystate(self::AdvectionData) = isvelocitystate(getstcoef(self))
 _getcurrentindice(self::AdvectionData)=getst(self).perm[1]
-function getindsplit(self::AdvectionData)
+function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
     else
@@ -333,16 +333,17 @@ function advection!(
     tabmod = gettabmod.(sz) # just for optimization of interpolation!
 #    @show sz, timeopt
 
+    coltuple = ntuple( x -> Colon(), st.ndims)
+
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         #        @inbounds for ind in getitr(self)
         # fmrcpt=1
         local buf = self.t_buf[self.state_gen][1]
-        local coltuple = ntuple( x -> Colon(), st.ndims)
-        local cache = self.t_cache[self.state_gen]
-        itr = getitr(self)
+        local cache = self.t_cache[self.state_gen][1]
+        local itr = getitr(self)
 
 #       @show itr
-        if getst(self).isconstdec
+        if st.isconstdec
             for indext in itr
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
@@ -359,24 +360,47 @@ function advection!(
         end
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin
-        Threads.@threads for ind in collect(getitr(self))
-            local buf = view(tabbuf, :, Threads.threadid())
-            local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-            local lgn = view(f, :, ind)
-            interpolate!(buf, lgn, decint, precal, interp, tabmod)
-            lgn .= buf
+        local itr = collect(getitr(self))
+        if st.isconstdec
+#            @show itr
+            @threads for indext in itr
+                local buf = self.t_buf[self.state_gen][Threads.threadid()]
+                local cache = self.t_cache[self.state_gen][Threads.threadid()]
+                local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                local slc = view(f, coltuple..., indext)
+                interpolate!(buf, slc, decint, precal, interp, tabmod)
+                slc .= buf
+            end
+        else
+            @threads for indext in itr
+                local buf = self.t_buf[self.state_gen][Threads.threadid()]
+                local cache = self.t_cache[self.state_gen][Threads.threadid()]
+                local slc = view(f, coltuple..., indext)
+                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                slc .= buf
+            end
         end
         #        end
     elseif timeopt == SplitThreadsOpt
         #        @inbounds begin
         Threads.@threads for indth = 1:Threads.nthreads()
-            local buf = view(tabbuf, :, Threads.threadid())
-            #           @inbounds for ind in getitr(self)
-            for ind in getitr(self)
-                local decint, precal = getprecal(self, getalpha(extdata, self, ind))
-                local lgn = view(f, :, ind)
-                interpolate!(buf, lgn, decint, precal, interp, tabmod)
-                lgn .= buf
+            local buf = self.t_buf[self.state_gen][Threads.threadid()]
+            local cache = self.t_cache[self.state_gen][Threads.threadid()]
+            local itr = getitr(self)
+            if st.isconstdec
+                for indext in itr
+                    local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                    local slc = view(f, coltuple..., indext)
+                    interpolate!(buf, slc, decint, precal, interp, tabmod)
+                    slc .= buf
+                end           
+            else
+                for indext in itr
+                    local slc = view(f, coltuple..., indext)
+        #           @show ind
+                    interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                    slc .= buf
+                end
             end
         end
         #        end

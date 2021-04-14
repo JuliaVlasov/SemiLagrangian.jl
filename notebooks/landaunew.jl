@@ -358,6 +358,6 @@ c2 = (1-c)/(2(2-c))
 d1 = 1/(2-c)
 d2 = -c/(2-c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
-@time landau1_1(T, 1000, NoTimeOpt, sz=(128,128), dt=big"0.01", tab_coef=tc)
+@time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

@@ -1,87 +1,99 @@
-using Test
-#import Statistics: mean
-export UniformMesh
-"""
 
-    UniformMesh(start, stop, length)
+"""
+    UniformMesh{T}
+    UniformMesh(start::T, stop::T, length::Int) where {T}
 
 1D uniform mesh data.
 
-length   : number of points
-length-1 : number of cells
+# Arguments
+- `start::T` : beginning of the mesh
+- `stop::T` : end of the mesh
+- `length::Int` : number of cells of the mesh
 
-If you want remove the last point for periodic domain, set endpoint=false
-
-    - `step`  : size step
-    - `points`: Array with node positions
-    - `width` : Distance between left and right edges.
+# Implementation
+- `step::T`  : size step
+- `points::Vector{T}`: Array with node positions
+- `width::T` : Distance between left and right edges.
 
 """
 struct UniformMesh{T}
-    start::T
-    stop::T
-    length::Int
     step::T
     points::Vector{T}
     width::T
-    function UniformMesh(start::T, stop::T, length::Int; 
-    endpoint = true
-) where {T <: AbstractFloat}
-        if (endpoint)
-            points = range(start, stop = stop, length = length)
-        else
-            points = range(start, stop = stop, length = length + 1)[1:end-1]
-        end
-        step_loc = T == BigFloat ? step(points) : points.step
+
+    function UniformMesh(start::T, stop::T, length::Int) where {T}
+        pdeb = range(start, stop = stop, length = length + 1)
+        points = pdeb[1:end-1]
+        step_loc = step(pdeb)
         width = stop - start
-        new{T}(start, stop, length, step_loc, points, width)
+        new{T}(step_loc, points, width)
     end
 end
-export compute_charge!
 """
+    Base.step(mesh::UniformMesh)
 
-    compute_charge!( rho, mesh_v, fvx)
+Get the step of the mesh
 
- Compute charge density
+# Argument
+- `mesh::UniformMesh` : the mesh
 
- ρ(x,t) = ∫ f(x,v,t) dv
-
+# Return
+- `step` : the step of the mesh that is the difference between two contiguous points
 """
-function compute_charge!(
-    rho::Vector{T},
-    meshv::UniformMesh,
-    fvx::Array{T,2},
-) where {T <: AbstractFloat}
-    dv = meshv.step
-    rho .= dv .* vec(sum(fvx, dims = 1))
-    rho .-= sum(rho)/size(rho,1)
-    missing
-end
+Base.step(mesh::UniformMesh) = mesh.step
 
-
-export compute_e!
-
+start(mesh::UniformMesh) = mesh.points[1]
+stop(mesh::UniformMesh) = mesh.points[end]+mesh.step
 """
+    Base.length(mesh::UniformMesh)
 
-    compute_e!( e, mesh, ρ)
+Get the length of the mesh
 
-    ∇.e = - ρ
+# Argument
+- `mesh::UniformMesh` : the mesh
 
-Inplace computation of electric field. Fields e and rho are
-already allocated.
-
+# Return
+- `length` : the length of the mesh that is the number of points and cells
 """
-function compute_e!(
-    e::Vector{T},
-    meshx::UniformMesh{T},
-    rho::Vector{T},
-) where {T <: AbstractFloat}
+Base.length(mesh::UniformMesh) = length(mesh.points)
+"""
+    points(mesh::UniformMesh)
 
-    nx = meshx.length
-    k = 2π / (meshx.stop - meshx.start)
-    modes = zeros(T, nx)
-    modes .= k .* vcat(0:nx÷2-1, -nx÷2:-1)
-    modes[1] = 1.0
-    e .= real(ifft(-1im .* fft(rho) ./ modes))
+Get the points of the mesh
 
+# Argument
+- `mesh::UniformMesh` : the mesh
+
+# Return
+- `points` : the points of the mesh that is the vector of all points of the mesh except the last
+"""
+points(mesh::UniformMesh) = mesh.points
+"""
+    width(mesh::UniformMesh)
+
+Get the width of the mesh
+
+# Argument
+- `mesh::UniformMesh` : the mesh
+
+# Return
+- `width` : the width that is step*length or distance between left and right edges.
+"""
+width(mesh::UniformMesh) = mesh.width
+"""
+    vec_k_fft(mesh::UniformMesh{T}) where{T}
+
+Get the fft coefficients of the mesh
+
+# Argument
+- `mesh::UniformMesh{T}` : the mesh
+
+# Return
+- fft coefficients
+"""
+function vec_k_fft(mesh::UniformMesh{T}) where {T}
+    midx = div(length(mesh), 2)
+    k = 2T(pi) / (width(mesh))
+    res = k * vcat(0:midx-1, -midx:-1)
+    return res
 end

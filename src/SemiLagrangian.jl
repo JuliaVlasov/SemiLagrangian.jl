@@ -1,21 +1,42 @@
 module SemiLagrangian
 
-import Base.Threads: @sync, @spawn, nthreads, threadid
+# import Base.Threads: @sync, @spawn, nthreads, threadid
 
-abstract type InterpolationType end
-abstract type AbstractAdvection end
 
-include("lapack.jl")
+
+using Polynomials
+using FFTW
+using Base.Threads
+
+include("mpiinterface.jl")
+
+include("util.jl")
+include("fftbig.jl")
 include("mesh.jl")
-include("geometry.jl")
-include("splinenn.jl")
-include("splinepp.jl")
-include("banded_matrix.jl")
-include("spline_1d.jl")
-include("spline_interpolator_1d.jl")
+include("interpolation.jl")
 include("lagrange.jl")
-include("lagrange_interpolation.jl")
-include("bspline_periodic.jl")
+include("hermite.jl")
+include("spline.jl")
+include("bspline.jl")
+include("bsplinelu.jl")
+include("bsplinefft.jl")
+# include("advection1d.jl")
 include("advection.jl")
+include("util_poisson.jl")
+include("poisson.jl")
+# include("poisson1d.jl")
+# include("rotation1d.jl")
+include("rotation.jl")
+# include("translation1d.jl")
+include("translation.jl")
+
+export UniformMesh, start, stop, AbstractInterpolation, get_order
+export Advection, AdvectionData
+export Lagrange, Hermite, B_SplineLU, B_SplineFFT, interpolate!
+export compute_charge!,
+    compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
+export dotprod, getpoissonvar, getrotationvar, gettranslationvar
+export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt
+export get_type, sizeall, getdata
 
 end

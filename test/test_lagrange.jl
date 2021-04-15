@@ -1,96 +1,59 @@
-using Test
 using LinearAlgebra
-include("../src/lagrange.jl")
-function test_lagrange(type::DataType, order, iscirc::Bool, number,  tol)
-    @testset "Lagrange interpolation function type=$type order=$order iscirc=$iscirc" begin
-        lag = LagrangeNew(type, order; iscirc=iscirc)
-#        println("lag=$lag")
-        n = number
-        # whennot circuar coef != 1 set the function unperiodic
-        coef = iscirc ? 1. : 1.111
-        fct(v,n) = cos(2big(pi)*coef*v/n)
-        tf = fct.(BigFloat.(collect(1:n)),n)
-        value = big"0.456231986"
-        normax=0.0
-        for i=1:number
-            pol = polinterpol(lag, tf, i)
-            ref=fct(i+value,n)
-            res=pol(value)
-            normax = max(normax, norm(ref-res))
-#            println("i=$i norm=$(norm(res-ref,Inf))")
-#            println("i=$i norm=$(norm(res-ref,Inf)) type(pol)=$(typeof(pol)) pol=$pol")
-            @test isapprox(ref, res, atol=tol)
+using Polynomials
+using SemiLagrangian: Lagrange
+
+struct Pol2{T}
+    tab::Array{T,2}
+end
+function (fct::Pol2{T})(x, y) where {T}
+    res = 0
+    pc_x = [T(x)^(i - 1) for i = 1:size(fct.tab, 1)]
+    pc_y = [T(y)^(i - 1) for i = 1:size(fct.tab, 2)]
+    for i = 1:size(fct.tab, 1), j = 1:size(fct.tab, 2)
+        res += fct.tab[i, j] * pc_x[i] * pc_y[j]
+    end
+    return res
+end
+
+
+function test_base_lagrange(order)
+    lag = Lagrange(order, Rational{BigInt})
+    tab = rationalize.(BigInt, rand(order), tol = 1 / 1000000)
+    fct = Polynomial(tab)
+    dec = div(order, 2)
+    for i = 1:3
+        value = rationalize.(BigInt, rand(), tol = 1 / 1000000)
+        res = 0 // 1
+        for j = 0:order
+            res += lag.tabfct[j+1](value) * fct(j - dec)
         end
-        println("normax=$normax")
+        @test res == fct(value)
     end
 end
-
-function test_interpolation(type::DataType, order, iscirc::Bool, number, granularity,  tol, nb=1)
-    
-    lag = LagrangeNew(type, order; iscirc=iscirc, granularity=granularity)
-    coef = iscirc ? 1. : 1.111
-    n = number
-    fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-    fp = fct.(BigFloat.(collect(1:n)),n)
-    fi = zeros(type, number)
-    value = big"0.38571390114441619187615524132001118762519"
-    for i=1:nb
-        fi .= fp
-        fpref = fct.(BigFloat.(collect(1:n)).+i*value,n)
-        interpolate!(missing, fp, fi, value, lag)
-        println("i=$i granularity=$granularity norm = $(norm(fpref-fp,Inf))")
-        # for i=1:number
-        #     println("i=$i norm=$(norm(fpref[i]-fp[i]))")
-        # end
-        println("i=$i norm=$(norm(fpref-fp))")
-        @test isapprox(fpref, fp, atol=tol)
-    end
-end
-
-# test_lagrange(BigFloat, 17,true, 1000, 1e-45)
-# test_lagrange(BigFloat, 23,true, 1000, 1e-50)
-# test_lagrange(BigFloat, 17,false, 1000, 1e-38)
-# test_lagrange(BigFloat, 23,false, 1000, 1e-50)
-# @testset "Lagrange interpolation order=17 iscirc=true" begin
-#     @time test_interpolation(BigFloat, 17,true, 1000, 1, 1e-20, 10000)
-#     for i= 2:13
-#         @time test_interpolation(BigFloat, 17,true, 1000, i, 1e-20, 100)
-#     end
-# end
-function aff_graph(ind, fp)
-    println("ind=$ind begin")
-    for (i, val) in enumerate(fp)
-        println("$i\t$val")
-    end
-    println("ind=$ind end")
-end
-function test_dirac(order, len, nb, modval )
-    lag = LagrangeNew(BigFloat, order; iscirc=true)
-#        println("lag=$lag")
-    n = len
-    # whennot circuar coef != 1 set the function unperiodic
-    fp = zeros(BigFloat,n)
-    fp[div(n,2)] = big"1.0"
-    fi = zeros(BigFloat, n)
-    value = big"0.30529810681113334445566767713091"
-    normax=0.0
-    aff_graph(1,fp)
-    for i=1:nb
-        fi .= fp
-  interpolate!(missing,fp,fi, value, lag)
-        if i%modval == 0
-            aff_graph(i,fp)
+function test_base_lagrange2d(order)
+    lag = Lagrange(order, Rational{BigInt})
+    tab = rationalize.(BigInt, rand(order, order), tol = 1 / 1000000)
+    fct = Pol2(tab)
+    dec = div(order, 2)
+    for i = 1:1
+        val_x = rationalize.(BigInt, rand(), tol = 1 / 1000000)
+        val_y = rationalize.(BigInt, rand(), tol = 1 / 1000000)
+        res = 0 // 1
+        for j = 0:order, k = 0:order
+            res += lag.tabfct[j+1](val_x) * lag.tabfct[k+1](val_y) * fct(j - dec, k - dec)
         end
+        resf = fct(val_x, val_y)
+        #        println("order = $order res-fct=$(res-resf)")
+        @test res == resf
     end
 end
-test_dirac(31,100, 500, 50)
-# @time test_interpolation(BigFloat, 17,true, 200, 1, 1e-10, 200 )
-# test_interpolation(BigFloat, 23,true, 1000, 12, 1e-40)
-# test_interpolation(BigFloat, 17,false, 1000, 10, 1e-38)
-# test_interpolation(BigFloat, 23,false, 1000, 12, 1e-40)
-
-
-
-
-
-
+@time @testset "test base interpolation" begin
+    for ord = 3:27
+        test_base_lagrange(ord)
+    end
+end
+@time @testset "test base interpolation2d" begin
+    for ord = 3:21
+        test_base_lagrange2d(ord)
+    end
+end

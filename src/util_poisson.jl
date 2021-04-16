@@ -1,14 +1,14 @@
 """
     compute_ke(t_mesh_sp, t_mesh_v, f)
 
-kinetic Energie
+Compute kinetic Energy from phase space distribution `f`.
 
 ∫∫ v^2 f(x,v,t) dv dx
 
 # Arguments
-- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}` : tuple of space meshes
-- `t_mesh_v::NTuple{Nv, UniformMesh{T}}` : tuple of velocity meshes
-- `f::Array{T,Nsum}` : function data.
+- `t_mesh_sp::NTuple{Nsp, UniformMesh{T}}`: space mesh.
+- `t_mesh_v::NTuple{Nv, UniformMesh{T}}`: velocity mesh.
+- `f::Array{T,Nsum}`: distribution function array.
 """
 function compute_ke(
     t_mesh_sp::NTuple{Nsp,UniformMesh{T}},
@@ -23,15 +23,16 @@ function compute_ke(
     sum_sp .= reshape(sum(f, dims = ntuple(x -> x, Nsp)), szv)
     return (dsp * dv) * sum(dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
 end
+
 """
     compute_ke(self::AdvectionData)
 
-kinetic Energie
+Compute kinetic Energy.
 
 ∫∫ v^2 f(x,v,t) dv dx
 
 # Arguments
-- `self::AdvectionData` : mutable structure of variables data.
+- `self::AdvectionData`: mutable structure of variables data.
 """
 function compute_ke(self::AdvectionData{T,N}) where {T,N}
     pvar::PoissonVar = getext(self)
@@ -49,17 +50,16 @@ function compute_ke(self::AdvectionData{T,N}) where {T,N}
 end
 
 """
-    compute_charge!( rho, mesh_v, fvx)
+    compute_charge!(rho, mesh_v, f)
 
- Compute charge density
+Compute charge density from phase space distribution `f`.
 
- ρ(x,t) = ∫ f(x,v,t) dv
+ρ(x,t) = ∫ f(x,v,t) dv
 
- # Arguments
- - `rho::Array{T,Nsp}` : result table correctly sized, it is he output
- - `t_mesh_v::NTuple{Nv,UniformMesh{T}}` : velocity meshes
- - `f::Array{T,Nsum}` : input data
-
+# Arguments
+- `rho::Array{T,Nsp}`: output result density array.
+- `t_mesh_v::NTuple{Nv,UniformMesh{T}}`: velocity mesh.
+- `f::Array{T,Nsum}`: distribution function array.
 """
 function compute_charge!(
     rho::Array{T,Nsp},
@@ -71,18 +71,17 @@ function compute_charge!(
     dv = prod(step, t_mesh_v)
     rho .= dv * reshape(sum(f, dims = ntuple(x -> Nsp + x, Nv)), size(rho))
     rho .-= sum(rho) / prod(size(rho))
-    missing
+    nothing
 end
 
 """
     compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
 
-computation of electric field
+Computation of electric field.
     ∇.e = - ρ
 
 # Argument
- - `self::Advection1dData` : mutable structure of variables data.
-
+ - `self::Advection1dData`: mutable structure of variables data.
 """
 # function compute_elfield!( self::Advection1dData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
 #     pv::PoissonVar{T, Nsp, Nv} = getext(self)
@@ -126,12 +125,12 @@ end
 """
     compute_ee(t_mesh_sp, t_elf)
 
-compute electric enegie
+Compute electric energy
 || E(t,.) ||_L2
 
 # Arguments
-- `t_mesh_sp::NTuple{N,UniformMesh{T}}` : tuple of space meshes
-- `t_elf::NTuple{N,Array{T,N}}` : tuple of electric field
+- `t_mesh_sp::NTuple{N,UniformMesh{T}}`: space mesh.
+- `t_elf::NTuple{N,Array{T,N}}`: electric field.
 """
 function compute_ee(
     t_mesh_sp::NTuple{N,UniformMesh{T}},
@@ -148,12 +147,11 @@ end
 """
     compute_ee(self::AdvectionData)
 
-compute electric enegie
+Compute electric energy
 || E(t,.) ||_L2
 
 # Argument
-- `self::AdvectionData` : veriable advection data structure.
-
+- `self::AdvectionData`: advection data structure.
 """
 function compute_ee(self::AdvectionData)
     adv = self.adv

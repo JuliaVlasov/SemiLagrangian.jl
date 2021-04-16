@@ -113,7 +113,7 @@ end
 
 # modulo for "begin to one" array
 modone(ind, n) = (n + ind - 1) % n + 1
-gettabmod(lg) = modone.(1:10lg, lg) # 
+gettabmod(lg) = modone.(1:3lg, lg) # 
 function get_allprecal(
     interp::AbstractInterpolation{T,InsideEdge,order},
     decint::Int,
@@ -131,6 +131,7 @@ end
         decint::Int, 
         precal::Vector{T}, 
         interp::AbstractInterpolation{T, CircEdge, order},
+        self::AdvectionData{T},
         tabmod=gettabmod(size(fi)) ) where {T, order}
 
 apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
@@ -153,17 +154,34 @@ function interpolate!(
     decint::Int,
     precal::Vector{T},
     interp::AbstractInterpolation{T,CircEdge,order},
-    tabmod = gettabmod(length(fi)),
+    tabmod = gettabmod(length(fi));
+    clockobs::AbstractClockObs=NoClockObs(),
 ) where {T,order}
     res = sol(interp, fi)
+    # @show typeof(res)
+    # @show typeof(tabmod)
     origin = -div(order, 2)
     lg = length(fi)
-    for i = 1:lg
-        indbeg = i + origin + decint + 5lg
+    decal = (origin + decint + 5lg) % lg
+    clockbegin(clockobs,3)
+    @inbounds for i = 1:lg
+        indbeg = i + decal
         indend = indbeg + order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
+    clockend(clockobs,3)
     missing
+end
+@inline function interpolate!(
+    fp::AbstractVector{T},
+    fi::AbstractVector{T},
+    decint::Int,
+    precal::Vector{T},
+    tinterp::Vector{I},
+    tabmod = gettabmod(length(fi));
+    clockobs::AbstractClockObs=NoClockObs(),
+) where {T, I <: AbstractInterpolation{T,CircEdge}}
+    return interpolate!(fp,fi,decint,precal,tinterp[1],tabmod[1], clockobs=clockobs)
 end
 function interpolate!(
     fp::AbstractArray{T,N},
@@ -171,15 +189,16 @@ function interpolate!(
     decint::NTuple{N,Int},
     precal::Array{T,N},
     interp::Vector{I},
-    tabmod = gettabmod.(size(fi)),
+    tabmod = gettabmod.(size(fi));
+    clockobs::AbstractClockObs=NoClockObs(),
 ) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
     res = sol(interp, fi)
     order = get_order.(interp)
     origin = -div.(order, (2,))
     lg = size(fi)
-    lg5 = 5 .* lg
+    decal = (origin .+ decint .+ (5 .* lg) ) .% lg
     for i in CartesianIndices(lg)
-        indbeg = i.I .+ origin .+ decint .+ lg5
+        indbeg = i.I .+ decal
         indend = indbeg .+ order
         fp[i] = sum(res[ntuple(x -> tabmod[x][indbeg[x]:indend[x]], N)...] .* precal)
     end
@@ -191,9 +210,10 @@ end
     decint::NTuple{1,Int},
     precal::Array{T,1},
     interp::Vector{I},
-    tabmod = gettabmod.(size(fi)),
+    tabmod = gettabmod.(size(fi));
+    clockobs::AbstractClockObs=NoClockObs(),
 ) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
-    return interpolate!(fp, fi, decint[1], precal, interp[1],tabmod[1])
+    return interpolate!(fp, fi, decint[1], precal, interp[1],self,tabmod[1]; clockobs=clockobs)
 end
 """
     interpolate!( 
@@ -223,7 +243,8 @@ function interpolate!(
     decint::Int,
     allprecal::Vector{Vector{T}},
     interp::AbstractInterpolation{T,InsideEdge,order},
-    tabmod = gettabmod(length(fi)),
+    tabmod = gettabmod(length(fi));
+    clockobs::AbstractClockObs=NoClockObs(),
 ) where {T,order}
     res = sol(interp, fi)
     origin = -div(order, 2)
@@ -358,7 +379,7 @@ end
     end
     return self.cache_int, self.precal
 end
-
+@inline getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where{T}=getprecal(self,alpha[1])
 
 function interpolate!(
     fp::AbstractArray{T,N},
@@ -376,7 +397,7 @@ function interpolate!(
  
     order = get_order.(interp_t)
     origin = -div.(order,(2,))
-    decall = 5 .* sz .+ origin
+    decall = (5 .* sz .+ origin) .% sz
 
     for ind in CartesianIndices(sz)
         dint, tab = getprecal(cache, dec(ind))
@@ -406,7 +427,7 @@ function interpolate!(
     for ind in CartesianIndices((lg,))
         dint, decfl = getprecal(self, dec(ind)[1])
 #        @show decfl, dint
-        deb_i =  dint + decall + ind.I[1]
+        deb_i =  (dint + decall)%lg + ind.I[1]
         end_i = deb_i + order
         fp[ind] = sum(res[tabmod[deb_i:end_i]] .* tab)
     end

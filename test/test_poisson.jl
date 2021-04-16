@@ -4,6 +4,8 @@ using DoubleFloats
 
 using SemiLagrangian:
     UniformMesh,
+    points,
+    dotprod,
     compute_ee,
     compute_ke,
     PoissonConst,
@@ -33,6 +35,9 @@ function test_poisson(T::DataType, isfft = true)
     t_endv = T.([1 // 1, 7 // 1, 5 // 1])
     t_szv = (4, 8, 4)
     base_dt = one(T) / 80
+    Nv = 3
+
+    N = Nsp+Nv
 
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
@@ -52,6 +57,9 @@ function test_poisson(T::DataType, isfft = true)
 
     pc = PoissonConst(adv; isfftbig = isfft)
 
+    @test pc.v_square == dotprod(points.(adv.t_mesh[N-Nv+1:N])) .^ 2
+
+
     # #    println("t_perms=$(pc.t_perms)")
     # @test pc.t_perms == (
     #     [1, 2, 3, 6, 5, 4],
@@ -65,6 +73,9 @@ function test_poisson(T::DataType, isfft = true)
     pvar = PoissonVar(pc)
 
     advdata = AdvectionData(adv, tab, pvar)
+
+    @test compute_ke(advdata) == compute_ke(totuple(t_meshsp), totuple(t_meshv), tab)
+
 
     advdata.state_gen =2
     initcoef!(pvar, advdata)

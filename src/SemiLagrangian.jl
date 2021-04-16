@@ -9,6 +9,7 @@ using FFTW
 using Base.Threads
 
 include("mpiinterface.jl")
+include("clockobs.jl")
 
 include("util.jl")
 include("fftbig.jl")
@@ -32,7 +33,7 @@ include("translation.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
-export Lagrange, Hermite, B_SplineLU, B_SplineFFT, interpolate!
+export Lagrange, LagrangeInt, Hermite, B_SplineLU, B_SplineFFT, interpolate!
 export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar

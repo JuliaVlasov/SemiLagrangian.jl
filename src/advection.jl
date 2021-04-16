@@ -123,6 +123,19 @@ getst(adv::Advection, x) = adv.states[x]
 # Interface of external data
 abstract type AbstractExtDataAdv{T,N} end
 
+function initfmrdata(adv::Advection, bufdata::Vector{T}, state) where {T}
+    p = getst(adv, state).perm
+    if isbitstype(T)
+        ptr = pointer(bufdata)
+        # the following call is safe because :
+        #       - T type is an bits type
+        #  and  - length(bufdata) == prod(sizeall(adv))
+        return unsafe_wrap(Array, ptr, sizeall(adv)[p], own=false)
+    else
+        return zeros(T, sizeall(adv)[p])
+    end
+end
+
 
 """
     AdvectionData{T,N,timeopt}
@@ -168,15 +181,17 @@ mutable struct AdvectionData{T,N,timeopt}
     data::Array{T,N}
     bufdata::Array{T}
     fmrtabdata::Vector{Array{T,N}}
-    t_buf::Vector{Vector{Array{T}}}
+    t_buf::Vector{Array{T}}
     t_itr::Any
     tt_split::Any
     t_cache::Vector{Vector{CachePrecal{T}}}
     parext::AbstractExtDataAdv
+    clobs::AbstractClockObs
     function AdvectionData(
         adv::Advection{T,N,I, timeopt},
         data::Array{T,N},
-        parext::AbstractExtDataAdv,
+        parext::AbstractExtDataAdv;
+        clockobs=false
     ) where {T, N, I, timeopt}
         s = size(data)
         s == sizeall(adv) ||
@@ -185,10 +200,10 @@ mutable struct AdvectionData{T,N,timeopt}
         nbthr =
             timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() :
             1
-        t_buf = map( x -> map(y -> zeros(T, s[getst(adv,x).perm][1:getst(adv,x).ndims]), 1:nbthr), 1:nbst)
+        t_buf = map(x -> zeros(T, s[getst(adv,x).perm][1:getst(adv,x).ndims]...,nbthr), 1:nbst)
         datanew = Array{T,N}(undef, s)
         bufdata = Vector{T}(undef, length(data))
-        fmrtabdata = map(x -> zeros(T, s[adv.states[x].perm]), 1:nbst)
+        fmrtabdata = map(x -> initfmrdata(adv, bufdata, x), 1:nbst)
         copyto!(datanew, data)
         @show adv.nbsplit
         t_itr = ntuple(
@@ -214,6 +229,7 @@ mutable struct AdvectionData{T,N,timeopt}
             tt_split,
             t_cache,
             parext,
+            clockobs ? ClockObs(10) : NoClockObs(),
         )
     end
 end
@@ -238,8 +254,8 @@ function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     end
     return ind
 end
-
-getst(self::AdvectionData)=self.adv.states[self.state_gen]
+getst(adv::Advection, state)=adv.states[state]
+getst(self::AdvectionData)=getst(self.adv, self.state_gen)
 function getinterp(self::AdvectionData)
     st = getst(self)
     return self.adv.t_interp[st.perm[1:st.ndims]]
@@ -273,6 +289,7 @@ function nextstate!(self::AdvectionData)
         return true
     else
         self.state_gen = 1
+        printall(self.clobs)
         return false
     end
 end
@@ -287,6 +304,7 @@ end
 function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext, ind)
     return getalpha(parext, self, indext)
 end
+
 
 # data formating
 function getformdata(advd::AdvectionData)
@@ -320,7 +338,7 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 function advection!(
     self::AdvectionData{T,N,timeopt},
 ) where {T,N,timeopt}
-
+    fltrace = true
     f = self.data
     interp = getinterp(self)
     extdata = getext(self)
@@ -338,17 +356,25 @@ function advection!(
     if timeopt == NoTimeOpt || timeopt == MPIOpt
         #        @inbounds for ind in getitr(self)
         # fmrcpt=1
-        local buf = self.t_buf[self.state_gen][1]
+        local buf = view(self.t_buf[self.state_gen], coltuple..., 1)
         local cache = self.t_cache[self.state_gen][1]
         local itr = getitr(self)
-
+        # local colitr = collect(itr)
+        # @show length(colitr), colitr[1]
 #       @show itr
+clockbegin(self.clobs,1)
         if st.isconstdec
-            for indext in itr
+            @inbounds for indext in itr
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
-                interpolate!(buf, slc, decint, precal, interp, tabmod)
+                # if fltrace
+                #     @show typeof(buf),typeof(slc),length(buf),length(slc)
+                #     fltrace = false
+                # end
+                clockbegin(self.clobs,2)
+                interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
                 slc .= buf
+                clockend(self.clobs,2)
             end           
         else
             for indext in itr
@@ -358,6 +384,7 @@ function advection!(
                 slc .= buf
             end
         end
+clockend(self.clobs,1)
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin
         local itr = collect(getitr(self))

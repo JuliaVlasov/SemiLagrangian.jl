@@ -36,11 +36,15 @@ kinetic Energie
 function compute_ke(self::AdvectionData{T,N}) where {T,N}
     pvar::PoissonVar = getext(self)
     Nsp, Nv = getNspNv(pvar)
+#    @show Nsp, Nv
     adv = self.adv
-    szv = length.(adv.t_mesh[1:Nsp])
+    szv = length.(adv.t_mesh[Nsp+1:N])
     dsp = prod(step, adv.t_mesh[1:Nsp])
-    dv = prod(step, adv.t_mesh[1:Nv])
-    sum_sp = reshape(sum(getdata(self), dims = ntuple(x -> x, Nsp)), szv)
+    dv = prod(step, adv.t_mesh[Nsp+1:N])
+#   @show szv
+    res = sum(getdata(self), dims = ntuple(x -> x, Nsp))
+#    @show size(res)
+    sum_sp = reshape(res, szv)
     return (dsp * dv) * sum(pvar.pc.v_square .* sum_sp)
 end
 

@@ -1,4 +1,8 @@
 
+#for debug only
+# using CRC32c
+# cksum(t::Array)=crc32c(collect(reinterpret(UInt8,t)))
+# cksum(t::Array, x::Int32)=crc32c(collect(reinterpret(UInt8,t)), x)
 
 
 # contruct nb iterators thta is the split of 1:lgtot iterator

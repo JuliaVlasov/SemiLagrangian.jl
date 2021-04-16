@@ -1,20 +1,5 @@
 
 
-"""
-    compute_charge!( self::AdvectionData)
-
- Compute charge density
-
- ρ(x,t) = ∫ f(x,v,t) dv
-
- # Argument
- - `self::AdvectionData` : mutable structure of variables data.
-"""
-function compute_charge!(self::AdvectionData{T,N}) where {T,N}
-    pvar = getext(self)
-    compute_charge!(pvar.rho, self.adv.t_mesh[(div(N,2)+1):N], self.data)
-    missing
-end
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -97,6 +82,22 @@ mutable struct PoissonVar{T,N,Nsp,Nv} <: AbstractExtDataAdv{T,N}
 end
 
 getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
+"""
+    compute_charge!( self::AdvectionData)
+
+ Compute charge density
+
+ ρ(x,t) = ∫ f(x,v,t) dv
+
+ # Argument
+ - `self::AdvectionData` : mutable structure of variables data.
+"""
+function compute_charge!(self::AdvectionData{T,N}) where {T,N}
+    pvar = getext(self)
+    Nsp,Nv = getNspNv(pvar)
+    compute_charge!(pvar.rho, self.adv.t_mesh[end-Nv+1:end], self.data)
+    missing
+end
 
 """
     compute_elfield!( self:AdvectionData)
@@ -154,21 +155,26 @@ function initcoef!(
     adv = self.adv
     if isvelocitystate(self)
         if (Nsp+1) in st.perm[1:st.ndims]
+#            @show cksum(self.data)
             compute_charge!(self)
+#            @show cksum(self.parext.rho), size(self.parext.rho)
             compute_elfield!(self)
+#            @show cksum.(self.parext.t_elfield)
         end
         #        println("v trace init plus")
 #        pv.bufcur = (getcur_t(self) / step(mesh_v)) * pv.t_elfield[state_dim]
-        pv.bufcur = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * pv.t_elfield[st.invp[x]-Nsp], st.ndims)
+        pv.bufcur = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.perm[x]])) * pv.t_elfield[st.perm[x]-Nsp], st.ndims)
+#        @show self.state_gen, cksum(pv.bufcur[1]), size(pv.bufcur[1])
 #        @show typeof(pv.bufcur)
-        #        @show minimum(pv.bufcur),maximum(pv.bufcur) 
+#        @show minimum(pv.bufcur[1]),maximum(pv.bufcur[1]) 
     else
 #        mesh_sp = self.adv.t_mesh[state_dim]
         #        println("sp trace init moins")
 #        pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
         pv.tupleind = ntuple( x -> st.perm[st.invp[x]+Nsp]-st.ndims, st.ndims)
         pv.bufcur = ntuple( x -> (-getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * adv.t_mesh[st.invp[x]+Nsp].points, st.ndims)
-        #       @show minimum(pv.bufcur),maximum(pv.bufcur) 
+#        @show self.state_gen, cksum(pv.bufcur[1]), size(pv.bufcur[1])
+       #       @show minimum(pv.bufcur),maximum(pv.bufcur) 
 #        @show typeof(pv.bufcur)
 
     end
@@ -178,7 +184,7 @@ function getpoissonvar(adv::Advection)
     return PoissonVar(pc)
 end
 
-function getalpha(
+@inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv},
     self::AdvectionData{T},
     ind,

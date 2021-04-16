@@ -13,7 +13,6 @@
 #     language: julia
 #     name: julia-1.4
 # ---
-using Revise
 
 using LinearAlgebra
 using DoubleFloats
@@ -256,6 +255,19 @@ function landau2_2(
     sz = (32, 32, 32, 32),
     dt = big"0.1",
     interpall = ntuple(x -> Lagrange(19, T), 4),
+    tab_coef=[1//2, 1, 1//2],
+    tabst = map( 
+        x -> if x%4 == 1
+                ([1,2,4,3], 1, div(x+1, 2), true)
+            elseif x%4 == 2
+                ([2,1,3,4], 1,div(x+1, 2), true)
+            elseif x%4 == 3
+                ([3,4,1,2], 1,div(x+1,2), true)
+            else # x%4 == 0
+                ([4,3,1,2], 1,div(x+1,2), true)
+            end, 
+        1:6
+)
 )
     epsilon = T(0.5)
     dt = T(dt)
@@ -273,12 +285,13 @@ function landau2_2(
     mesh2_v = UniformMesh(v2min, v2max, nv2)
 
 
-    adv = Advection1d(
-        (mesh1_sp, mesh2_sp),
-        (mesh1_v, mesh2_v),
-        interpall[1:2],
-        interpall[3:4],
+
+    adv = Advection(
+        (mesh1_sp, mesh2_sp, mesh1_v, mesh2_v),
+        [interpall...],
         dt,
+        tabst,
+        tab_coef=tab_coef, 
         timeopt = timeopt,
     )
 
@@ -294,7 +307,7 @@ function landau2_2(
 
     pvar = getpoissonvar(adv)
 
-    advd = Advection1dData(adv, data, pvar)
+    advd = AdvectionData(adv, data, pvar)
     # advdata = Advection1dData(adv, data, pvar)
     printout(
         advd,
@@ -302,22 +315,23 @@ function landau2_2(
     )
     printout(
         advd,
-        "# sp1 : from $(Float64(mesh1_sp.points[1])) to $(Float64(mesh1_sp.points[end]))",
+        "# sp1 : from $(Float64(start(mesh1_sp))) to $(Float64(stop(mesh1_sp)))",
     )
     printout(
         advd,
-        "# sp2 : from $(Float64(mesh2_sp.points[1])) to $(Float64(mesh2_sp.points[end]))",
+        "# sp2 : from $(Float64(start(mesh2_sp))) to $(Float64(stop(mesh2_sp)))",
     )
     printout(
         advd,
-        "# v1 : from $(Float64(mesh1_v.points[1])) to $(Float64(mesh1_v.points[end]))",
+        "# v1 : from $(Float64(start(mesh1_v))) to $(Float64(stop(mesh1_v)))",
     )
     printout(
         advd,
-        "# v2 : from $(Float64(mesh2_v.points[1])) to $(Float64(mesh2_v.points[end]))",
+        "# v2 : from $(Float64(start(mesh2_v))) to $(Float64(stop(mesh2_v)))",
     )
     printout(advd, "# interpolation : $interpall")
     printout(advd, "# tab_coef : $tab_coef")
+    printout(advd, "# tabst : $tabst")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
     if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
@@ -358,6 +372,29 @@ c2 = (1-c)/(2(2-c))
 d1 = 1/(2-c)
 d2 = -c/(2-c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
-@time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
+tc = [1, 1]
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4),
+ tabst = map( 
+    x -> if x%2 != 1
+            ([1,2,3,4], 2, 1, true)
+        else # x%2 == 0
+            ([3,4,1,2], 2, 2, true)
+        end, 
+    1:2
+),
+tab_coef=tc   
+)
+# @time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
+# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
+# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4),
+#  tabst = map( 
+#     x -> if x%2 == 1
+#             ([1,2,4,3], 2, x, true)
+#         else # x%2 == 0
+#             ([3,4,1,2], 2, x, true)
+#         end, 
+#     1:3
+# )   
+# )
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

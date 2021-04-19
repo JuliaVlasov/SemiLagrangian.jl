@@ -153,6 +153,8 @@ end
 #    @time @test test_rotation((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
 @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
 @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
+@time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
+@time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
     @time @test test_rotation(
         (128, 256),
         B_SplineLU(5, 128, T),

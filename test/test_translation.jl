@@ -191,6 +191,24 @@ end
         11, 3
     ) < 1e-3
     @time @test test_translation(
+        (200, 300),
+        Hermite(5, T),
+        Hermite(5, T),
+        11,
+    ) < 1e-3
+    @time @test test_translation(
+        (200, 300),
+        Hermite(5, T),
+        Hermite(5, T),
+        11, 2
+    ) < 1e-3
+    @time @test test_translation(
+        (200, 300),
+        Hermite(5, T),
+        Hermite(5, T),
+        11, 3
+    ) < 1e-3
+    @time @test test_translation(
         (128, 64),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 64, T),

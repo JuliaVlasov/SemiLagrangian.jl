@@ -18,7 +18,7 @@ end
 
 function test_base_lagrange(order)
     lag = Lagrange(order, Rational{BigInt})
-    tab = rationalize.(BigInt, rand(order), tol = 1 / 1000000)
+    tab = rationalize.(BigInt, rand(order+1), tol = 1 / 1000000)
     fct = Polynomial(tab)
     dec = div(order, 2)
     for i = 1:3
@@ -32,7 +32,7 @@ function test_base_lagrange(order)
 end
 function test_base_lagrange2d(order)
     lag = Lagrange(order, Rational{BigInt})
-    tab = rationalize.(BigInt, rand(order, order), tol = 1 / 1000000)
+    tab = rationalize.(BigInt, rand(order+1, order+1), tol = 1 / 1000000)
     fct = Pol2(tab)
     dec = div(order, 2)
     for i = 1:1

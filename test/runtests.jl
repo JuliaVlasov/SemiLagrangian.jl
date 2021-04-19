@@ -3,6 +3,7 @@ using SemiLagrangian
 
 include("test_interpolation.jl")
 include("test_lagrange.jl")
+include("test_hermite.jl")
 include("test_splinelu.jl")
 include("test_bspline.jl")
 include("testfftbig.jl")

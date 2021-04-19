@@ -52,7 +52,8 @@ function test_precalhermite(ord)
 end
 function test_base_hermite(order)
     herm = Hermite(order, Rational{BigInt})
-    tab = rationalize.(BigInt, rand(order), tol = 1 / 1000000)
+    ord = div(order,2)+1
+    tab = rationalize.(BigInt, rand(ord+1), tol = 1 / 1000000)
     fct = Polynomial(tab)
     dec = div(order, 2)
     for i = 1:3
@@ -66,7 +67,8 @@ function test_base_hermite(order)
 end
 function test_base_hermite2d(order)
     herm = Hermite(order, Rational{BigInt})
-    tab = rationalize.(BigInt, rand(order, order), tol = 1 / 1000000)
+    ord = div(order,2)+1
+    tab = rationalize.(BigInt, rand(ord+1, ord+1), tol = 1 / 1000000)
     fct = Pol2(tab)
     dec = div(order, 2)
     for i = 1:1
@@ -87,13 +89,13 @@ end
     end
 end
 @time @testset "test base hermite interpolation" begin
-    for order = 5:4:9
+    for order = 5:4:41
         test_base_hermite(order)
     end
 end
-# @time @testset "test base hermite interpolation2d" begin
-#     for ord = 5:4:9
-#         test_base_hermite2d(ord)
-#     end
-# end
+@time @testset "test base hermite interpolation2d" begin
+    for order = 5:4:41
+        test_base_hermite2d(order)
+    end
+end
 

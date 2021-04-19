@@ -373,7 +373,7 @@ d1 = 1/(2-c)
 d2 = -c/(2-c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
 tc = [1, 1]
-@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4),
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Hermite(9,T),4),
  tabst = map( 
     x -> if x%2 != 1
             ([1,2,3,4], 2, 1, true)

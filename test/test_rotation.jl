@@ -11,6 +11,7 @@ using SemiLagrangian:
     getrotationvar,
     AbstractInterpolation,
     Lagrange,
+    Hermite,
     B_SplineLU,
     B_SplineFFT,
     interpolate!

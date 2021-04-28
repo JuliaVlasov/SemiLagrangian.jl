@@ -373,28 +373,29 @@ d1 = 1/(2-c)
 d2 = -c/(2-c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
 tc = [1, 1]
-@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Hermite(9,T),4),
- tabst = map( 
-    x -> if x%2 != 1
-            ([1,2,3,4], 2, 1, true)
-        else # x%2 == 0
-            ([3,4,1,2], 2, 2, true)
-        end, 
-    1:2
-),
-tab_coef=tc   
-)
-# @time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
-# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
-# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4),
+# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Hermite(9,T),4),
 #  tabst = map( 
-#     x -> if x%2 == 1
-#             ([1,2,4,3], 2, x, true)
+#     x -> if x%2 != 1
+#             ([1,2,3,4], 2, 1, true)
 #         else # x%2 == 0
-#             ([3,4,1,2], 2, x, true)
+#             ([3,4,1,2], 2, 2, true)
 #         end, 
-#     1:3
-# )   
+#     1:2
+# ),
+# tab_coef=tc   
 # )
+# @time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
+ tabst = map( 
+    x -> if x%2 == 1
+            ([1,2,3,4], 2, x, true)
+        else # x%2 == 0
+            ([3,4,1,2], 2, x, true)
+        end, 
+    1:3
+)   
+
+
+# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Lagrange(7,T),4), tabst=tabst)
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

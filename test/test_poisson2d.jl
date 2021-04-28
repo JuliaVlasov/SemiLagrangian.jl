@@ -128,7 +128,7 @@ function test_poisson2d(
     tabmod = gettabmod.(sz)
     for ind = 1:2nbdt
         dec2 = [dt / step(mesh_v) * elf[i] for i = 1:sz[1], j = 1:sz[2]]
-        interpolate!(buf, data, ind->(dec1[ind], dec2[ind]), interp, tabmod, cache)
+        interpolate!(buf, data, ind->(dec1[ind], dec2[ind]), interp, tabmod=tabmod, cache=cache)
         copyto!(data, buf)
 
         compute_charge!(rho, (mesh_sp,), data)

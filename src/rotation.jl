@@ -5,7 +5,7 @@
 
 
 
-mutable struct RotationVar{T,N} <: AbstractExtDataAdv{T,N}
+mutable struct RotationVar{T,N} <: AbstractExtDataAdv
     decfl::Any
     decint::Any
     function RotationVar(adv::Advection{T,N}) where {T,N}

@@ -67,7 +67,7 @@ mutable structure of variable data for the poisson computation
 - `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
 - `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
 """
-mutable struct PoissonVar{T,N,Nsp,Nv} <: AbstractExtDataAdv{T,N}
+mutable struct PoissonVar{T,N,Nsp,Nv} <: AbstractExtDataAdv
     pc::PoissonConst{T,N,Nsp,Nv}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}

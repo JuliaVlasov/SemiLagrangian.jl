@@ -1,6 +1,6 @@
 
 
-mutable struct TranslationVar{T,N} <: AbstractExtDataAdv{T,N}
+mutable struct TranslationVar{T,N} <: AbstractExtDataAdv
     values::NTuple{N,T}
     valok
 end

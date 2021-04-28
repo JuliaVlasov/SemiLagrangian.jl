@@ -121,7 +121,7 @@ sizeall(adv::Advection) = adv.sizeall
 getst(adv::Advection, x) = adv.states[x]
 
 # Interface of external data
-abstract type AbstractExtDataAdv{T,N} end
+abstract type AbstractExtDataAdv end
 
 function initfmrdata(adv::Advection, bufdata::Vector{T}, state) where {T}
     p = getst(adv, state).perm
@@ -178,6 +178,7 @@ Mutable structure that contains variable parameters of advection series
 mutable struct AdvectionData{T,N,timeopt}
     adv::Advection{T,N}
     state_gen::Int # indice of the calls of advection!
+    time_cur::T # current time
     data::Array{T,N}
     bufdata::Array{T}
     fmrtabdata::Vector{Array{T,N}}
@@ -220,6 +221,7 @@ mutable struct AdvectionData{T,N,timeopt}
         return new{T,N,timeopt}(
             adv,
             1,
+            zero(T),
             datanew,
             bufdata,
             fmrtabdata,
@@ -254,7 +256,6 @@ function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     end
     return ind
 end
-getst(adv::Advection, state)=adv.states[state]
 getst(self::AdvectionData)=getst(self.adv, self.state_gen)
 function getinterp(self::AdvectionData)
     st = getst(self)
@@ -290,20 +291,21 @@ function nextstate!(self::AdvectionData)
     else
         self.state_gen = 1
         printall(self.clobs)
+        self.time_cur += self.adv.dt_base
         return false
     end
 end
 # default function of the interface
-initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
+# initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
 
-# this interface function must always be defined
-function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext)
-    throw(error("getalpha undefined for $(typeof(parext))"))
-end
-# If not defined we try with only external index
-function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext, ind)
-    return getalpha(parext, self, indext)
-end
+# # this interface function must always be defined
+# function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext)
+#     throw(error("getalpha undefined for $(typeof(parext))"))
+# end
+# # If not defined we try with only external index
+# function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext::CartesianIndex, ind::CartesianIndex)
+#     return getalpha(parext, self, indext)
+# end
 
 
 # data formating
@@ -323,6 +325,8 @@ function copydata!(
     end
     permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
+
+
 """
     advection!(self::AdvectionData)
 
@@ -362,7 +366,7 @@ function advection!(
         # local colitr = collect(itr)
         # @show length(colitr), colitr[1]
 #       @show itr
-clockbegin(self.clobs,1)
+# clockbegin(self.clobs,1)
         if st.isconstdec
             @inbounds for indext in itr
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
@@ -371,20 +375,20 @@ clockbegin(self.clobs,1)
                 #     @show typeof(buf),typeof(slc),length(buf),length(slc)
                 #     fltrace = false
                 # end
-                clockbegin(self.clobs,2)
+#                clockbegin(self.clobs,2)
                 interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
                 slc .= buf
-                clockend(self.clobs,2)
+#                clockend(self.clobs,2)
             end           
         else
             for indext in itr
                 local slc = view(f, coltuple..., indext)
     #           @show ind
-                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp; tabmod=tabmod, cache=cache)
                 slc .= buf
             end
         end
-clockend(self.clobs,1)
+# clockend(self.clobs,1)
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin
         local itr = collect(getitr(self))

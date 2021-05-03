@@ -11,6 +11,7 @@ using SemiLagrangian:
     UniformMesh,
     AbstractInterpolation,
     Lagrange,
+    Hermite,
     B_SplineLU,
     B_SplineFFT,
     interpolate!,
@@ -222,4 +223,5 @@ end
     T = Float64
     @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 15
     @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 15
 end

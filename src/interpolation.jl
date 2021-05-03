@@ -408,38 +408,38 @@ function interpolate!(
 end
 
 
-function interpolate!(
-    fp::AbstractVector{T},
-    fi::AbstractVector{T},
-    dec::Function,
-    interp::AbstractInterpolation{T},
-    tabmod::Vector{Int},
-    cache::CachePrecal{T,1},
-) where {T}
-    lg = length(fi)
+# function interpolate!(
+#     fp::AbstractVector{T},
+#     fi::AbstractVector{T},
+#     dec::Function,
+#     interp::AbstractInterpolation{T},
+#     tabmod::Vector{Int},
+#     cache::CachePrecal{T,1},
+# ) where {T}
+#     lg = length(fi)
     
-    res::Vector{T} = sol(interp, fi)
+#     res::Vector{T} = sol(interp, fi)
  
-    order = get_order(interp)
-    origin = -div(order,2)
-    decall = 5lg + origin
+#     order = get_order(interp)
+#     origin = -div(order,2)
+#     decall = 5lg + origin
 
-    for ind in CartesianIndices((lg,))
-        dint, decfl = getprecal(self, dec(ind)[1])
-#        @show decfl, dint
-        deb_i =  (dint + decall)%lg + ind.I[1]
-        end_i = deb_i + order
-        fp[ind] = sum(res[tabmod[deb_i:end_i]] .* tab)
-    end
-    fp
-end
-function interpolate!(
-    fp::AbstractVector{T},
-    fi::AbstractVector{T},
-    dec::Function,
-    interp_t::AbstractVector{I},
-    tabmod::NTuple{1,Vector{Int}},
-    cache::CachePrecal{T,1},
-) where {T,I<:AbstractInterpolation{T}}
-    interpolate!(fp, fi, dec, interp_t[1], tabmod[1], cache)
-end
+#     for ind in CartesianIndices((lg,))
+#         dint, decfl = getprecal(self, dec(ind)[1])
+# #        @show decfl, dint
+#         deb_i =  (dint + decall)%lg + ind.I[1]
+#         end_i = deb_i + order
+#         fp[ind] = sum(res[tabmod[deb_i:end_i]] .* tab)
+#     end
+#     fp
+# end
+# function interpolate!(
+#     fp::AbstractVector{T},
+#     fi::AbstractVector{T},
+#     dec::Function,
+#     interp_t::AbstractVector{I},
+#     tabmod::NTuple{1,Vector{Int}},
+#     cache::CachePrecal{T,1},
+# ) where {T,I<:AbstractInterpolation{T}}
+#     interpolate!(fp, fi, dec, interp_t[1], tabmod[1], cache)
+# end

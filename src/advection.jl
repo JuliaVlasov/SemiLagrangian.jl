@@ -376,7 +376,8 @@ function advection!(
                 #     fltrace = false
                 # end
 #                clockbegin(self.clobs,2)
-                interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
+#              interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
+                interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
 #                clockend(self.clobs,2)
             end           

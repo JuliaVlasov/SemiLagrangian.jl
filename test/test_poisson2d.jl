@@ -18,7 +18,9 @@ using SemiLagrangian:
     compute_charge!,
     compute_elfield!,
     compute_ee,
-    compute_ke
+    compute_ke,
+    dotprod,
+    getpoissonvar
 # """
 
 #    exact(tf, mesh1, mesh2)
@@ -142,7 +144,73 @@ function test_poisson2d(
     return diffmax
 end
 
-@testset "test swirling" begin
+function test_poisson2d2d_adv(
+    sz::NTuple{4,Int},
+    interp::Vector{I},
+    t_max::T,
+    nbdt::Int) where{T, I <:AbstractInterpolation{T}}
+    spmin1, spmax1, nsp1 = T(0), 4T(pi), sz[1]
+    spmin2, spmax2, nsp2 = T(0), 4T(pi), sz[2]
+    vmin, vmax, nv = T(-6), T(6), sz[2]
+    vmin, vmax, nv = T(-6), T(6), sz[2]
+
+    mesh_sp1 = UniformMesh(T(0),4T(pi), sz[1])
+    mesh_sp2 = UniformMesh(T(0),4T(pi), sz[2])
+    mesh_v1 = UniformMesh(T(-6),T(6), sz[3])
+    mesh_v2 = UniformMesh(T(-6),T(6), sz[3])
+
+    dt = t_max/nbdt
+
+    tabst = map( 
+    x -> if x%2 == 1
+            ([1,2,3,4], 2, x, true)
+        else # x%2 == 0
+            ([3,4,1,2], 2, x, true)
+        end, 
+    1:3
+)   
+    adv = Advection((mesh_sp1,mesh_sp2,mesh_v1,mesh_v2),interp, dt,tabst)
+    println("trace0")
+
+    epsilon = T(0.5)
+    fct_sp(x) = epsilon * cos(x / 2) + 1
+    fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
+    lgn1_sp = fct_sp.(mesh_sp1.points)
+    lgn1_v = fct_v.(mesh_v1.points)
+    lgn2_sp = fct_sp.(mesh_sp2.points)
+    lgn2_v = fct_v.(mesh_v2.points)
+println("trace1")
+    data = dotprod((lgn1_sp, lgn2_sp, lgn1_v, lgn2_v))
+    println("trace2")
+
+    pvar = getpoissonvar(adv)
+
+    advd = AdvectionData(adv, data, pvar)
+
+    for i=1:nbdt
+        while advection!(advd)
+        end
+        compute_charge!(advd)
+        compute_elfield!(advd)
+        # clockend(cl_obs,6)
+        # clockbegin(cl_obs,7)
+        elenergy = compute_ee(advd)
+        # clockend(cl_obs,7)
+        # clockbegin(cl_obs,8)
+        kinenergy = compute_ke(advd)
+        # clockend(cl_obs,8)
+        energyall = elenergy + kinenergy
+        t = i*dt
+        println(
+            "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
+        )
+    end
+    return 0
+end
+
+
+@testset "test poisson2d" begin
     T = Double64
-    @time @test test_poisson2d((256, 200), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
+    @time @test test_poisson2d((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
+    @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 1e-3
 end

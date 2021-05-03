@@ -395,7 +395,7 @@ tc = [1, 1]
 )   
 
 
-# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Lagrange(7,T),4), tabst=tabst)
-@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
+@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Lagrange(7,T),4), tabst=tabst)
+#@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

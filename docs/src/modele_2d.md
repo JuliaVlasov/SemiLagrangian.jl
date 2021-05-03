@@ -35,7 +35,7 @@ $X(t)=(x(t), y(t))$ defined by
 with
 $U(t, X):=U(t, x, y)=(u_x(t, x, y), u_y(t, x, y))$, $s$ is a time and
 $X_g$ is a prescribed condition (which will be a grid point). Hence, we
-can write $f(x, X(s))=f(t, X(t))$ for all $t, s$. Considering a
+can write $f(s, X(s))=f(t, X(t))$ for all $t, s$. Considering a
 discretization of the time $t^n=n\Delta t$ with $n\in \mathbb{N}$ and
 $\Delta t>0$ the time step, we rewrite the latter equality with
 $s=t^{n+1}$ and $t=t^n$ to get 
@@ -85,7 +85,7 @@ has to be used [^filbet]).
 A simple scheme to compute $X(t^n)$ is the Euler scheme applied to (2)
 
 ```math
-\frac{X(t^{n+1}) - X(t^n)}{\Delta t} = U(t^n, X(t^{n+1}),
+\frac{X(t^{n+1}) - X(t^n)}{\Delta t} = U(t^n, X(t^{n+1})),
 ```
 and using
 the condition $X(t^{n+1}) = X_g$, we get the following first order

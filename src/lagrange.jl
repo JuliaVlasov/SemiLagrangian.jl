@@ -59,20 +59,20 @@ struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
         new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
     end
 end
-struct LagrangeInt{T,edge,order,N} <: AbstractInterpolation{T,edge,order}
-    fact_order::N
-    tabfct::Vector{Polynomial{N}}
-    function LagrangeInt(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
-        origin = -div(order, 2)
-        N = order <= 20 ? Int64 : BigInt
-        fact_order = factorial(N(order))
-        origin = -div(order,2)
-        tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
-        new{T,edge,order,N}(fact_order, convert.(Polynomial{N}, fact_order*tabfct_rat))
-    end
-end
+# struct LagrangeInt{T,edge,order,N} <: AbstractInterpolation{T,edge,order}
+#     fact_order::N
+#     tabfct::Vector{Polynomial{N}}
+#     function LagrangeInt(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
+#         origin = -div(order, 2)
+#         N = order <= 20 ? Int64 : BigInt
+#         fact_order = factorial(N(order))
+#         origin = -div(order,2)
+#         tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
+#         new{T,edge,order,N}(fact_order, convert.(Polynomial{N}, fact_order*tabfct_rat))
+#     end
+# end
 
-@inline getprecal(lag::LagrangeInt{T}, decf::T) where {T}= @inbounds [T(fct(decf)) for fct in lag.tabfct]/lag.fact_order
+# @inline getprecal(lag::LagrangeInt{T}, decf::T) where {T}= @inbounds [T(fct(decf)) for fct in lag.tabfct]/lag.fact_order
 
 
 

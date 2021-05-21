@@ -197,11 +197,11 @@ function landau1_1(
     interp = Lagrange(21, T),
     tab_coef=[1//2, 1, 1//2]
 )
-    epsilon = T(0.001)
+    epsilon = T(0.5)
     dt = T(dt)
 
     spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
-    vmin, vmax, nv = -T(5), T(5), sz[2]
+    vmin, vmax, nv = -T(10), T(10), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)

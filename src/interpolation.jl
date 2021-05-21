@@ -111,9 +111,7 @@ end
     v .= dotprod(ntuple(x -> getprecal(bsp[x], decf[x]), N))
 end
 
-# modulo for "begin to one" array
-modone(ind, n) = (n + ind - 1) % n + 1
-gettabmod(lg) = modone.(1:3lg, lg) # 
+
 function get_allprecal(
     interp::AbstractInterpolation{T,InsideEdge,order},
     decint::Int,

@@ -50,6 +50,12 @@ dotprod(t_v::Tuple{Vector{T}}) where {T}=t_v[1]
 function dotprodother(t_v::NTuple{N,Vector{T}}) where {N,T}
     return prod.(Iterators.product(t_v...))
 end
+
+# modulo or div for "begin to one" array
+modone(ind, n) = (n + ind - 1) % n + 1
+divone(ind,n) = div(ind - 1, n) + 1 
+gettabmod(lg) = modone.(1:3lg, lg)
+
 # dotprod(v_v::Vector{Vector{T}}) where{T}=dotprod(totuple(v_v))
 # modone(x,n)=(x-1)%n+1
 # struct CircularArray{T,N} <: AbstractArray{T,N} #inherits from AbstractArray

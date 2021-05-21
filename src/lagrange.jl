@@ -56,7 +56,6 @@ struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
     function Lagrange(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
         origin = -div(order, 2)
         tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
-
         new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
     end
 end

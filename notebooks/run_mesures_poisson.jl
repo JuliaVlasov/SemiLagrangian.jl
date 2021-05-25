@@ -102,11 +102,11 @@ function run_mesure(
     epsilon
 ) where{T}
     tabsplit = [standardsplit(), strangsplit(), triplejumpsplit(), order6split()]
-    tabnbdt = [2,5,10,20,50,100,200,500,1000]
+    tabnbdt = [2,5,10,20,50,100,200,500,1000,2000,5000,10000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
 
-    res[1,:] .= Float64(1) ./ tabnbdt 
+    res[1,:] .= Float64(t_max) ./ tabnbdt 
 
     for inbdt=1:length(tabnbdt), itc=1:length(tabsplit)
         tc = tabsplit[itc]
@@ -125,7 +125,7 @@ function run_mesure(
     end
 end
 T=Double64
-run_mesure(T(1), MPIOpt, (256,256), Lagrange(9,T), T(0.5))
+run_mesure(T(10), MPIOpt, (256,256), Lagrange(9,T), T(0.5))
 
 
 

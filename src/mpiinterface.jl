@@ -1,11 +1,12 @@
 using MPI
-
 struct MPIData
     comm::Any
     nb::Any
     ind::Any
     function MPIData()
-        MPI.Init()
+        if !MPI.Initialized()
+            MPI.Init()
+        end
         comm = MPI.COMM_WORLD
         nb = MPI.Comm_size(comm)
         ind = MPI.Comm_rank(comm) + 1

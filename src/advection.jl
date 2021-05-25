@@ -270,7 +270,7 @@ mutable struct AdvectionData{T,N,timeopt}
         bufdata = Vector{T}(undef, length(data))
         fmrtabdata = map(x -> initfmrdata(adv, bufdata, x), 1:nbst)
         copyto!(datanew, data)
-        @show adv.nbsplit
+#        @show adv.nbsplit
         t_itr = ntuple(
             x -> splitvec(adv.nbsplit, CartesianIndices(s[adv.states[x].perm][(adv.states[x].ndims + 1):N])),
             nbst,

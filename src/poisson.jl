@@ -163,6 +163,7 @@ function initcoef!(
         end
         #        println("v trace init plus")
 #        pv.bufcur = (getcur_t(self) / step(mesh_v)) * pv.t_elfield[state_dim]
+#        @show st.ind, st.perm, Nsp
         pv.bufcur = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.perm[x]])) * pv.t_elfield[st.perm[x]-Nsp], st.ndims)
 #        @show self.state_gen, cksum(pv.bufcur[1]), size(pv.bufcur[1])
 #        @show typeof(pv.bufcur)

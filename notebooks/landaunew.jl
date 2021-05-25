@@ -166,6 +166,7 @@ function trace_energy(
         advd,
         "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))",
     )
+    return energyall
 end
 
 
@@ -173,20 +174,22 @@ function landau(advd::AdvectionData, nbdt)
 
     # global cl_obs
     # clockreset(cl_obs)
-
+    maxdiff = 0
     dt = advd.adv.dt_base
-    trace_energy(advd, 0.0)
+    refel = trace_energy(advd, 0.0)
     #    printall(cl_obs)
     #    clockreset(cl_obs)
     for i = 1:nbdt
         while advection!(advd)
         end
-        trace_energy(advd, Float64(i * dt))
+        el = trace_energy(advd, Float64(i * dt))
+        maxdiff = max(maxdiff,abs(refel - el))
         # printall(cl_obs)
         # clockreset(cl_obs)
     end
     println("#  end")
     # printall(cl_obs)
+    return maxdiff
 end
 function landau1_1(
     T::DataType,
@@ -194,7 +197,7 @@ function landau1_1(
     timeopt;
     sz = (64, 64),
     dt = big"0.1",
-    interp = Lagrange(21, T),
+    interp = Lagrange(9, T),
     tab_coef=[1//2, 1, 1//2]
 )
     epsilon = T(0.5)
@@ -206,7 +209,7 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = map(x -> ((x%2==1) ? [1,2] : [2,1], 1, x, true),1:size(tab_coef,1))
+    tabst = [( [1,2], 1, 1, true),( [2,1], 1, 2, true) ]
 
     adv = Advection(
         (mesh_sp,mesh_v,), 
@@ -384,18 +387,18 @@ tc = [1, 1]
 # ),
 # tab_coef=tc   
 # )
-# @time landau1_1(T, 1000, NoTimeOpt, sz=(512,512), dt=big"0.01", tab_coef=tc)
- tabst = map( 
-    x -> if x%2 == 1
-            ([1,2,3,4], 2, x, true)
-        else # x%2 == 0
-            ([3,4,1,2], 2, x, true)
-        end, 
-    1:3
-)   
+@time landau1_1(T, 100, NoTimeOpt, sz=(256,256), dt=big"0.01")
+#  tabst = map( 
+#     x -> if x%2 == 1
+#             ([1,2,3,4], 2, x, true)
+#         else # x%2 == 0
+#             ([3,4,1,2], 2, x, true)
+#         end, 
+#     1:3
+# )   
 
 
-@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Lagrange(7,T),4), tabst=tabst)
+#@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Lagrange(7,T),4), tabst=tabst)
 #@time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->LagrangeInt(7,T),4))
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 # landau2_2(T, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01", interp=Lagrange(27, T))

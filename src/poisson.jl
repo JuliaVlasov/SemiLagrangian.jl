@@ -71,13 +71,14 @@ mutable struct PoissonVar{T,N,Nsp,Nv} <: AbstractExtDataAdv
     pc::PoissonConst{T,N,Nsp,Nv}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
-    bufcur
+    bufcur_sp
+    bufcur_v
     tupleind
 
     function PoissonVar(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N,Nsp,Nv}
         sz = length.(pc.adv.t_mesh[1:Nsp])
         rho = Array{T,Nsp}(undef, sz)
-        return new{T,N,Nsp,Nv}(pc, rho, missing, missing,missing)
+        return new{T,N,Nsp,Nv}(pc, rho, missing, missing,missing,missing)
     end
 end
 
@@ -118,7 +119,14 @@ function compute_elfield!(self::AdvectionData{T,N}) where {T,N}
     # for i=1:Nsp
     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
     # end
-    pv.t_elfield = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
+    elf = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
+    if ismissing(pv.t_elfield)
+        pv.t_elfield = elf
+    else
+        for x in 1:Nsp
+            pv.t_elfield[x] .= elf[x]
+        end
+    end
     missing
 end
 
@@ -138,6 +146,9 @@ end
 
 
 # end
+
+
+
 
 """
     initcoef!(pv::PoissonVar{T, N,Nsp, Nv}, self::AdvectionData{T, N})
@@ -164,7 +175,15 @@ function initcoef!(
         #        println("v trace init plus")
 #        pv.bufcur = (getcur_t(self) / step(mesh_v)) * pv.t_elfield[state_dim]
 #        @show st.ind, st.perm, Nsp
-        pv.bufcur = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.perm[x]])) * pv.t_elfield[st.perm[x]-Nsp], st.ndims)
+        bc_v = ntuple( x -> (getcur_t(self) / step(adv.t_mesh[st.perm[x]])) * pv.t_elfield[st.perm[x]-Nsp], st.ndims)
+
+        if ismissing(pv.bufcur_v)
+            pv.bufcur_v = bc_v
+        else
+            for x in 1:length(bc_v)
+                pv.bufcur_v[x] .= bc_v[x]
+            end
+        end
 #        @show self.state_gen, cksum(pv.bufcur[1]), size(pv.bufcur[1])
 #        @show typeof(pv.bufcur)
 #        @show minimum(pv.bufcur[1]),maximum(pv.bufcur[1]) 
@@ -173,7 +192,16 @@ function initcoef!(
         #        println("sp trace init moins")
 #        pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
         pv.tupleind = ntuple( x -> st.perm[st.invp[x]+Nsp]-st.ndims, st.ndims)
-        pv.bufcur = ntuple( x -> (-getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * adv.t_mesh[st.invp[x]+Nsp].points, st.ndims)
+        bc_sp = ntuple( x -> (-getcur_t(self) / step(adv.t_mesh[st.invp[x]])) * adv.t_mesh[st.invp[x]+Nsp].points, st.ndims)
+        if ismissing(pv.bufcur_sp)
+            pv.bufcur_sp = bc_sp
+        else
+            for x in 1:length(bc_sp)
+                pv.bufcur_sp[x] .= bc_sp[x]
+            end
+        end
+
+
 #        @show self.state_gen, cksum(pv.bufcur[1]), size(pv.bufcur[1])
        #       @show minimum(pv.bufcur),maximum(pv.bufcur) 
 #        @show typeof(pv.bufcur)
@@ -193,9 +221,9 @@ end
     st = getst(self)
 #    @show N,Nsp,Nv, ind.I, pv.tupleind
     if isvelocitystate(self) 
-        ntuple(x -> pv.bufcur[x][CartesianIndex(ind.I[end-Nsp+1:end])], size(pv.bufcur,1))
+        ntuple(x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])], size(pv.bufcur_v,1))
     else
-        ntuple(x -> pv.bufcur[x][ind.I[pv.tupleind[x]]], size(pv.bufcur,1))
+        ntuple(x -> pv.bufcur_sp[x][ind.I[pv.tupleind[x]]], size(pv.bufcur_sp,1))
     end
     #    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
 end

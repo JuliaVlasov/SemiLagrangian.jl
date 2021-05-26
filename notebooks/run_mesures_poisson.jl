@@ -1,7 +1,7 @@
 using LinearAlgebra
 using DoubleFloats
 # using SemiLagMPI
-using MPI
+# using MPI
 using SemiLagrangian
 
 function printout(
@@ -112,7 +112,7 @@ function run_mesure(
         tc = tabsplit[itc]
         nbdt = tabnbdt[inbdt]
         res[itc+1, inbdt] = landau1_1(t_max, timeopt, nbdt, sz, interp, tc, epsilon)
-        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+#        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             for j=1:size(res,2),i=1:size(res,1)
                 print("$(res[i,j])")
                 if i == size(res,1)
@@ -121,12 +121,13 @@ function run_mesure(
                     print("\t")
                 end
             end
+            GC.gc()
 	    println("free memory : $(Sys.free_memory()/2^30)")
-        end
+#        end
     end
 end
 T=Double64
-run_mesure(T(10), MPIOpt, (256,256), Lagrange(9,T), T(0.5))
+run_mesure(T(10), NoTimeOpt, (256,256), Lagrange(9,T), T(0.5))
 
 
 

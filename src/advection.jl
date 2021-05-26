@@ -449,7 +449,7 @@ function advection!(
         if st.isconstdec
 #            @show itr
             @threads for indext in itr
-                local buf = self.t_buf[st.ind][Threads.threadid()]
+                local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
                 local cache = self.t_cache[st.ind][Threads.threadid()]
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
@@ -458,7 +458,7 @@ function advection!(
             end
         else
             @threads for indext in itr
-                local buf = self.t_buf[st.ind][Threads.threadid()]
+                local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
                 local cache = self.t_cache[st.ind][Threads.threadid()]
                 local slc = view(f, coltuple..., indext)
                 interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)

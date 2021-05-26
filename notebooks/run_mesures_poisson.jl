@@ -121,6 +121,7 @@ function run_mesure(
                     print("\t")
                 end
             end
+	    println("free memory : $(Sys.free_memory()/2^30)")
         end
     end
 end

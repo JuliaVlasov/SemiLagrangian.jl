@@ -101,8 +101,8 @@ function run_mesure(
     interp,
     epsilon
 ) where{T}
-    tabsplit = [standardsplit(), strangsplit(), triplejumpsplit(), order6split()]
-    tabnbdt = [2,5,10,20,50,100,200,500,1000,2000,5000,10000]
+    tabsplit = [standardsplit(T), strangsplit(T), triplejumpsplit(T), order6split(T)]
+    tabnbdt = [2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
 

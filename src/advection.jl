@@ -12,16 +12,20 @@ struct StateAdv{N}
 end
 
 
-standardsplit()=[1,1]
-strangsplit()=[1//2,1,1//2]
-function triplejumpsplit()
-    c=BigFloat(2)^(1//3)
+standardsplit(T::DataType)=T.([1,1])
+standardsplit()=standardsplit(Float64)
+strangsplit(T::DataType)=T.([1//2,1//1,1//2])
+strangsplit()=strangsplit(Float64)
+function triplejumpsplit(T::DataType)
+    c=T(2)^(1//3)
     c1 = 1/(2(2-c))
     c2 = (1-c)/(2(2-c))
     d1 = 1/(2-c)
     d2 = -c/(2-c)
     return [c1, d1, c2, d2, c2, d1, c1]
 end
+triplejumpsplit()=triplejumpsplit(Float64)
+
 order6split()=[ 
     0.0414649985182624,
     0.123229775946271,
@@ -47,7 +51,13 @@ order6split()=[
     0.123229775946271,
     0.0414649985182624
 ]
-
+function order6split(T::DataType)
+    b = convert(Vector{T},copy(order6split()))
+    b[11] = b[13] = T(1//2) - sum(b[1:2:9])
+    b[12] = T(1//1) - 2sum(b[2:2:10])
+    @assert isapprox(sum(b),T(2))
+    return b
+end
 
 """
     Advection{T}

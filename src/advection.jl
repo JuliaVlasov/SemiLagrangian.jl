@@ -482,7 +482,7 @@ function advection!(
             local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
             local cache = self.t_cache[st.ind][Threads.threadid()]
             local itr = getitr(self)
-            @show itr
+ #           @show itr
             if st.isconstdec
                 for indext in itr
                     local decint, precal = getprecal(cache, getalpha(extdata, self, indext))

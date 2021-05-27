@@ -17,6 +17,9 @@ using SemiLagrangian:
     Lagrange,
     Advection,
     AdvectionData,
+    NoTimeOpt,
+    SimpleThreadsOpt,
+    SplitThreadsOpt,
     PrepareFftBig
 
 function initmesh(t_deb, t_end, t_size)
@@ -121,6 +124,49 @@ end
 
 end
 
+function test_poisson_real(T::DataType, timeopt)
+    dt = T(1//10)
+    nbdt=10
+    epsilon=0.5
+    spmin, spmax, nsp = T(0), T(4big(pi)), 128
+    vmin, vmax, nv = -T(10), T(10), 128
+
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+
+    tabst = [( [1,2], 1, 1, true),( [2,1], 1, 2, true) ]
+
+    interp=Lagrange(9,T)
+
+    adv = Advection(
+        (mesh_sp,mesh_v,), 
+        [interp,interp], 
+        dt,
+        tabst,
+        timeopt = timeopt)
+
+    fct_sp(x) = epsilon * cos(x / 2) + 1
+    fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
+
+    lgn_sp = fct_sp.(mesh_sp.points)
+    lgn_v = fct_v.(mesh_v.points)
+
+    data = dotprod((lgn_sp, lgn_v))
+
+    pvar = getpoissonvar(adv)
+
+    advd = AdvectionData(adv, data, pvar)
+
+    for i = 1:nbdt
+        while advection!(advd)
+        end
+    end
+    elenergy = compute_ee(advd)
+    kinenergy = compute_ke(advd)
+
+    return elenergy, kinenergy
+end
+
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
     test_poisson(Float64, false)
@@ -133,4 +179,10 @@ end
 
 @testset "Poisson Double64" begin
     test_poisson(Double64)
+end
+
+@testset "Poisson Threads" begin
+    res = test_poisson_real(Float64, NoTimeOpt)
+    @test res == test_poisson_real(Float64, SimpleThreadsOpt)
+    @test res == test_poisson_real(Float64, SplitThreadsOpt)
 end

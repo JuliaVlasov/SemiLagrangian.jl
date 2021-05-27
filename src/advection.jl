@@ -468,7 +468,7 @@ function advection!(
             end
         else
             @threads for indext in itr
-                local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
+                local buf = 
                 local cache = self.t_cache[st.ind][Threads.threadid()]
                 local slc = view(f, coltuple..., indext)
                 interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
@@ -479,7 +479,7 @@ function advection!(
     elseif timeopt == SplitThreadsOpt
         #        @inbounds begin
         Threads.@threads for indth = 1:Threads.nthreads()
-            local buf = self.t_buf[st.ind][Threads.threadid()]
+            local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
             local cache = self.t_cache[st.ind][Threads.threadid()]
             local itr = getitr(self)
             if st.isconstdec

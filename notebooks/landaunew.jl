@@ -387,7 +387,7 @@ tc = [1, 1]
 # ),
 # tab_coef=tc   
 # )
-@time landau1_1(T, 100, NoTimeOpt, sz=(256,256), dt=big"0.1",tab_coef=order6split())
+@time landau1_1(T, 10000, MPIOpt, sz=(256,256), dt=big"0.01",tab_coef=order6split())
 #  tabst = map( 
 #     x -> if x%2 == 1
 #             ([1,2,3,4], 2, x, true)

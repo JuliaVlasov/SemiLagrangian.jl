@@ -127,7 +127,7 @@ function run_mesure(
     end
 end
 T=Double64
-run_mesure(T(10), NoTimeOpt, (256,256), Lagrange(9,T), T(0.5))
+run_mesure(T(10), SplitThreadsOpt, (256,256), Lagrange(9,T), T(0.5))
 
 
 

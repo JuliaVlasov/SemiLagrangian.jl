@@ -189,10 +189,10 @@ println("trace1")
 
     for i=1:nbdt
         while advection!(advd)
-            println("bufcur=$(pvar.bufcur)")
-            if ndims(pvar.bufcur[1]) == 2
-                println("bufcur[:,7]=$(pvar.bufcur[1][:,7])")
-            end
+            # println("bufcur=$(pvar.bufcur)")
+            # if ndims(pvar.bufcur[1]) == 2
+            #     println("bufcur[:,7]=$(pvar.bufcur[1][:,7])")
+            # end
         end
         compute_charge!(advd)
         compute_elfield!(advd)

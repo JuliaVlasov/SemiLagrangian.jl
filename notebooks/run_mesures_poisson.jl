@@ -67,7 +67,7 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [( [1,2], 1, 1, true),( [2,1], 1, 2, true) ]
+    tabst = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
 
     adv = Advection(
         (mesh_sp,mesh_v,), 
@@ -85,6 +85,9 @@ function landau1_1(
 
     data = dotprod((lgn_sp, lgn_v))
 
+    resint = sum(data)*T(20)/length(data)
+    data /= resint
+    
     pvar = getpoissonvar(adv)
 
     advd = AdvectionData(adv, data, pvar)
@@ -102,7 +105,7 @@ function run_mesure(
     epsilon
 ) where{T}
     tabsplit = [standardsplit(T), strangsplit(T), triplejumpsplit(T), order6split(T)]
-    tabnbdt = [2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000]
+    tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
 

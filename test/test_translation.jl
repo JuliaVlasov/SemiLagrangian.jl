@@ -57,7 +57,7 @@ println("trace1")
         (mesh_sp, mesh_v),
         [interp_sp, interp_v],
         dt,
-        [([1, 2], 1, 1, true), ([2, 1], 1, 2, true), ([1, 2], 1, 3, true)],
+        [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
     )
     elseif type == 2
         c=BigFloat(2)^(1//3)
@@ -71,8 +71,7 @@ println("trace1")
             (mesh_sp, mesh_v),
             [interp_sp, interp_v],
             dt,
-            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true), ([1, 2], 1, 3, true), ([2, 1], 1, 4, true),
-            ([1, 2], 1, 5, true), ([2, 1], 1, 6, true), ([1, 2], 1, 7, true)],
+            [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
             tab_coef=tc,
         )
     elseif type == 3
@@ -80,7 +79,7 @@ println("trace1")
             (mesh_sp, mesh_v),
             [interp_sp, interp_v],
             dt,
-            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)],
+            [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
             tab_coef=[1, 1]
         )
     

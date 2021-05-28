@@ -164,7 +164,7 @@ function initcoef!(
 ) where {T,N,Nsp,Nv}
     st = getst(self)
     adv = self.adv
-    if isvelocitystate(self)
+    if isvelocity(self)
         if (Nsp+1) in st.perm[1:st.ndims]
 #            @show cksum(self.data)
             compute_charge!(self)
@@ -220,7 +220,7 @@ end
 ) where {T,N,Nsp,Nv}
     st = getst(self)
 #    @show N,Nsp,Nv, ind.I, pv.tupleind
-    if isvelocitystate(self) 
+    if isvelocity(self) 
         ntuple(x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])], size(pv.bufcur_v,1))
     else
         ntuple(x -> pv.bufcur_sp[x][ind.I[pv.tupleind[x]]], size(pv.bufcur_sp,1))

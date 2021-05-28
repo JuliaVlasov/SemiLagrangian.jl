@@ -161,14 +161,8 @@ function test_poisson2d2d_adv(
 
     dt = t_max/nbdt
 
-    tabst = map( 
-    x -> if x%2 == 1
-            ([1,2,3,4], 2, x, true)
-        else # x%2 == 0
-            ([3,4,1,2], 2, x, true)
-        end, 
-    1:3
-)   
+    tabst = [([1,2,3,4], 2, 1, true, false), ([3,4,1,2], 2, 2, true, true)]
+
     adv = Advection((mesh_sp1,mesh_sp2,mesh_v1,mesh_v2),interp, dt,tabst)
     println("trace0")
 

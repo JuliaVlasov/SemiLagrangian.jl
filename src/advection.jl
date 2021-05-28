@@ -8,7 +8,8 @@ struct StateAdv{N}
     ndims::Int        # count of dimension
     stcoef::Int   # state_coef
     isconstdec::Bool #true if constant dec
-    StateAdv(ind, p, ndims, stc, isconst)=new{length(p)}(ind, p, invperm(p), ndims, stc, isconst)
+    isvelocity::Bool 
+    StateAdv(ind, p, ndims, stc, isconst, isvelocity=false)=new{length(p)}(ind, p, invperm(p), ndims, stc, isconst, isvelocity)
 end
 
 
@@ -125,11 +126,11 @@ struct Advection{T, N, I, timeopt}
         t_mesh::NTuple{N,UniformMesh{T}},
         t_interp::Vector{I},
         dt_base::T,
-        states::Vector{Tuple{Vector{Int}, Int, Int, Bool}};
+        states::Vector{Tuple{Vector{Int}, Int, Int, Bool, Vararg{Bool,N2}}};
         tab_coef = [1 // 2, 1 // 1, 1 // 2],
         tab_fct = missing,
         timeopt::TimeOptimization = NoTimeOpt,
-    ) where {T, N, I <: AbstractInterpolation{T}}
+    ) where {T, N, N2, I <: AbstractInterpolation{T}}
         length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
         sizeall = length.(t_mesh)
 
@@ -192,6 +193,8 @@ function getinterp(adv::Advection, x)
     st = getst(adv, x)
     return adv.t_interp[st.perm[1:st.ndims]]
 end
+isvelocity(adv::Advection, curid)=getst(adv,curid).isvelocity
+
 
 
 # Interface of external data
@@ -262,6 +265,7 @@ mutable struct AdvectionData{T,N,timeopt}
     t_cache::Vector{Vector{CachePrecal{T}}}
     parext::AbstractExtDataAdv
     clobs::AbstractClockObs
+    flagdebvelovity::Bool
     function AdvectionData(
         adv::Advection{T,N,I, timeopt},
         data::Array{T,N},
@@ -316,9 +320,7 @@ getdata(self) = self.data
 getnbdims(self::AdvectionData)=getst(self).ndims
 getstcoef(self::AdvectionData)=getstcoef(self.adv, self.state_gen)
 getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_gen)
-isvelocitystate(state_coef::Int) = state_coef % 2 == 0
-isvelocity(adv::Advection, curid) = isvelocitystate(getstcoef(adv,curid))
-isvelocitystate(self::AdvectionData) = isvelocitystate(getstcoef(self))
+isvelocity(self::AdvectionData) = isvelocity(self.adv, self.state_gen)
 _getcurrentindice(self::AdvectionData)=getst(self).perm[1]
 function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     if self.adv.nbsplit != 1

@@ -10,7 +10,6 @@ using SemiLagrangian:
     getdata,
     getcur_t,
     isvelocity,
-    isvelocitystate,
     getindsplit,
     _getcurrentindice,
     getprecal,

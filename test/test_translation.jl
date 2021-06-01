@@ -3,6 +3,9 @@ using LinearAlgebra
 
 using SemiLagrangian:
     Advection,
+    standardsplit,
+    strangsplit,
+    triplejumpsplit,
     sizeall,
     AdvectionData,
     getdata,
@@ -13,7 +16,8 @@ using SemiLagrangian:
     interpolate!,
     Lagrange,
     B_SplineLU,
-    B_SplineFFT
+    B_SplineFFT,
+    Hermite
 """
 
    exact(tf, mesh1, mesh2)
@@ -39,8 +43,8 @@ function test_translation(
     sz::NTuple{2,Int},
     interp_sp::AbstractInterpolation{T},
     interp_v::AbstractInterpolation{T},
-    nbdt::Int,
-    type=1
+    dt::T;
+    tc::Vector{T}=strangsplit(dt),
 ) where {T}
 @time begin
     spmin, spmax, nsp = T(-5), T(5), sz[1]
@@ -51,39 +55,15 @@ function test_translation(
 end
 println("trace1")
 @time begin
-    dt = T(1)
-    adv = if type == 1
-            Advection(
+    nbdt = Int(round(T(1)/dt))
+    adv = Advection(
         (mesh_sp, mesh_v),
         [interp_sp, interp_v],
         dt,
         [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
+        tab_coef= tc
     )
-    elseif type == 2
-        c=BigFloat(2)^(1//3)
-        c1 = 1/(2(2-c))
-        c2 = (1-c)/(2(2-c))
-        d1 = 1/(2-c)
-        d2 = -c/(2-c)
-        tc = [c1, d1, c2, d2, c2, d1, c1]
-        @show tc
-        Advection(
-            (mesh_sp, mesh_v),
-            [interp_sp, interp_v],
-            dt,
-            [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
-            tab_coef=tc,
-        )
-    elseif type == 3
-        Advection(
-            (mesh_sp, mesh_v),
-            [interp_sp, interp_v],
-            dt,
-            [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
-            tab_coef=[1, 1]
-        )
-    
-    end
+
     tabref = zeros(T, sz)
 
     v1 = T(big"0.83545655467782872872782870029282982828737872878776717190927267611111")
@@ -107,14 +87,14 @@ println("trace3")
         while advection!(advdata)
         end
         #        GC.gc()
-        exact!(tabref, (v1, v2), T(ind))
+        exact!(tabref, (v1, v2), T(ind)*dt)
         data = getdata(advdata)
         diff = norm(data .- tabref, Inf)
         @show v1, v2, ind, diff
         diffmax = max(diffmax, diff)
     end
     println(
-        "type=$type test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax",
+        "length(tab_coef)=$(length(tc)) test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax",
     )
     return diffmax
 
@@ -154,7 +134,7 @@ function test_translation(
         diffmax = max(diffmax, diff)
         @show ind, diff
     end
-    println("test_translation type=$type sz=$sz interp=$interp_t nbdt=$nbdt diffmax=$diffmax")
+    println("test_translation sz=$sz interp=$interp_t nbdt=$nbdt diffmax=$diffmax")
     return diffmax
 
 end
@@ -162,6 +142,7 @@ end
 
 @testset "test translation" begin
     T = Float64
+    dt = T(1)/11
     # @time @test test_translation((150, 220), [Lagrange(9, T), Lagrange(9, T)], 11) < 1e-6
     # @time @test test_translation((50, 30, 40), map(x -> Lagrange(5 + 2x, T), 1:3), 11) <
     #             1e-4
@@ -175,64 +156,65 @@ end
         (200, 300),
         Lagrange(5, T),
         Lagrange(5, T),
-        11,
+        dt,
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Lagrange(5, T),
         Lagrange(5, T),
-        11, 2
+        dt, tc=triplejumpsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Lagrange(5, T),
         Lagrange(5, T),
-        11, 3
+        dt, tc=standardsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Hermite(5, T),
         Hermite(5, T),
-        11,
+        dt,
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Hermite(5, T),
         Hermite(5, T),
-        11, 2
+        dt, triplejumpsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Hermite(5, T),
         Hermite(5, T),
-        11, 3
+        dt,standardsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (128, 64),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 64, T),
-        11,
+        dt,
     ) < 1e-6
     @time @test test_translation(
         (128, 64),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 64, T),
-        11, 2
+        dt, triplejumpsplit(dt)
     ) < 1e-6
     @time @test test_translation(
         (128, 64),
         B_SplineFFT(5, 128, T),
         B_SplineFFT(5, 64, T),
-        11,
+        dt,
     ) < 1e-6
     T = Double64
+    dt = T(1)/11
 #    @time @test test_translation((100, 120), [Lagrange(15, T), Lagrange(15, T)], 11) < 1e-14
-    @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), 11) < 1e-14
+    @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
     @time @test test_translation(
         (128, 64),
         B_SplineLU(15, 128, T),
         B_SplineLU(15, 64, T),
-        11,
+        dt,
     ) < 1e-18
     # @time @test test_translation(
     #     (128, 64),
@@ -243,7 +225,7 @@ end
         (128, 64),
         B_SplineFFT(15, 128, T),
         B_SplineFFT(15, 64, T),
-        11,
+        dt,
     ) < 1e-17
     # @time @test test_translation(
     #     (128, 64),
@@ -251,13 +233,14 @@ end
     #     11,
     # ) < 1e-17
     T = BigFloat
+    dt = T(1)/11
 #    @time @test test_translation((100, 90), [Lagrange(21, T), Lagrange(21, T)], 11) < 1e-17
-@time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), 11) < 1e-20
+@time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
 @time @test test_translation(
         (128, 64),
         B_SplineLU(25, 128, T),
         B_SplineLU(25, 64, T),
-        11,
+        dt,
     ) < 1e-22
     # @time @test test_translation(
     #     (128, 64),
@@ -268,7 +251,7 @@ end
         (128, 64),
         B_SplineFFT(25, 128, T),
         B_SplineFFT(25, 64, T),
-        11,
+        dt,
     ) < 1e-22
    # @time @test test_translation(
     #     (128, 64),

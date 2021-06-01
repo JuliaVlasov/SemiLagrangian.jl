@@ -3,6 +3,7 @@ using LinearAlgebra
 
 using SemiLagrangian:
     Advection,
+    magicsplit,
     sizeall,
     AdvectionData,
     getdata,
@@ -47,19 +48,18 @@ function test_rotation(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 end
-println("trace1")
 @time begin
     dt = T(2big(pi) / nbdt)
     adv = Advection(
         (mesh_sp,mesh_v,),
         [interp_sp, interp_v,],
         dt,
-        [([1,2], 1, 1, true),([2,1], 1, 2, true),([1,2], 1, 3, true),];
-        tab_fct = [tan, sin, tan],
+        [([1,2], 1, 1, true),([2,1], 1, 2, true)];
+        tab_coef=magicsplit(dt)
     )
     #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
 end
-println("trace2")
+
 @time begin
 
     sz = sizeall(adv)
@@ -73,7 +73,7 @@ println("trace2")
     diffmax = 0
     data = getdata(advdata)
 end
-println("trace3")
+
 
 
     for ind = 1:nbdt

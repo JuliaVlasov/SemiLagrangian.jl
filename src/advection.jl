@@ -13,52 +13,92 @@ struct StateAdv{N}
 end
 
 
-standardsplit(T::DataType)=T.([1,1])
-standardsplit()=standardsplit(Float64)
-strangsplit(T::DataType)=T.([1//2,1//1,1//2])
-strangsplit()=strangsplit(Float64)
-function triplejumpsplit(T::DataType)
+standardsplit(dt::T) where{T}=dt*[1,1]
+strangsplit(dt::T) where{T}=dt*[1//2,1//1,1//2]
+magicsplit(dt::T) where{T}=[tan(dt/2), sin(dt), tan(dt/2)]
+function triplejumpsplit(dt::T) where{T}
     c=T(2)^(1//3)
     c1 = 1/(2(2-c))
     c2 = (1-c)/(2(2-c))
     d1 = 1/(2-c)
     d2 = -c/(2-c)
-    return [c1, d1, c2, d2, c2, d1, c1]
+    return dt*[c1, d1, c2, d2, c2, d1, c1]
 end
-triplejumpsplit()=triplejumpsplit(Float64)
 
-order6split()=[ 
-    0.0414649985182624,
-    0.123229775946271,
-    0.198128671918067,
-    0.290553797799558,
-    -0.0400061921041533,
-    -0.127049212625417,
-    0.0752539843015807,
-    -0.246331761062075,
-    -0.0115113874206879,
-    0.357208872795928,
-    0.23666992478693111,
-    0.20477705429147008,
-    0.23666992478693111,
-    0.357208872795928,
-    -0.0115113874206879,
-    -0.246331761062075,
-    0.0752539843015807,
-    -0.127049212625417,
-    -0.0400061921041533,
-    0.290553797799558,
-    0.198128671918067,
-    0.123229775946271,
-    0.0414649985182624
-]
-function order6split(T::DataType)
-    b = convert(Vector{T},copy(order6split()))
+function order6split(dt::T) where{T}
+    order6=[ 
+        0.0414649985182624,
+        0.123229775946271,
+        0.198128671918067,
+        0.290553797799558,
+        -0.0400061921041533,
+        -0.127049212625417,
+        0.0752539843015807,
+        -0.246331761062075,
+        -0.0115113874206879,
+        0.357208872795928,
+        0.23666992478693111,
+        0.20477705429147008,
+        0.23666992478693111,
+        0.357208872795928,
+        -0.0115113874206879,
+        -0.246331761062075,
+        0.0752539843015807,
+        -0.127049212625417,
+        -0.0400061921041533,
+        0.290553797799558,
+        0.198128671918067,
+        0.123229775946271,
+        0.0414649985182624
+    ]
+    b = convert(Vector{T},order6)
     b[11] = b[13] = T(1//2) - sum(b[1:2:9])
     b[12] = T(1//1) - 2sum(b[2:2:10])
     @assert isapprox(sum(b),T(2))
-    return b
+    return dt*b
 end
+function hamsplit_3_11(dt::T) where {T<: Number}
+    a = [big"0.168735950563437422448195173400884809990898960535052167820406",
+        big"0.377851589220928303880768408101213978086828975884075336276904", 
+        big"-0.093175079568731452657927163004197576155455872838255008194621", 
+]
+    b = [
+        big"0.049086460976116245491441126327891629034401134948561362353776",
+        big"0.264177609888976700200146195420764624729303307466109303375304", 
+        big"0.186735929134907054308412678251343746236295557585329334270919", 
+]
+    c = [ 
+        big"-0.0000697287150553050840997049705543302201654369851434306789330", 
+        big"-0.000625704827430047189169785837050053054170994982227957762075", 
+        big"-0.00221308512404532556162738103226349162177713815465419673226", 
+]
+    d = [
+        0,
+        big"-2.91660045768984781641978316974322113103756038016905421426e-6", 
+        big"0.0000304848026170003878867997783299987163079240932335253763140",
+]
+    e = [
+        0,
+        0,
+        big"4.98554938787506812157863826561771683774617978763837906638e-7",
+]
+
+    result = zeros(T,11)
+
+    for j=1:6
+        i = div(j+1,2)
+        result[j] = if j%2 == 1 
+            dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
+        else
+            dt*a[i]
+        end
+        result[12-j] = result[j]
+    end 
+
+    return result
+
+end
+
 
 """
     Advection{T}
@@ -100,7 +140,6 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `t_interp_v` : tuple of velocity interpolation types
 - `dt_base::T` : time unit of an advection series
 - `tab_coef` : coefficient table
-- `tab_fct` : function table
 - `v_square` : precompute for ke
 - `nbsplit` : number of slices for split
 - `mpiid` : MPI id
@@ -119,7 +158,6 @@ struct Advection{T, N, I, timeopt}
     maxcoef::Int
     nbstates::Int
     tab_coef::Vector{T}
-    tab_fct::Vector{Function}
     nbsplit::Int
     mpid::Any
     function Advection(
@@ -127,8 +165,7 @@ struct Advection{T, N, I, timeopt}
         t_interp::Vector{I},
         dt_base::T,
         states::Vector{Tuple{Vector{Int}, Int, Int, Bool, Vararg{Bool,N2}}};
-        tab_coef = [1 // 2, 1 // 1, 1 // 2],
-        tab_fct = missing,
+        tab_coef::Vector{T} = strangsplit(dt_base),
         timeopt::TimeOptimization = NoTimeOpt,
     ) where {T, N, N2, I <: AbstractInterpolation{T}}
         length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
@@ -153,7 +190,6 @@ struct Advection{T, N, I, timeopt}
         else
             1
         end
-        nfct = ismissing(tab_fct) ? fill(identity, size(tab_coef)) : tab_fct
         return new{T, N, I, timeopt}(
             sizeall,
             t_mesh,
@@ -163,8 +199,6 @@ struct Advection{T, N, I, timeopt}
             maxcoef,
             nbstates,
             tab_coef,
-            nfct,
-#            v_square,
             nbsplit,
             mpid,
         )
@@ -182,12 +216,9 @@ sizeall(adv::Advection) = adv.sizeall
 
 getst(adv::Advection, x) = adv.states[modone(x,length(adv.states))]
 
-getstcoef(adv::Advection, x) = div(x-1, length(adv.states))*adv.maxcoef+ getst(adv,x).stcoef
+getstcoef(adv::Advection, x) = div(x-1, length(adv.states))*adv.maxcoef + getst(adv,x).stcoef
 
-function getcur_t(adv::Advection, x)
-    state_coef = getstcoef(adv, x)
-    return adv.tab_fct[state_coef](adv.tab_coef[state_coef] * adv.dt_base)
-end
+getcur_t(adv::Advection, x) = adv.tab_coef[getstcoef(adv, x)]
 
 function getinterp(adv::Advection, x)
     st = getst(adv, x)

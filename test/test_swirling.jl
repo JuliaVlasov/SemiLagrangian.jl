@@ -192,7 +192,7 @@ function test_swirling_adv(
         tabref[i, j] = ((1 - x)^2 + (1 - y)^2 < 0.8) ? 1 : 0
     end
 
-    adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[1,])
+    adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,])
 
     advd = AdvectionData(adv, tabref, Swirling(dec1,dec2))
 

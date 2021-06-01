@@ -54,13 +54,13 @@ end
 function landau1_1(
     t_max::T,
     timeopt,
-    nbdt,
+    dt::T,
     sz,
     interp::AbstractInterpolation,
     tab_coef,
     epsilon::T
 ) where {T}
-     dt = t_max/nbdt
+    nbdt = Int(round(t_max/dt))
     spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
     vmin, vmax, nv = -T(10), T(10), sz[2]
 
@@ -104,7 +104,7 @@ function run_mesure(
     interp,
     epsilon
 ) where{T}
-    tabsplit = [standardsplit(T), strangsplit(T), triplejumpsplit(T), order6split(T)]
+    tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
     tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
@@ -114,7 +114,8 @@ function run_mesure(
     for inbdt=1:length(tabnbdt), itc=1:length(tabsplit)
         tc = tabsplit[itc]
         nbdt = tabnbdt[inbdt]
-        res[itc+1, inbdt] = landau1_1(t_max, timeopt, nbdt, sz, interp, tc, epsilon)
+        dt = t_max/nbdt
+        res[itc+1, inbdt] = landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             for j=1:size(res,2),i=1:size(res,1)
                 print("$(res[i,j])")

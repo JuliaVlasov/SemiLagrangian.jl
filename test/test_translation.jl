@@ -180,13 +180,13 @@ end
         (200, 300),
         Hermite(5, T),
         Hermite(5, T),
-        dt, triplejumpsplit(dt)
+        dt, tc=triplejumpsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (200, 300),
         Hermite(5, T),
         Hermite(5, T),
-        dt,standardsplit(dt)
+        dt,tc=standardsplit(dt)
     ) < 1e-3
     @time @test test_translation(
         (128, 64),
@@ -198,7 +198,7 @@ end
         (128, 64),
         B_SplineLU(5, 128, T),
         B_SplineLU(5, 64, T),
-        dt, triplejumpsplit(dt)
+        dt, tc=triplejumpsplit(dt)
     ) < 1e-6
     @time @test test_translation(
         (128, 64),

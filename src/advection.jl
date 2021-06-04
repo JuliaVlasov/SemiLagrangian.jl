@@ -83,8 +83,8 @@ function note(a,b,c, fltrace=false)
     + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
     ) for i=2:5])
 
-    result = (3abs(res1-BigFloat(1)/3))^2
-    result += (5abs(res2-BigFloat(1)/5))^2
+    result = (300abs(res1-BigFloat(1)/3))^2
+    result += (500abs(res2-BigFloat(1)/5))^2
     result += (3abs(res3-BigFloat(1)/3))^2
     result += (24abs(res4-BigFloat(1)/24))^2
     result += (120abs(res5-BigFloat(1)/120))^2
@@ -103,10 +103,10 @@ function recherche()
     bestb = zeros(BigFloat,2)
     bestc = zeros(BigFloat,3)
 
-    bestnote = 6
+    bestnote = 600000000000
     coef = 1.0
 
-    rayon = bestnote^0.5
+    rayon = 1
 
     nbtent = 1000000
 
@@ -133,9 +133,11 @@ function recherche()
         end
         if fltrouve
             bestnote, besta, bestb, bestc = locbnote, locba, locbb, locbc
-            rayon = coef*bestnote^0.5
+            rayon = min(coef*bestnote^0.5,1.0)
+
         else
             coef *= 0.99
+            rayon = min(coef*bestnote^0.5,1.0)
         end
 
         @show bestnote

@@ -1,5 +1,6 @@
 
 using FFTW
+using DoubleFloats
 using Random
 using LinearAlgebra
 using SemiLagrangian:
@@ -369,7 +370,7 @@ function testfftallbig(s, T::DataType, seed_val)
 
     @test isapprox(tabfftref, tab_test, atol = 1e-15, rtol = 1e-15)
 
-    tol = (T == BigFloat) ? 1e-50 : 1e-15
+    tol = (T == BigFloat) ? 1e-50 : (T == Double64) ? 1e-30 : 1e-15
 
     tab_test3 = ifftgenall(p, tab_test)
     @test isapprox(tab, tab_test3, atol = tol, rtol = tol)
@@ -384,4 +385,7 @@ end
     @time testfftallbig((4, 32, 4, 16), BigFloat, 15416)
     @time testfftallbig((4, 32, 16, 8), BigFloat, 44488)
     @time testfftallbig((8, 32, 16, 8), BigFloat, 44588)
+    @time testfftallbig((4, 32, 4, 16), Double64, 15416)
+    @time testfftallbig((4, 32, 16, 8), Double64, 44488)
+    @time testfftallbig((8, 32, 16, 8), Double64, 44588)
 end

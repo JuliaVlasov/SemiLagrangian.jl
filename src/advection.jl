@@ -57,31 +57,174 @@ function order6split(dt::T) where{T}
     @assert isapprox(sum(b),T(2))
     return dt*b
 end
-function hamsplit_3_11(dt::T) where {T<: Number}
-    a = [big"0.168735950563437422448195173400884809990898960535052167820406",
-        big"0.377851589220928303880768408101213978086828975884075336276904", 
-        big"-0.093175079568731452657927163004197576155455872838255008194621", 
+
+
+function note(a,b,c, fltrace=false)
+    ap = zeros(BigFloat,6)
+    bp = zeros(BigFloat,6)
+    cp = zeros(BigFloat,6)
+    for i=1:3
+        ap[i] = ap[6-i] = i != 3 ? a[i] : 1 - 2a[1] - 2a[2]
+        bp[i] = bp[7-i] = i != 3 ? b[i] : 0.5 - b[1] - b[2]
+        cp[i] = cp[7-i] = c[i]
+    end
+
+
+    res1 = sum([ bp[i]*sum(ap[1:(i-1)])^2 for i=1:6])
+    res2 = sum([ bp[i]*sum(ap[1:(i-1)])^4 for i=1:6])
+    res3 = sum( [ap[i]*sum(bp[i:6])^2 for i=1:6]) - 2sum(cp)
+    res4 = sum( [ bp[i]*sum([ bp[j]*sum(ap[j+1:i])^3 for j=1:i-1]) for i=2:6])
+    res5 = sum( [ ap[i]*(2sum([ ap[j]*sum(cp[j:i-1]) for j=1:i-1]) + sum( [ ap[j]*sum([ap[k]*sum(bp[j:k-1])*sum(bp[k:i-1]) for k=j+1:i-1]) for j=1:i-2])) for i=2:6])
+
+    res6= 2sum([ ap[i]*(bp[i]*sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i=2:6])
+    res6 += sum([ ap[i]*( 
+        2sum(bp[i+1:6])*sum(cp[1:i-1]) 
+        + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
+    + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
+    ) for i=2:5])
+
+    result = (3abs(res1-BigFloat(1)/3))^2
+    result += (5abs(res2-BigFloat(1)/5))^2
+    result += (3abs(res3-BigFloat(1)/3))^2
+    result += (24abs(res4-BigFloat(1)/24))^2
+    result += (120abs(res5-BigFloat(1)/120))^2
+    result += (120abs(res6-BigFloat(1)/120))^2
+    if fltrace
+        @show res1, res2, res3, res4, res5, res6
+    end
+
+#    return result*(1e3 + norm([ap; bp; 1000cp])^2)
+    return result
+end
+
+
+function recherche()
+    besta = zeros(BigFloat,2)
+    bestb = zeros(BigFloat,2)
+    bestc = zeros(BigFloat,3)
+
+    bestnote = 6
+    coef = 1.0
+
+    rayon = bestnote^0.5
+
+    nbtent = 1000000
+
+    while rayon > 1e-65
+
+        locba = besta
+        locbb = bestb
+        locbc = bestc
+        locbnote = bestnote
+        fltrouve = false
+        for n=1:nbtent
+            a = besta + rayon*(rand(BigFloat,2)-[big"0.5",big"0.5"])
+            b = bestb + rayon*(rand(BigFloat,2)-[big"0.5",big"0.5"])
+            c = bestc + (rayon/10)*(rand(BigFloat,3)-[big"0.5",big"0.5",big"0.5"])
+
+            res = note(a,b,c) + norm(c)^2 
+            if res < locbnote
+                @show res, n
+                note(a,b,c,true)
+                locba, locbb, locbc = a,b,c
+                locbnote = res
+                fltrouve = true
+            end
+        end
+        if fltrouve
+            bestnote, besta, bestb, bestc = locbnote, locba, locbb, locbc
+            rayon = coef*bestnote^0.5
+        else
+            coef *= 0.99
+        end
+
+        @show bestnote
+        @show rayon
+        @show coef
+        @show besta
+        @show bestb
+        @show bestc
+
+
+
+#        rayon *= big"0.8"
+    end
+end
+function hamsplit_3_11(dt::T, fltrace=false) where {T<: Number}
+
+a = [big"0.168735950563437422448195173400884809990898960535052167820406",
+big"0.377851589220928303880768408101213978086828975884075336276904",
+big"-0.093175079568731452657927163004197576155455872838255008194621",
 ]
-    b = [
-        big"0.049086460976116245491441126327891629034401134948561362353776",
-        big"0.264177609888976700200146195420764624729303307466109303375304", 
-        big"0.186735929134907054308412678251343746236295557585329334270919", 
+b = [
+big"0.049086460976116245491441126327891629034401134948561362353776",
+big"0.264177609888976700200146195420764624729303307466109303375304",
+big"0.186735929134907054308412678251343746236295557585329334270919",
 ]
-    c = [ 
-        big"-0.0000697287150553050840997049705543302201654369851434306789330", 
-        big"-0.000625704827430047189169785837050053054170994982227957762075", 
-        big"-0.00221308512404532556162738103226349162177713815465419673226", 
+c = [
+big"-0.0000697287150553050840997049705543302201654369851434306789330",
+big"-0.000625704827430047189169785837050053054170994982227957762075",
+big"-0.00221308512404532556162738103226349162177713815465419673226",
 ]
-    d = [
-        0,
-        big"-2.91660045768984781641978316974322113103756038016905421426e-6", 
-        big"0.0000304848026170003878867997783299987163079240932335253763140",
+d = [
+0,
+big"-2.91660045768984781641978316974322113103756038016905421426e-6",
+big"0.0000304848026170003878867997783299987163079240932335253763140",
 ]
-    e = [
-        0,
-        0,
-        big"4.98554938787506812157863826561771683774617978763837906638e-7",
+e = [
+0,
+0,
+big"4.98554938787506812157863826561771683774617978763837906638e-7",
 ]
+
+
+#     if fltrace
+#         ap = zeros(BigFloat,6)
+#         bp = zeros(BigFloat,6)
+#         cp = zeros(BigFloat, 6)
+#         for i=1:3
+#             ap[i] = ap[6-i] = a[i]
+#             bp[i] = bp[7-i] = b[i]
+#             cp[i] = cp[7-i] = c[i]
+#         end
+#         resa = 1 - sum(ap)
+#         resb = 1 - sum(bp)
+#         @show resa, resb
+#         res1 = res2 = res3 = res4 = res5 = zero(BigFloat)
+#         for i = 1:6
+#             res1 += bp[i]*sum(ap[1:(i-1)])^2
+#         end
+#         # for i = 2:6
+#         #     res4int=0
+#         #     for j=1:i-1
+#         #         res4int += bp[j]*sum(ap[j+1:i])^3
+#         #     end
+#         #     res4 += bp[i]*res4int
+#         # end
+#         res1 = sum([ bp[i]*sum(ap[1:(i-1)])^2 for i=1:6])
+#         res2 = sum([ bp[i]*sum(ap[1:(i-1)])^4 for i=1:6])
+#         res3 = sum( [ap[i]*sum(bp[i:6])^2 for i=1:6]) - 2sum(cp)
+#         res4 = sum( [ bp[i]*sum([ bp[j]*sum(ap[j+1:i])^3 for j=1:i-1]) for i=2:6])
+#         res5 = sum( [ ap[i]*(2sum([ ap[j]*sum(cp[j:i-1]) for j=1:i-1]) + sum( [ ap[j]*sum([ap[k]*sum(bp[j:k-1])*sum(bp[k:i-1]) for k=j+1:i-1]) for j=1:i-2])) for i=2:6])
+
+#         res6= 2sum([ ap[i]*(bp[i]*sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i=2:6])
+#         res6 += sum([ ap[i]*( 
+#             2sum(bp[i+1:6])*sum(cp[1:i-1]) 
+#             + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
+#         + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
+#         ) for i=2:5])
+
+
+
+
+#         res1 -= one(BigFloat)/3
+#         res2 -= one(BigFloat)/5
+# #        res3 -= one(BigFloat)/3
+#         println("res1=$res1, res2=$res2 res3=$res3 res4=$res4 res5=$res5 res6=$res6")
+
+#         result = note(a,b,c)
+#         @show result
+#     end
 
     result = zeros(T,11)
 
@@ -98,6 +241,94 @@ function hamsplit_3_11(dt::T) where {T<: Number}
     return result
 
 end
+# function hamsplit_3_11(dt::T) where {T<: Number}
+#     a = [big"0.168735950563437422448195173400884809990898960535052167820406",
+#         big"0.377851589220928303880768408101213978086828975884075336276904",
+#         big"-0.093175079568731452657927163004197576155455872838255008194621",
+# ]
+#     b = [
+#         big"0.049086460976116245491441126327891629034401134948561362353776",
+#         big"0.264177609888976700200146195420764624729303307466109303375304",
+#         big"0.186735929134907054308412678251343746236295557585329334270919",
+# ]
+#     c = [
+#         big"-0.0000697287150553050840997049705543302201654369851434306789330",
+#         big"-0.000625704827430047189169785837050053054170994982227957762075",
+#         big"-0.00221308512404532556162738103226349162177713815465419673226",
+# ]
+#     d = [
+#         0,
+#         big"-2.91660045768984781641978316974322113103756038016905421426e-6",
+#         big"0.0000304848026170003878867997783299987163079240932335253763140",
+# ]
+#     e = [
+#         0,
+#         0,
+#         big"4.98554938787506812157863826561771683774617978763837906638e-7",
+# ]
+
+#     result = zeros(T,11)
+
+#     for j=1:6
+#         i = div(j+1,2)
+#         result[j] = if j%2 == 1
+#             dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
+#         else
+#             dt*a[i]
+#         end
+#         result[12-j] = result[j]
+#     end  
+
+#     return result
+
+# end
+
+function ymsplit( dt::T) where {T}
+
+    a = [
+        big"0.8139829195555458104979098217648888051316552486421891906867407724812089860641628",
+        big"-0.106933886322235993755568450182305412663747576359129385173643275216256114240612",
+        big"-0.4140980664666196334846827431651667849358153445661196110261949945299057436470952"
+    ]
+    b = [
+        big"0.04651752139132499278432511686356549102152589365750173478400375255989245673028492",
+        big"0.2000550736145229026831469057101038052461456725280944909695615530345980120197072",
+        big"0.2534274049941521045325279774263307037323284338144037742464346944055095312500068"
+    ]
+    c = [
+        big"0.0924986134646854078099064345309143122365785083821688789750863120460165522562261", 
+        big"-0.08143484956130759254568509461762997555036800516671930287457519290391707116535044", 
+        big"-0.05385533864823584287518808566120055838047115883542750710993690749321147425126124"
+    ]
+    d = [
+        0,
+        big"-2.91660045768984781641978316974322113103756038016905421426e-6", 
+        big"0.0000304848026170003878867997783299987163079240932335253763140",
+    ]
+    e = [
+        0,
+        0,
+        big"4.98554938787506812157863826561771683774617978763837906638e-7",
+    ]
+    result = zeros(T,11)
+
+    for j=1:6
+        i = div(j+1,2)
+        result[j] = if j%2 == 1 
+            dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
+        else
+            dt*a[i]
+        end
+        result[12-j] = result[j]
+    end 
+
+    return result
+
+end
+
+
+        
+
 
 
 """

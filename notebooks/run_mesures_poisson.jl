@@ -37,13 +37,15 @@ function landau(advd::AdvectionData, nbdt)
     # clockreset(cl_obs)
     maxdiff = 0
     dt = advd.adv.dt_base
-    refel = trace_energy(advd, 0.0)
+    refel = trace_energy(advd, 0*dt)
+ #   @show typeof(refel)
     #    printall(cl_obs)
     #    clockreset(cl_obs)
     for i = 1:nbdt
         while advection!(advd)
         end
-        el = trace_energy(advd, Float64(i * dt))
+        el = trace_energy(advd, i * dt)
+ #       @show typeof(el)
         maxdiff = max(maxdiff,abs(refel - el))
         # printall(cl_obs)
         # clockreset(cl_obs)
@@ -85,7 +87,7 @@ function landau1_1(
 
     data = dotprod((lgn_sp, lgn_v))
 
-    resint = sum(data)*T(20)/length(data)
+    resint = sum(data)*(vmax-vmin)/length(data)
     data /= resint
     
     pvar = getpoissonvar(adv)
@@ -104,12 +106,19 @@ function run_mesure(
     interp,
     epsilon
 ) where{T}
-    tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
-    tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000]
+# tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
+tabsplit = [standardsplit, strangsplit, triplejumpsplit, hamsplit_3_11, ymsplit]
+# tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
+tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "fernandosplit", "ymsplit"]
+tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
 
     res[1,:] .= Float64(t_max) ./ tabnbdt 
+
+#        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+#        end
+
 
     for inbdt=1:length(tabnbdt), itc=1:length(tabsplit)
         tc = tabsplit[itc]
@@ -117,8 +126,13 @@ function run_mesure(
         dt = t_max/nbdt
         res[itc+1, inbdt] = landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+            println("sz=$sz t_max=$t_max interp=$interp")
+            for txt in tabtxtsplit
+                print("$txt\t")
+            end
+            println("")
             for j=1:size(res,2),i=1:size(res,1)
-                print("$(res[i,j])")
+                        print("$(res[i,j])")
                 if i == size(res,1)
                     print("\n")
                 else
@@ -131,7 +145,7 @@ function run_mesure(
     end
 end
 T=Double64
-run_mesure(T(10), SplitThreadsOpt, (256,256), Lagrange(9,T), T(0.5))
+run_mesure(T(1), NoTimeOpt, (256,256), Lagrange(19,T), T(0.5))
 
 
 

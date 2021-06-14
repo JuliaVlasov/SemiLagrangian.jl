@@ -29,7 +29,7 @@ include("translation.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
-export standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11, ymsplit
+export standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11, ymsplit, table2split
 export Lagrange, Hermite, B_SplineLU, B_SplineFFT, interpolate!
 export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!

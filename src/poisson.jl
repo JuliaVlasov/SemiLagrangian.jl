@@ -1,5 +1,5 @@
 
-
+@enum TypePoisson StdPoisson=1 StdPoisson2d=2 StdOrder2_1=3 StdOrder2_2=4
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -30,14 +30,15 @@ Constant data for the computation of poisson coefficients
 - `fctv_k` : Array of space dimensions of the inverse of the norm of fourier coefficients
 - `pfftbig` : Fourier data for space dimensions
 """
-struct PoissonConst{T,N, Nsp,Nv}
+struct PoissonConst{T,N, Nsp,Nv, type}
     adv::Advection
     fctv_k::Any
     v_square::Array{T,Nv}
-     pfftbig::Any
+    pfftbig::Any
     function PoissonConst(
         adv::Advection{T,N,timeopt};
         isfftbig = true,
+        type::TypePoisson=StdPoisson
     ) where {T,N,timeopt}
         N%2 == 0 || thrown(ArgumentError("N=$N must be a multiple of 2"))
 
@@ -49,7 +50,7 @@ struct PoissonConst{T,N, Nsp,Nv}
         else
             missing
         end
-        return new{T,N, Nsp,Nv}(adv, fctv_k, v_square, pfftbig)
+        return new{T,N, Nsp, Nv, type}(adv, fctv_k, v_square, pfftbig)
     end
 end
 getNspNv(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N, Nsp, Nv}= (Nsp, Nv)
@@ -67,18 +68,18 @@ mutable structure of variable data for the poisson computation
 - `rho::Array{T, Nsp}` : result of the compute_charge that is the sum along velocity dimensions
 - `t_elfield::NTuple{Nsp,Array{Complex{T}, Nsp}}` : electric fields initialized at each beginning of velocity advection subseries
 """
-mutable struct PoissonVar{T,N,Nsp,Nv} <: AbstractExtDataAdv
-    pc::PoissonConst{T,N,Nsp,Nv}
+mutable struct PoissonVar{T,N,Nsp,Nv, type} <: AbstractExtDataAdv
+    pc::PoissonConst{T,N,Nsp,Nv, type}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
     bufcur_sp
     bufcur_v
     tupleind
 
-    function PoissonVar(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N,Nsp,Nv}
+    function PoissonVar(pc::PoissonConst{T,N,Nsp,Nv, type}) where {T,N,Nsp,Nv, type}
         sz = length.(pc.adv.t_mesh[1:Nsp])
         rho = Array{T,Nsp}(undef, sz)
-        return new{T,N,Nsp,Nv}(pc, rho, missing, missing,missing,missing)
+        return new{T,N,Nsp,Nv, type}(pc, rho, missing, missing,missing,missing)
     end
 end
 
@@ -159,9 +160,9 @@ Implementation of the interface function that is called at the begining of each 
 """
 
 function initcoef!(
-    pv::PoissonVar{T,N,Nsp,Nv},
+    pv::PoissonVar{T,N,Nsp,Nv, type},
     self::AdvectionData{T,N},
-) where {T,N,Nsp,Nv}
+) where {T,N,Nsp,Nv, type}
     st = getst(self)
     adv = self.adv
     if isvelocity(self)
@@ -214,7 +215,7 @@ function getpoissonvar(adv::Advection)
 end
 
 @inline function getalpha(
-    pv::PoissonVar{T,N,Nsp,Nv},
+    pv::PoissonVar{T,N,Nsp,Nv, StdPoisson},
     self::AdvectionData{T},
     ind,
 ) where {T,N,Nsp,Nv}

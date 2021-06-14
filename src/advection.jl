@@ -82,7 +82,7 @@ function note(a,b,c, fltrace=false)
         + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
     + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
     ) for i=2:5])
-
+    @show res1,res2,res3,res4,res5,res6
     result = (300abs(res1-BigFloat(1)/3))^2
     result += (500abs(res2-BigFloat(1)/5))^2
     result += (3abs(res3-BigFloat(1)/3))^2
@@ -327,7 +327,33 @@ function ymsplit( dt::T) where {T}
     return result
 
 end
-
+function table2split( dt::T) where T
+    a =  [ big"1.079852426382430882456991", 
+        -big"0.579852426382430882456991",
+        0
+    ]
+    b = [ big"0.359950808794143627485664",
+        -big"0.1437147273026540434771131",
+        big"0.567527837017020831982899"
+    ]
+    c = [
+        0,
+        -big"0.0139652542242388403673",
+        -big"0.039247029382345626020"
+    ]
+    note(a,b,c,true)
+    result = zeros(T, 9)
+    for j = 1:5
+        i = div(j+1,2)
+        result[j] = if j%2 == 1 
+            dt*(b[i] + 2c[i]*dt^2)
+        else
+            dt*a[i]
+        end
+        result[10-j] = result[j]
+    end
+    return result
+end
 
         
 

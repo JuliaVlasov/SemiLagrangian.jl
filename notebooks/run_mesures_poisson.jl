@@ -47,6 +47,8 @@ function landau(advd::AdvectionData, nbdt)
         el = trace_energy(advd, i * dt)
  #       @show typeof(el)
         maxdiff = max(maxdiff,abs(refel - el))
+        @show i,el,diff, maxdiff
+        flush(stdout)
         # printall(cl_obs)
         # clockreset(cl_obs)
     end
@@ -70,6 +72,7 @@ function landau1_1(
     mesh_v = UniformMesh(vmin, vmax, nv)
 
     tabst = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
+#    tabst = [( [1,2], 1, 1, true, false),( [2,1], 1, 2, true, true) ]
 
     adv = Advection(
         (mesh_sp,mesh_v,), 
@@ -107,9 +110,9 @@ function run_mesure(
     epsilon
 ) where{T}
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
-tabsplit = [standardsplit, strangsplit, triplejumpsplit, hamsplit_3_11, ymsplit]
+tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "fernandosplit", "ymsplit"]
+tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "table2split"]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
@@ -139,9 +142,10 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
                     print("\t")
                 end
             end
-            GC.gc()
+            
 	    println("free memory : $(Sys.free_memory()/2^30)")
-#        end
+            flush(stdout)
+        #        end
     end
 end
 T=Double64

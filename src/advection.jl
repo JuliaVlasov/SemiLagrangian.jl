@@ -12,7 +12,7 @@ struct StateAdv{N}
     StateAdv(ind, p, ndims, stc, isconst, isvelocity=false)=new{length(p)}(ind, p, invperm(p), ndims, stc, isconst, isvelocity)
 end
 
-
+nosplit(dt::T) where T = dt*[1]
 standardsplit(dt::T) where{T}=dt*[1,1]
 strangsplit(dt::T) where{T}=dt*[1//2,1//1,1//2]
 magicsplit(dt::T) where{T}=[tan(dt/2), sin(dt), tan(dt/2)]

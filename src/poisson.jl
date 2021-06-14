@@ -82,6 +82,10 @@ mutable struct PoissonVar{T,N,Nsp,Nv, type} <: AbstractExtDataAdv
         return new{T,N,Nsp,Nv, type}(pc, rho, missing, missing,missing,missing)
     end
 end
+function getpoissonvar(adv::Advection; type::TypePoisson=StdPoisson)
+    pc = PoissonConst(adv, type=type)
+    return PoissonVar(pc)
+end
 
 getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
 """
@@ -160,9 +164,9 @@ Implementation of the interface function that is called at the begining of each 
 """
 
 function initcoef!(
-    pv::PoissonVar{T,N,Nsp,Nv, type},
+    pv::PoissonVar{T,N,Nsp,Nv, StdPoisson},
     self::AdvectionData{T,N},
-) where {T,N,Nsp,Nv, type}
+) where {T,N,Nsp,Nv}
     st = getst(self)
     adv = self.adv
     if isvelocity(self)
@@ -209,22 +213,43 @@ function initcoef!(
 
     end
 end
-function getpoissonvar(adv::Advection)
-    pc = PoissonConst(adv)
-    return PoissonVar(pc)
-end
-
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv, StdPoisson},
     self::AdvectionData{T},
     ind,
 ) where {T,N,Nsp,Nv}
     st = getst(self)
-#    @show N,Nsp,Nv, ind.I, pv.tupleind
+#    @show N,Nsp,Nv, ind.I, pv.tupleind, isvelocity(self)
     if isvelocity(self) 
         ntuple(x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])], size(pv.bufcur_v,1))
     else
         ntuple(x -> pv.bufcur_sp[x][ind.I[pv.tupleind[x]]], size(pv.bufcur_sp,1))
     end
     #    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
+end
+
+function initcoef!(
+    pv::PoissonVar{T,N,Nsp,Nv, StdPoisson2d},
+    self::AdvectionData{T,N},
+) where {T,N,Nsp,Nv}
+#    st = getst(self)
+    adv = self.adv
+    compute_charge!(self)
+    compute_elfield!(self)
+
+    pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    
+    pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+end
+
+@inline function getalpha(
+    pv::PoissonVar{T,N,Nsp,Nv, StdPoisson2d},
+    self::AdvectionData{T},
+    indext,
+    ind
+) where {T,N,Nsp,Nv}
+    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+#    @show ind.I
+    return ( pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
 end

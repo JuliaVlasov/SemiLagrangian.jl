@@ -2,6 +2,7 @@ using DoubleFloats
 using LinearAlgebra
 
 using SemiLagrangian:
+    nosplit,
     Advection,
     sizeall,
     AdvectionData,
@@ -20,7 +21,9 @@ using SemiLagrangian:
     compute_ee,
     compute_ke,
     dotprod,
-    getpoissonvar
+    getpoissonvar,
+    StdPoisson,
+    StdPoisson2d
 # """
 
 #    exact(tf, mesh1, mesh2)
@@ -76,6 +79,15 @@ using SemiLagrangian:
 #     return diffmax
 
 # end
+
+function getenergy(advd::AdvectionData) 
+    compute_charge!(advd)
+    compute_elfield!(advd)
+    elenergy = compute_ee(advd)
+    kinenergy = compute_ke(advd)
+    energyall = elenergy + kinenergy
+    return elenergy, kinenergy, energyall
+end
 
 function test_poisson2d(
     sz::NTuple{2,Int},
@@ -143,6 +155,61 @@ function test_poisson2d(
     end
     return diffmax
 end
+function test_poisson2dadv(
+    sz::NTuple{2,Int},
+    interp::Vector{I},
+    t_max::T,
+    nbdt::Int,
+) where {T,I<:AbstractInterpolation{T}}
+    spmin, spmax, nsp = T(0), 4T(pi), sz[1]
+    vmin, vmax, nv = T(-6), T(6), sz[2]
+
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+
+    dt = t_max / nbdt
+
+    coef = 1 / sqrt(2T(pi))
+    tabref = zeros(T, sz)
+    for i = 1:sz[1], j = 1:sz[2]
+        x = mesh_sp.points[i]
+        y = mesh_v.points[j]
+        tabref[i, j] = coef * exp(-0.5 * y^2) * (1 + 0.001 * cos(x / 2))
+    end
+
+    dt = t_max/nbdt
+
+    tabst = [([1,2], 2, 1, false, false)]
+
+    adv = Advection((mesh_sp,mesh_v),interp, dt,tabst, tab_coef=nosplit(dt))
+
+    data = zeros(T, sz)
+    copyto!(data, tabref)
+
+    pvar = getpoissonvar(adv, type=StdPoisson2d)
+
+    advd = AdvectionData(adv, data, pvar)
+    elenergy, kinenergy, energyall = getenergy(advd)
+
+    enmax = enmin = energyall
+    @show enmax, enmin
+
+    for i=1:nbdt
+        while advection!(advd)
+        end
+        elenergy, kinenergy, energyall = getenergy(advd)
+        enmax = max(energyall, enmax)
+        enmin = min(energyall, enmin)
+        
+        t = i*dt
+        println(
+            "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
+        )
+    end
+    @show enmax, enmin
+    return enmax - enmin
+end
+
 
 function test_poisson2d2d_adv(
     sz::NTuple{4,Int},
@@ -181,34 +248,30 @@ println("trace1")
 
     advd = AdvectionData(adv, data, pvar)
 
+    elenergy, kinenergy, energyall = getenergy(advd)
+
+    enmax = enmin = energyall
+
+
     for i=1:nbdt
         while advection!(advd)
-            # println("bufcur=$(pvar.bufcur)")
-            # if ndims(pvar.bufcur[1]) == 2
-            #     println("bufcur[:,7]=$(pvar.bufcur[1][:,7])")
-            # end
         end
-        compute_charge!(advd)
-        compute_elfield!(advd)
-        # clockend(cl_obs,6)
-        # clockbegin(cl_obs,7)
-        elenergy = compute_ee(advd)
-        # clockend(cl_obs,7)
-        # clockbegin(cl_obs,8)
-        kinenergy = compute_ke(advd)
-        # clockend(cl_obs,8)
-        energyall = elenergy + kinenergy
-        t = i*dt
+        elenergy, kinenergy, energyall = getenergy(advd)
+        enmax = max(energyall, enmax)
+        enmin = min(energyall, enmin)
+     t = i*dt
         println(
             "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
         )
     end
-    return 0
+    @show enmax, enmin
+    return enmax - enmin
 end
 
 
 @testset "test poisson2d" begin
     T = Double64
     @time @test test_poisson2d((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
-    @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 1e-3
+    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 5e-3
+    @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 0.6
 end

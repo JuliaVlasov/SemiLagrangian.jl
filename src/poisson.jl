@@ -281,9 +281,46 @@ function initcoef!(
     end
     missing
 end
+function initcoef!(
+    pv::PoissonVar{T,N,Nsp,Nv, StdOrder2_2},
+    self::AdvectionData{T,N},
+) where {T,N,Nsp,Nv}
+#    st = getst(self)
+    adv = self.adv
+    compute_charge!(self)
+    compute_elfield!(self)
+
+    sz = sizeall(self.adv)
+ 
+    bufc_v = (getcur_t(self) / 2step(adv.t_mesh[2])) * pv.t_elfield[1]
+    bufc_sp = (-getcur_t(self) / 2step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+    result = zeros(T,sz)
+    interpolate!(result, self.data, ind -> ( bufc_sp[ind.I[2]], bufc_v[ind.I[1]]), adv.t_interp)
+
+    rho = zeros(T,sz[1])
+
+    elf =zeros(T,sz[1])
+
+    compute_charge!(rho, (adv.t_mesh[2],), result)
+    elf = compute_elfield!(elf, adv.t_mesh[1], rho)
+    pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2]))*elf
+    pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    missing
+end
 
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv, StdPoisson2d},
+    self::AdvectionData{T},
+    indext,
+    ind
+) where {T,N,Nsp,Nv}
+    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+#    @show ind.I
+    return ( pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
+end
+@inline function getalpha(
+    pv::PoissonVar{T,N,Nsp,Nv, StdOrder2_2},
     self::AdvectionData{T},
     indext,
     ind

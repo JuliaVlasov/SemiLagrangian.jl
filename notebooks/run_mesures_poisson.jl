@@ -159,9 +159,9 @@ function run_mesure(
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 tabsplit = [standardsplit, strangsplit]
-tabtype = [StdPoisson2d, StdOrder2_1 ]
+tabtype = [StdPoisson2d, StdOrder2_1, StdOrder2_2 ]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1"]
+tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1", "2d_Order2_1", ]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))

@@ -385,7 +385,7 @@ function interpolate!(
     dec::Function,
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}}=gettabmod.(size(fi)),
-    cache::CachePrecal{T,N}=CachePrecal(interp_t,one(elttype(fp))),
+    cache::CachePrecal{T,N}=CachePrecal(interp_t,one(eltype(fp))),
 ) where {T,N,I<:AbstractInterpolation{T}}
 
     N == length(interp_t) || thrown(ArgumentError("The number of Interpolation $(length(interp_t)) is different of N=$N"))

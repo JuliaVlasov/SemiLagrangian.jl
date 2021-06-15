@@ -72,6 +72,7 @@ mutable struct PoissonVar{T,N,Nsp,Nv, type} <: AbstractExtDataAdv
     pc::PoissonConst{T,N,Nsp,Nv, type}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
+    t_elfprec::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
     bufcur_sp
     bufcur_v
     tupleind
@@ -79,7 +80,7 @@ mutable struct PoissonVar{T,N,Nsp,Nv, type} <: AbstractExtDataAdv
     function PoissonVar(pc::PoissonConst{T,N,Nsp,Nv, type}) where {T,N,Nsp,Nv, type}
         sz = length.(pc.adv.t_mesh[1:Nsp])
         rho = Array{T,Nsp}(undef, sz)
-        return new{T,N,Nsp,Nv, type}(pc, rho, missing, missing,missing,missing)
+        return new{T,N,Nsp,Nv, type}(pc, rho, missing, missing, missing,missing,missing)
     end
 end
 function getpoissonvar(adv::Advection; type::TypePoisson=StdPoisson)
@@ -124,14 +125,14 @@ function compute_elfield!(self::AdvectionData{T,N}) where {T,N}
     # for i=1:Nsp
     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
     # end
-    elf = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
-    if ismissing(pv.t_elfield)
-        pv.t_elfield = elf
-    else
-        for x in 1:Nsp
-            pv.t_elfield[x] .= elf[x]
-        end
-    end
+    pv.t_elfield = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
+    # if ismissing(pv.t_elfield)
+    #     pv.t_elfield = elf
+    # else
+    #     for x in 1:Nsp
+    #         pv.t_elfield[x] .= elf[x]
+    #     end
+    # end
     missing
 end
 
@@ -242,6 +243,44 @@ function initcoef!(
     pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
 end
+function initcoef!(
+    pv::PoissonVar{T,N,Nsp,Nv, StdOrder2_1},
+    self::AdvectionData{T,N},
+) where {T,N,Nsp,Nv}
+#    st = getst(self)
+    adv = self.adv
+    compute_charge!(self)
+    compute_elfield!(self)
+    if ismissing(pv.t_elfprec)
+        elf = pv.t_elfield[1]
+    else
+        elf = (3pv.t_elfield[1] - pv.t_elfprec[1])/2
+    end
+
+    pv.t_elfprec = pv.t_elfield
+    sz = sizeall(self.adv)
+    if ismissing(pv.bufcur_v)
+        pv.bufcur_v = zeros(T,sz)
+        pv.bufcur_sp = zeros(T,sz)
+    end
+
+    bufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * elf
+    bufc_sp = (-getcur_t(self) / 2step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+    interp = adv.t_interp[1]
+
+    lgn = zeros(T,sz[1])
+
+    for i=1:sz[2]
+        interpolate!(lgn, bufc_v, bufc_sp[i], interp)
+        pv.bufcur_v[:,i] .= lgn
+    end
+
+    for i=1:sz[1], j=1:sz[2]
+        pv.bufcur_sp[i,j] = (-getcur_t(self)/2step(adv.t_mesh[1])) *( 2adv.t_mesh[2].points[j] + pv.bufcur_v[i,j])
+    end
+    missing
+end
 
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv, StdPoisson2d},
@@ -252,4 +291,14 @@ end
     @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
 #    @show ind.I
     return ( pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
+end
+@inline function getalpha(
+    pv::PoissonVar{T,N,Nsp,Nv, StdOrder2_1},
+    self::AdvectionData{T},
+    indext,
+    ind
+) where {T,N,Nsp,Nv}
+    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+#    @show ind.I
+    return ( pv.bufcur_sp[ind], pv.bufcur_v[ind])
 end

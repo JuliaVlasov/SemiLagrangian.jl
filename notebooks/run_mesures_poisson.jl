@@ -55,6 +55,53 @@ function landau(advd::AdvectionData, nbdt)
     # printall(cl_obs)
     return maxdiff
 end
+function landau2(
+    t_max::T,
+    timeopt,
+    dt::T,
+    sz,
+    interp::AbstractInterpolation,
+    type::TypePoisson,
+    epsilon::T
+) where {T}
+    nbdt = Int(round(t_max/dt))
+    spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
+    vmin, vmax, nv = -T(10), T(10), sz[2]
+
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+
+    tabst = [( [1,2], 2, 1, false, false) ]
+
+    adv = Advection(
+        (mesh_sp,mesh_v,), 
+        [interp,interp], 
+        dt,
+        tabst,
+        tab_coef=nosplit(dt), 
+        timeopt = timeopt)
+
+    fct_sp(x) = epsilon * cos(x / 2) + 1
+    fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
+
+    lgn_sp = fct_sp.(mesh_sp.points)
+    lgn_v = fct_v.(mesh_v.points)
+
+    data = dotprod((lgn_sp, lgn_v))
+
+    resint = sum(data)*(vmax-vmin)/length(data)
+    data /= resint
+    
+    pvar = getpoissonvar(adv, type=type)
+
+    advd = AdvectionData(adv, data, pvar)
+
+    # advdata = Advection1dData(adv, data, pvar)
+
+    return landau(advd, nbdt)
+end
+
+
 function landau1_1(
     t_max::T,
     timeopt,
@@ -110,27 +157,34 @@ function run_mesure(
     epsilon
 ) where{T}
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
-tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
+# tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
+tabsplit = [standardsplit, strangsplit]
+tabtype = [StdPoisson2d, StdOrder2_1 ]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "table2split"]
+tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1"]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
-    res = zeros(Float64, length(tabsplit)+1, length(tabnbdt))
+    res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))
 
     res[1,:] .= Float64(t_max) ./ tabnbdt 
 
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
 #        end
 
-
-    for inbdt=1:length(tabnbdt), itc=1:length(tabsplit)
-        tc = tabsplit[itc]
+    lenitc = length(tabsplit)
+    for inbdt=1:length(tabnbdt), itc=1:length(tabtxt)
+        tc = itc <= lenitc ? tabsplit[itc] : missing
+        tp = itc > lenitc ? tabtype[itc-lenitc] : missing
         nbdt = tabnbdt[inbdt]
         dt = t_max/nbdt
-        res[itc+1, inbdt] = landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
+        res[itc+1, inbdt] = if itc <= lenitc 
+            landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
+        else
+            landau2(t_max, timeopt, dt, sz, interp, tp, epsilon)
+        end
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             println("sz=$sz t_max=$t_max interp=$interp")
-            for txt in tabtxtsplit
+            for txt in tabtxt
                 print("$txt\t")
             end
             println("")
@@ -149,7 +203,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
     end
 end
 T=Double64
-run_mesure(T(1), NoTimeOpt, (256,256), Lagrange(19,T), T(0.5))
+run_mesure(T(1), NoTimeOpt, (256,256), Lagrange(9,T), T(0.5))
 
 
 

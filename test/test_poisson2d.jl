@@ -22,8 +22,11 @@ using SemiLagrangian:
     compute_ke,
     dotprod,
     getpoissonvar,
+    TypePoisson,
     StdPoisson,
-    StdPoisson2d
+    StdPoisson2d,
+    StdOrder2_1,
+    StdOrder2_2
 # """
 
 #    exact(tf, mesh1, mesh2)
@@ -160,6 +163,7 @@ function test_poisson2dadv(
     interp::Vector{I},
     t_max::T,
     nbdt::Int,
+    type::TypePoisson
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-6), T(6), sz[2]
@@ -186,7 +190,7 @@ function test_poisson2dadv(
     data = zeros(T, sz)
     copyto!(data, tabref)
 
-    pvar = getpoissonvar(adv, type=StdPoisson2d)
+    pvar = getpoissonvar(adv, type=type)
 
     advd = AdvectionData(adv, data, pvar)
     elenergy, kinenergy, energyall = getenergy(advd)
@@ -272,6 +276,7 @@ end
 @testset "test poisson2d" begin
     T = Double64
     @time @test test_poisson2d((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 5e-3
+    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdPoisson2d) < 5e-3
+    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_1) < 3e-3
     @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 0.6
 end

@@ -161,7 +161,7 @@ function run_mesure(
 tabsplit = [standardsplit, strangsplit]
 tabtype = [StdPoisson2d, StdOrder2_1, StdOrder2_2 ]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1", "2d_Order2_1", ]
+tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1", "2d_Order2_2", ]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))
@@ -183,9 +183,9 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
             landau2(t_max, timeopt, dt, sz, interp, tp, epsilon)
         end
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
-            println("sz=$sz t_max=$t_max interp=$interp")
+            println("# sz=$sz t_max=$t_max interp=$interp")
             for txt in tabtxt
-                print("$txt\t")
+                print("# $txt\t")
             end
             println("")
             for j=1:size(res,2),i=1:size(res,1)

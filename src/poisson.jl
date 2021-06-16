@@ -303,9 +303,9 @@ function initcoef!(
     elf =zeros(T,sz[1])
 
     compute_charge!(rho, (adv.t_mesh[2],), result)
-    elf = compute_elfield!(elf, adv.t_mesh[1], rho)
+    compute_elfield!(elf, adv.t_mesh[1], rho)
     pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2]))*elf
-    pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    pv.bufcur_sp = [(-getcur_t(self) / 2step(adv.t_mesh[1])) * (2*adv.t_mesh[2].points[j] + pv.bufcur_v[i]) for i=1:sz[1],j=1:sz[2] ]
     missing
 end
 
@@ -327,7 +327,7 @@ end
 ) where {T,N,Nsp,Nv}
     @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
 #    @show ind.I
-    return ( pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
+    return ( pv.bufcur_sp[ind], pv.bufcur_v[ind.I[1]])
 end
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv, StdOrder2_1},

@@ -4,6 +4,7 @@
 # cksum(t::Array)=crc32c(collect(reinterpret(UInt8,t)))
 # cksum(t::Array, x::Int32)=crc32c(collect(reinterpret(UInt8,t)), x)
 
+import Base.getindex
 
 # contruct nb iterators thta is the split of 1:lgtot iterator
 function splititr(nb, lgtot)
@@ -46,14 +47,16 @@ function dotprod(t_v::NTuple{N,Vector{T}}) where {N,T}
     end
     return res
 end
-dotprod(t_v::Tuple{Vector{T}}) where {T}=t_v[1]
+dotprod(t_v::Tuple{Vector{T}}) where {T} = t_v[1]
 function dotprodother(t_v::NTuple{N,Vector{T}}) where {N,T}
     return prod.(Iterators.product(t_v...))
 end
 
 # modulo or div for "begin to one" array
-modone(ind, n) = (n + ind - 1) % n + 1
-divone(ind,n) = div(ind - 1, n) + 1 
+# an other argument for "begin to zero" array ...
+@inline modone(ind, n) = mod(ind - 1, n) + 1
+@inline modone(ind::CartesianIndex, n) = CartesianIndex(modone.(ind.I, n))
+divone(ind, n) = div(ind - 1, n) + 1
 gettabmod(lg) = modone.(1:3lg, lg)
 
 # dotprod(v_v::Vector{Vector{T}}) where{T}=dotprod(totuple(v_v))
@@ -96,3 +99,42 @@ gettabmod(lg) = modone.(1:3lg, lg)
 # Base.setindex!(A::CircularArray,value, CI::CartesianIndex)= setindex!(A,value,CI.I)
 
 # Base.IndexStyle(::Type{CircularArray}) = IndexCartesian()
+# a finir
+
+function getextarray(
+    tabor::Array{T,N},
+    decbeg::NTuple{N,Int},
+    decend::NTuple{N,Int},
+) where {T,N}
+    tab = zeros(T, size(tabor) .+ decbeg .+ decend)
+    inddecbeg = CartesianIndex(decbeg)
+    sz = size(tabor)
+    for ind in CartesianIndices(tab)
+        tab[ind] = tabor[modone(ind - inddecbeg, sz)]
+    end
+    return tab
+end
+
+# struct ExtArray{T,N} <: AbstractArray{T,N}
+#     tab::Array{T,N}
+#     inddecbegin::CartesianIndex{N}
+#     function ExtArray(
+#         tabor::Array{T,N},
+#         decbeg::NTuple{N,Int},
+#         decend::NTuple{N,Int},
+#     ) where {T,N}
+#         tab = zeros(T, size(tabor) .+ decbeg .+ decend)
+#         inddecbeg = CartesianIndex(decbeg)
+#         sz = size(tabor)
+#         for ind in CartesianIndices(tab)
+#             tab[ind] = tabor[modone(ind + inddecbeg, sz)]
+#         end
+#         return new{T,N}(tab, inddecbeg)
+#     end
+# end
+# Base.getindex(A::ExtArray{T,N}, ind::CartesianIndex{N}) where {T,N} =
+#     A.tab[ind+A.inddecbegin]
+# Base.axes(A::ExtArray{T,N}) where {T,N} =
+#     ntuple(x -> (-A.inddecbegin[x]+1):(size(A.tab, x)-A.inddecbegin[x]), N)
+# Base.size(A::ExtArray{T,N}) where {T,N} = size(A.tab)
+# getarray(A::ExtArray) = A.tab

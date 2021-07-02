@@ -1,6 +1,8 @@
+using LinearAlgebra: size
 using Test
 using SemiLagrangian
 
+# include("mpoly/runtests.jl")
 include("test_interpolation.jl")
 include("test_lagrange.jl")
 include("test_hermite.jl")

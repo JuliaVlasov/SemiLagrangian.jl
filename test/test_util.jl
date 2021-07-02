@@ -1,7 +1,19 @@
 
 
 
-using SemiLagrangian: splititr, splitvec, transposition, totuple, tovector, tupleshape
+using SemiLagrangian:
+    splititr,
+    splitvec,
+    transposition,
+    totuple,
+    tovector,
+    tupleshape,
+    getextarray,
+    CircEdge,
+    AbstractInterpolation,
+    gettuple_x,
+    calinverse!,
+    interpolatemod!
 
 @testset "split util" begin
     data = [
@@ -54,3 +66,23 @@ end
     @test (53, 1) == tupleshape(1, 2, 53)
     @test (1, 1, 67) == tupleshape(3, 3, 67)
 end
+
+function test_extarray(T, sz, decbeg, decend)
+    tabor = rand(T, sz)
+    tabext = getextarray(tabor, decbeg, decend)
+    for ind in CartesianIndices(tabext)
+        @test tabext[ind] ==
+              tabor[CartesianIndex(mod.(ind.I .- decbeg .- 1, sz) .+ 1)]
+    end
+    @test size(tabext) == sz .+ decbeg .+ decend
+end
+@testset "ExtArray test" begin
+    test_extarray(Float64, (20, 10), (3, 5), (2, 7))
+    test_extarray(Float64, (4, 10, 7), (2, 3, 5), (1, 2, 4))
+    test_extarray(Float64, (20,), (3,), (7,))
+end
+
+
+
+
+

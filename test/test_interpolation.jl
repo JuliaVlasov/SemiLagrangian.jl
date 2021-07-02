@@ -1,5 +1,6 @@
 
 using LinearAlgebra
+using DoubleFloats
 using SemiLagrangian:
     AbstractInterpolation,
     Lagrange,
@@ -13,7 +14,10 @@ using SemiLagrangian:
     get_order,
     EdgeType,
     InsideEdge,
-    CircEdge
+    CircEdge,
+    gettuple_x,
+    interpolatemod!,
+    calinverse!
 
 function test_interp(
     interp::AbstractInterpolation{Rational{BigInt},edge},
@@ -139,6 +143,178 @@ end
 #         end
 #     end
 # end
+function test_inv0(
+    t_interp::Vector{I},
+    dec::NTuple{N,T},
+    sz::NTuple{N,Int},
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    res = ntuple(x -> zeros(T, sz), N)
+    res2 = ntuple(x -> zeros(T, sz), N)
+    for ind in CartesianIndices(sz)
+        for i = 1:N
+            res[i][ind] = T(ind.I[i] - 1)
+        end
+    end
+    decbegin = ntuple(x -> dec[x] < 0 ? -Int(floor(dec[x])) : 0, N)
+    decend = ntuple(x -> dec[x] > 0 ? Int(ceil(dec[x])) : 0, N)
+    for i = 1:N
+        interpolatemod!(res2[i], res[i], ind -> dec, t_interp, T(sz[i]), decbegin, decend)
+    end
+
+    resinv = ntuple(x -> zeros(T, sz), N)
+    resinv2 = ntuple(x -> zeros(T, sz), N)
+
+    calinverse!(resinv, res2)
+    calinverse!(resinv2, resinv)
+
+    @show Float32.(res[1]) + im * Float32.(res[2])
+    @show Float32.(res2[1]) + im * Float32.(res2[2])
+    @show Float32.(dec[1]) + im * Float32.(dec[2])
+    @show Float32.(resinv[1]) + im * Float32.(resinv[2])
+
+    #    note = resinv .- (res .+ dec)
+    note = resinv .- res
+
+    note[1] .= mod.(note[1] .+ (sz[1] / 2 + dec[1]), sz[1]) .- sz[1] / 2
+    note[2] .= mod.(note[2] .+ (sz[2] / 2 + dec[2]), sz[2]) .- sz[2] / 2
+
+    @show norm.(note)
+
+    for i = 1:N
+        @test norm(note[i]) < 1e-12
+        @test norm(res2[i]-resinv2[i]) < 1e-12
+    end
+
+end
+function test_inv(
+    t_interp::Vector{I},
+    coeff::T,
+    sz::NTuple{N,Int},
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    res = ntuple(x -> zeros(T, sz), N)
+    res2 = ntuple(x -> zeros(T, sz), N)
+    res3 = ntuple(x -> zeros(T, sz), N)
+    dec = ntuple(x -> zeros(T, sz), N)
+    resnew = ntuple(x -> zeros(T, sz), N)
+    for ind in CartesianIndices(sz)
+        for i = 1:N
+            dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
+            res[i][ind] = T(ind.I[i] - 1)
+        end
+    end
+    extr = extrema.(dec)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+    for i = 1:N
+        interpolatemod!(
+            res2[i],
+            res[i],
+            ind -> ntuple(x -> dec[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+    for i = 1:N
+        interpolatemod!(
+            res3[i],
+            res2[i],
+            ind -> ntuple(x -> dec[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+
+    resinv = ntuple(x -> zeros(T, sz), N)
+    resinv2 = ntuple(x -> zeros(T, sz), N)
+
+    calinverse!(resinv, res2)
+
+    calinverse!(resinv2, resinv)
+
+    @show Float32.(res[1]) + im * Float32.(res[2])
+    @show Float32.(res2[1]) + im * Float32.(res2[2])
+    @show Float32.(resinv2[1]) + im * Float32.(resinv2[2])
+    @show Float32.(dec[1]) + im * Float32.(dec[2])
+    @show Float32.(resinv[1]) + im * Float32.(resinv[2])
+    @show Float32.(resinv[1][CartesianIndex(10,10):CartesianIndex(12,12)]) + im * Float32.(resinv[2][CartesianIndex(10,10):CartesianIndex(12,12)])
+
+    #    note = resinv .- (res .+ dec)
+    # note =
+    #     ntuple(x -> mod.(resinv[x] - res[x] + dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
+
+    # @show norm.(note)
+
+    #    resfmr = res2 .- dec .- res
+    resfmr =
+        ntuple(x -> mod.(res2[x] - res[x] - dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
+    resfmr2 =
+        ntuple(x -> mod.(res3[x] - res2[x] - dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
+        @show norm(resfmr)
+        @show norm(resfmr2)
+
+    decnew = ntuple(x -> resinv[x] - res[x], 2)
+    extr = extrema.(decnew)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+    for i = 1:N
+        interpolatemod!(
+            resnew[i],
+            res2[i],
+            ind -> ntuple(x -> decnew[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+
+    @show resnew
+
+    for i=1:N
+        @test norm(res2[i]-resinv2[i]) < 1e-12
+    end
+
+
+
+
+    # extr = extrema.(ntuple(x -> -dec[x], 2))
+    # decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    # decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+
+    # for i = 1:N
+    #     interpolatemod!(
+    #         res3[i],
+    #         res2[i],
+    #         ind -> ntuple(x -> -dec[x][ind], N),
+    #         t_interp,
+    #         T(sz[i]),
+    #         decbegin,
+    #         decend,
+    #     )
+    # end
+
+    # resfmr2 = ntuple(x -> mod.(res3[x] - res2[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
+
+    # @show norm(resfmr2)
+
+    # #    @show Float32.(resfmr[1]) + im*Float32.(resfmr[2])
+
+    # # for i=1:N
+    # #     @test norm(note[i]) < 1e-12
+    # # end
+
+end
+
+# @testset "test inverse" begin
+#     T = Double64
+#     test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
+#     test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
+#     test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
+# end
 
 function test_interpfloat(
     interp::AbstractInterpolation{T,edge},
@@ -202,40 +378,40 @@ function test_interpfloat(
 end
 
 
-test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
+# test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
 
-test_interp(Lagrange(3, Rational{BigInt}; edge = CircEdge), 128)
+# test_interp(Lagrange(3, Rational{BigInt}; edge = CircEdge), 128)
 
-test_interp(B_SplineLU(3, 128, Rational{BigInt}), 128)
+# test_interp(B_SplineLU(3, 128, Rational{BigInt}), 128)
 
-test_interpfloat(Lagrange(3, BigFloat, edge = CircEdge), 128, 1e-3, 100)
-test_interpfloat(Lagrange(3, Float64, edge = CircEdge), 128, 1e-3, 100)
+# test_interpfloat(Lagrange(3, BigFloat, edge = CircEdge), 128, 1e-3, 100)
+# test_interpfloat(Lagrange(3, Float64, edge = CircEdge), 128, 1e-3, 100)
 
-test_interpfloat(Lagrange(7, BigFloat, edge = InsideEdge), 128, 1e-3, 3)
-test_interpfloat(Lagrange(7, Float64, edge = InsideEdge), 128, 1e-3, 3)
+# test_interpfloat(Lagrange(7, BigFloat, edge = InsideEdge), 128, 1e-3, 3)
+# test_interpfloat(Lagrange(7, Float64, edge = InsideEdge), 128, 1e-3, 3)
 
-test_interpfloat(Lagrange(21, BigFloat, edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(9, Float64, edge = CircEdge), 256, 1e-10)
+# test_interpfloat(Lagrange(21, BigFloat, edge = CircEdge), 256, 1e-20)
+# test_interpfloat(Lagrange(9, Float64, edge = CircEdge), 256, 1e-10)
 
-test_interpfloat(Lagrange(4, BigFloat, edge = CircEdge), 256, 1e-5)
-test_interpfloat(Lagrange(4, Float64, edge = CircEdge), 256, 1e-5)
+# test_interpfloat(Lagrange(4, BigFloat, edge = CircEdge), 256, 1e-5)
+# test_interpfloat(Lagrange(4, Float64, edge = CircEdge), 256, 1e-5)
 
-test_interpfloat(Lagrange(22, BigFloat, edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(12, Float64, edge = CircEdge), 256, 1e-10)
+# test_interpfloat(Lagrange(22, BigFloat, edge = CircEdge), 256, 1e-20)
+# test_interpfloat(Lagrange(12, Float64, edge = CircEdge), 256, 1e-10)
 
-test_interpfloat(B_SplineLU(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(B_SplineLU(3, 256, Float64), 256, 1e-5)
+# test_interpfloat(B_SplineLU(3, 256, BigFloat), 256, 1e-5)
+# test_interpfloat(B_SplineLU(3, 256, Float64), 256, 1e-5)
 
-test_interpfloat(B_SplineLU(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(B_SplineLU(11, 256, Float64), 256, 1e-12)
+# test_interpfloat(B_SplineLU(21, 256, BigFloat), 256, 1e-30)
+# test_interpfloat(B_SplineLU(11, 256, Float64), 256, 1e-12)
 
-test_interpfloat(B_SplineFFT(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(B_SplineFFT(3, 256, Float64), 256, 1e-5)
+# test_interpfloat(B_SplineFFT(3, 256, BigFloat), 256, 1e-5)
+# test_interpfloat(B_SplineFFT(3, 256, Float64), 256, 1e-5)
 
-test_interpfloat(B_SplineFFT(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
+# test_interpfloat(B_SplineFFT(21, 256, BigFloat), 256, 1e-30)
+# test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
 
 
-# test_interpfloat(B_SplineLU(7,1024,BigFloat; edge=InsideEdge),1024, 1e-4, 1)
+# # test_interpfloat(B_SplineLU(7,1024,BigFloat; edge=InsideEdge),1024, 1e-4, 1)
 
-# test_interpfloat(B_SplineLU(21,1024,BigFloat; edge=InsideEdge),1024, 1e-18, 5)
+# # test_interpfloat(B_SplineLU(21,1024,BigFloat; edge=InsideEdge),1024, 1e-18, 5)

@@ -62,7 +62,8 @@ function landau2(
     sz,
     interp::AbstractInterpolation,
     type::TypePoisson,
-    epsilon::T
+    epsilon::T,
+    typeadd,
 ) where {T}
     nbdt = Int(round(t_max/dt))
     spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
@@ -92,7 +93,7 @@ function landau2(
     resint = sum(data)*(vmax-vmin)/length(data)
     data /= resint
     
-    pvar = getpoissonvar(adv, type=type)
+    pvar = getpoissonvar(adv, type=type, typeadd=typeadd)
 
     advd = AdvectionData(adv, data, pvar)
 
@@ -159,9 +160,10 @@ function run_mesure(
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 tabsplit = [standardsplit, strangsplit]
-tabtype = [StdPoisson2d, StdOrder2_1, StdOrder2_2 ]
+tabtype = [StdPoisson2d, StdAB2]
+tabtypeadd = [0, 1, 2, 3, 4, 5, 6 ]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "std2d", "2d_Order2_1", "2d_Order2_2", ]
+tabtxt = ["stdsplit", "strangsplit", "std2d", "stdAB2"]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))
@@ -175,12 +177,13 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
     for inbdt=1:length(tabnbdt), itc=1:length(tabtxt)
         tc = itc <= lenitc ? tabsplit[itc] : missing
         tp = itc > lenitc ? tabtype[itc-lenitc] : missing
+        typadd = itc > lenitc ? tabtypeadd[itc-lenitc] : missing
         nbdt = tabnbdt[inbdt]
         dt = t_max/nbdt
         res[itc+1, inbdt] = if itc <= lenitc 
             landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
         else
-            landau2(t_max, timeopt, dt, sz, interp, tp, epsilon)
+            landau2(t_max, timeopt, dt, sz, interp, tp, epsilon, typadd)
         end
 #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             println("# sz=$sz t_max=$t_max interp=$interp")
@@ -203,7 +206,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
     end
 end
 T=Double64
-run_mesure(T(1), NoTimeOpt, (256,256), Lagrange(9,T), T(0.5))
+run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(7,T), T(0.5))
 
 
 

@@ -21,12 +21,18 @@ using SemiLagrangian:
     compute_ee,
     compute_ke,
     dotprod,
+    PoissonVar,
     getpoissonvar,
     TypePoisson,
     StdPoisson,
     StdPoisson2d,
     StdOrder2_1,
-    StdOrder2_2
+    StdOrder2_2,
+    StdAB,
+    StdAB2,
+    StdPoisson2dTry,
+    stdtomesh
+
 # """
 
 #    exact(tf, mesh1, mesh2)
@@ -158,15 +164,41 @@ function test_poisson2d(
     end
     return diffmax
 end
+verif(pv::PoissonVar{T}, advd::AdvectionData) where{T} = missing
+function verif(pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2dTry}, advd::AdvectionData) where{T,N,Nsp,Nv}
+    adv = advd.adv
+    sz = sizeall(adv)
+    d = zeros(T, sz)
+    coef = 1 / sqrt(2T(pi))
+    for ind in CartesianIndices(sz)
+        sp = stdtomesh(adv.t_mesh[1],pv.t_sp[ind])
+        v = stdtomesh(adv.t_mesh[2],pv.t_v[ind])
+        d[ind] = coef * exp(T(-0.5) * v^2) * (1 + T(big"0.001") * cos( sp / 2))
+    end
+    # println("t_sp=$(pv.t_sp[1:10,1:10])")
+    # println("t_v=$(pv.t_v[1:10,1:10])")
+    if !ismissing(pv.bufcur_sp)
+        # println("bufc_sp=$(pv.bufcur_sp[1:10])")
+        # println("bufc_v=$(pv.bufcur_v[1:10])")
+        println("extrema sp : $(extrema(pv.bufcur_sp))")
+        println("extrema v : $(extrema(pv.bufcur_v))")
+    end
+    res = norm(d-advd.data)
+    res2 = norm(d-advd.data, Inf)
+    println("verif : res=$res res2=$res2")
+    @show T
+end
+
 function test_poisson2dadv(
     sz::NTuple{2,Int},
     interp::Vector{I},
     t_max::T,
     nbdt::Int,
-    type::TypePoisson
+    type::TypePoisson,
+    typeadd=0
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
-    vmin, vmax, nv = T(-6), T(6), sz[2]
+    vmin, vmax, nv = T(-9), T(9), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
@@ -178,7 +210,7 @@ function test_poisson2dadv(
     for i = 1:sz[1], j = 1:sz[2]
         x = mesh_sp.points[i]
         y = mesh_v.points[j]
-        tabref[i, j] = coef * exp(-0.5 * y^2) * (1 + 0.001 * cos(x / 2))
+        tabref[i, j] = coef * exp(T(-0.5) * y^2) * (1 + T(big"0.001") * cos(x / 2))
     end
 
     dt = t_max/nbdt
@@ -190,10 +222,13 @@ function test_poisson2dadv(
     data = zeros(T, sz)
     copyto!(data, tabref)
 
-    pvar = getpoissonvar(adv, type=type)
+    pvar = getpoissonvar(adv, type=type, typeadd=typeadd)
+
 
     advd = AdvectionData(adv, data, pvar)
     elenergy, kinenergy, energyall = getenergy(advd)
+
+    verif(pvar, advd)
 
     enmax = enmin = energyall
     @show enmax, enmin
@@ -209,6 +244,7 @@ function test_poisson2dadv(
         println(
             "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
         )
+        verif(pvar, advd)
     end
     @show enmax, enmin
     return enmax - enmin
@@ -275,9 +311,13 @@ end
 
 @testset "test poisson2d" begin
     T = Double64
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_2) < 3e-3
-    @time @test test_poisson2d((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdPoisson2d) < 5e-3
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_1) < 3e-3
-     @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 0.6
+    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.01"), 5, StdPoisson2dTry) < 3e-3
+    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.01"), 5, StdAB2) < 3e-3
+#    @time @test test_poisson2dadv((512, 400), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.001"), 5, StdPoisson2d) < 5e-3
+    # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 20, StdAB, 4) < 3e-3
+    # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_2) < 3e-3
+    # @time @test test_poisson2d((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10) < 1e-3
+    # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdPoisson2d) < 5e-3
+    # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_1) < 3e-3
+    #  @time @test test_poisson2d2d_adv((16,32,34,28), map(x->Lagrange(11, T),1:4) , T(0.3), 3) < 0.6
 end

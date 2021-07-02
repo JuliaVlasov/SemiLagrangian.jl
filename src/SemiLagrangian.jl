@@ -4,14 +4,17 @@ module SemiLagrangian
 
 
 
+using Polynomials: StandardBasisPolynomial
 using Polynomials
 using FFTW
 using Base.Threads
 
+# include("mpoly/MultiPoly.jl")
 include("mpiinterface.jl")
 include("clockobs.jl")
 
 include("util.jl")
+include("cplxlagrange.jl")
 include("fftbig.jl")
 include("mesh.jl")
 include("interpolation.jl")
@@ -35,7 +38,7 @@ export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar
 export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt
-export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2
+export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2, StdAB2
 export get_type, sizeall, getdata
 
 end

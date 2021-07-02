@@ -43,7 +43,7 @@ Get the step of the mesh
 Base.step(mesh::UniformMesh) = mesh.step
 
 start(mesh::UniformMesh) = mesh.points[1]
-stop(mesh::UniformMesh) = mesh.points[end]+mesh.step
+stop(mesh::UniformMesh) = mesh.points[end] + mesh.step
 """
     Base.length(mesh::UniformMesh)
 
@@ -97,3 +97,112 @@ function vec_k_fft(mesh::UniformMesh{T}) where {T}
     res = k * vcat(0:midx-1, -midx:-1)
     return res
 end
+
+# @inline function newval(valref, val, borne, width)
+#     diff = val - valref
+#     if abs(diff) > borne
+#         s = sign(diff)
+#         divdiff, moddiff = divrem(diff, width)
+#         if abs(moddiff) > borne
+#             val -= (divdiff + s) * width
+#         else
+#             val -= divdiff * width
+#         end
+#     end
+#     return val
+# end
+
+@inline function newval(valref, val, borne, width)
+    diff = val - valref
+    return abs(diff) >= 0.5 ? valref + mod(diff +borne, width) - borne : val
+end
+
+function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N}
+    sz = size(f)
+    wdth = width(mesh)
+    borne = wdth / 2
+    flagmod = false
+    list = [ones(Int, N)]
+    flagfait = zeros(Bool, sz)
+    incr = map(x -> map(y -> y == x, 1:N), 1:N)
+    while !isempty(list)
+        indice = popfirst!(list)
+#        @show indice
+        valref = f[indice...]
+        for i = 1:N
+            newindice = indice + incr[i]
+            if newindice[i] <= sz[i]
+                if !flagfait[newindice...]
+                    val = f[newindice...]
+                    nval = newval(valref, val, borne, wdth)
+                    if nval != val
+                        f[newindice...] = nval
+                        flagmod = true
+                    end
+                    flagfait[newindice...] = true
+                    push!(list, newindice)
+                end
+            end
+        end
+    end
+    return flagmod
+end
+function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
+    strt = start(mesh)
+    stp = stop(mesh)
+    wdth = width(mesh)
+    for ind in CartesianIndices(res)
+        val = res[ind]
+        if val < strt || val >= stp
+            res[ind] = strt + mod(val - strt, wdth)
+        end
+    end
+end
+
+stdtomesh(mesh::UniformMesh{T}, v) where{T}=mesh.step*v .+ mesh.points[1]
+meshtostd(mesh::UniformMesh{T}, v) where{T}=(v .- mesh.points[1]) / mesh.step
+
+function traitmodend!(lg::T, res::Array{T,N}) where {T,N}
+    res .= mod.(res, lg)
+end
+function traitmodbegin!(lg::T, f::Array{T,N}) where {T,N}
+    sz = size(f)
+    borne = lg / 2
+    flagmod = false
+    list = [CartesianIndex(ntuple(x->1,N))]
+    flagfait = zeros(Bool, sz)
+    incr = map(x -> CartesianIndex(ntuple(y -> y == x, N)), 1:N)
+    while !isempty(list)
+        indice = popfirst!(list)
+#        @show indice
+        valref = f[indice]
+        for i = 1:N
+            newindice = indice + incr[i]
+            if newindice[i] <= sz[i]
+                if !flagfait[newindice]
+                    val = f[newindice]
+                    nval = newval(valref, val, borne, lg)
+                    if nval != val
+                        f[newindice] = nval
+                        flagmod = true
+                    end
+                    flagfait[newindice] = true
+                    push!(list, newindice)
+                end
+            end
+        end
+    end
+    return flagmod
+end
+function gettuple_x(t_mesh::NTuple{N,UniformMesh{T}}) where {T,N}
+    sz = length.(t_mesh)
+    ret = ntuple(x -> zeros(T, sz), N)
+    for ind in CartesianIndices(sz)
+        for i = 1:N
+            ret[i][ind] = t_mesh[i].points[ind.I[i]]
+        end
+    end
+    return ret
+end
+
+

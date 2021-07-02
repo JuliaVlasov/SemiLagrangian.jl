@@ -1,5 +1,5 @@
 
-
+using Polynomials
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64)
 
@@ -84,3 +84,19 @@ end
 # end
 
 # gettabfct(interp::Lagrange2d)=interp.l1d.tabfct
+function _c(k,n)
+    p = integrate(_getpolylagrange(k,n,0))
+    return p(0)-p(-1)
+end
+struct ABcoef
+    tab::Array{Rational{Int}}
+    function ABcoef(ordermax::Int)
+        tab = zeros(Rational{Int}, ordermax+1, ordermax+1)
+        for j=0:ordermax, i=0:j
+            tab[i+1,j+1] = _c(i,j)
+        end
+        return new(tab)
+    end
+end
+c(st::ABcoef, k, n)=st.tab[k+1,n+1]
+

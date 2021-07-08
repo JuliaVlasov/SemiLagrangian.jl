@@ -84,6 +84,44 @@ end
 # end
 
 # gettabfct(interp::Lagrange2d)=interp.l1d.tabfct
+
+function _getpolylagrange(tabv::AbstractVector{T}, k::Int, order::Int) where {T <: Number}
+    1 <= k <= order || throw(DomainError("the constant 1 <= k <= order is false"))
+    # the computed is made with big rational
+    result = Polynomials.Polynomial([one(T)])
+    for m = 1:order
+        if m != k
+            result *= Polynomials.Polynomial([-tabv[m], one(T)] ./ (tabv[k] - tabv[m]))
+        end
+    end
+    return result
+end
+function _c(dt, tabv, k, order)
+    p = integrate(_getpolylagrange(tabv, k, order))
+    return p(tabv[1]+dt)-p(tabv[1])
+end
+
+
+# struct ABCoefInit
+#     # indice lagrange, ordre, indice init
+#     tab::Array{Rational{Int}, 3}
+#     tabx::Vector{Rational{Int}}
+#     function ABCoefInit(ordermax)
+#         indx = 1
+#         pas = 1//factorial(ordermax)
+#         x = pas
+#         tabx = zeros(Rational{Int}, div(ordermax*(ordermax+1),2))
+#         for i=1:ordermax
+#             for j=1:i
+#                 tabx[indx] = x
+#                 x += pas
+#                 indx += 1
+#             end
+#             pas *= (i+1)
+#         end
+#     end
+
+# end
 function _c(k,n)
     p = integrate(_getpolylagrange(k,n,0))
     return p(0)-p(-1)
@@ -91,12 +129,12 @@ end
 struct ABcoef
     tab::Array{Rational{Int}}
     function ABcoef(ordermax::Int)
-        tab = zeros(Rational{Int}, ordermax+1, ordermax+1)
-        for j=0:ordermax, i=0:j
-            tab[i+1,j+1] = _c(i,j)
+        tab = zeros(Rational{Int}, ordermax, ordermax)
+        for j=1:ordermax, i=1:j
+            tab[i,j] = _c(i-1,j-1)
         end
         return new(tab)
     end
 end
-c(st::ABcoef, k, n)=st.tab[k+1,n+1]
+c(st::ABcoef, k, n)=st.tab[k,n]
 

@@ -210,7 +210,7 @@ function test_poisson2dadv(
     for i = 1:sz[1], j = 1:sz[2]
         x = mesh_sp.points[i]
         y = mesh_v.points[j]
-        tabref[i, j] = coef * exp(T(-0.5) * y^2) * (1 + T(big"0.001") * cos(x / 2))
+        tabref[i, j] = coef * exp(T(-0.5) * y^2) * (1 + T(big"0.5") * cos(x / 2))
     end
 
     dt = t_max/nbdt
@@ -233,15 +233,21 @@ function test_poisson2dadv(
     enmax = enmin = energyall
     @show enmax, enmin
 
-    for i=1:nbdt
+    diff = 0
+    diffprec = 0
+    while advd.time_cur < t_max
         while advection!(advd)
         end
         elenergy, kinenergy, energyall = getenergy(advd)
         enmax = max(energyall, enmax)
         enmin = min(energyall, enmin)
         
-        t = i*dt
-        println(
+        t = advd.time_cur
+        diff = enmax - enmin
+        delta = diff-diffprec
+        diffprec = diff
+        println("t=$(Float32(t)) diff=$diff delta=$delta")
+         println(
             "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
         )
         verif(pvar, advd)
@@ -292,14 +298,19 @@ println("trace1")
 
     enmax = enmin = energyall
 
-
+    diff = 0
+    diffprec = 0
     for i=1:nbdt
         while advection!(advd)
         end
         elenergy, kinenergy, energyall = getenergy(advd)
         enmax = max(energyall, enmax)
-        enmin = min(energyall, enmin)
-     t = i*dt
+        enmin = min(energyall, enmin) 
+        t = i*dt
+        diff = enmax - enmin
+        delta = diff-diffprec
+        diffprec = diff
+        println("t=$(Float32(t)) diff=$diff delta=$delta")
         println(
             "$(Float32(t))\t$(Float64(elenergy))\t$(Float64(kinenergy))\t$(Float64(energyall))"
         )
@@ -311,8 +322,21 @@ end
 
 @testset "test poisson2d" begin
     T = Double64
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.01"), 5, StdPoisson2dTry) < 3e-3
-    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.01"), 5, StdAB2) < 3e-3
+    @time ret = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdAB, 2)
+   @time ret2 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdAB, 2)
+    @test ret2 < (ret*1.1)/4
+   @show ret, ret2
+#    T = Double64
+#    @time ret = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdAB, 3)
+#   @time ret2 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdAB, 3)
+#    @test ret2 < (ret*1.1)/8
+#   @show ret, ret2
+#    ret4 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdAB2)
+#    ret42 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdAB2)
+#    @show ret4, ret42
+#    @test ret42 < (ret4*1.1)/4
+#    @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.01"), 5, StdPoisson2dTry) < 3e-3
+
 #    @time @test test_poisson2dadv((512, 400), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.001"), 5, StdPoisson2d) < 5e-3
     # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 20, StdAB, 4) < 3e-3
     # @time @test test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(10), 10, StdOrder2_2) < 3e-3

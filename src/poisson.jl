@@ -1,6 +1,6 @@
 
 @enum TypePoisson StdPoisson = 1 StdPoisson2d = 2 StdOrder2_1 = 3 StdOrder2_2 = 4 StdAB = 5 StdPoisson2dTry =
-    6 StdABNew = 7 StdAB2=8
+    6 StdABNew = 7 StdAB2 = 8
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -12,6 +12,8 @@ function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     return ntuple(x -> reshape(v_k[x], tupleshape(x, Nsp, sz[x])) .* fctv_k_gen, Nsp)
 end
 
+using SHA
+cod(a::Array)=bytes2hex(sha256(reinterpret(UInt8,collect(Iterators.flatten(a)))))
 
 
 
@@ -58,6 +60,14 @@ struct PoissonConst{T,N,Nsp,Nv,type,typeadd}
     end
 end
 getNspNv(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
+
+struct BufcT{T}
+    bufc_sp::Array{T,2}
+    bufc_v::Array{T,2}
+    t::T
+end
+
+
 """
     PoissonVar{T, N, Nsp, Nv} <: AbstractExtDataAdv{T}
     PoissonVar(pc::PoissonConst{T, N, Nsp, Nv})
@@ -80,11 +90,15 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
     t_data::Vector{Array{T,N}}
     t_sp::Union{Vector{Array{T,N}},Array{T,N}}
     t_v::Union{Vector{Array{T,N}},Array{T,N}}
-    t_bufc_sp::Vector{Array{T,N}}
-    t_bufc_v::Vector{Array{T,N}}
+    t_bufc::Vector{BufcT{T}}
     bufcur_sp::Any
     bufcur_v::Any
     tupleind::Any
+    ordcur::Int
+    indord::Int
+    t_bufc_sp
+    t_bufc_v
+    flend::Bool
 
     function PoissonVar(
         pc::PoissonConst{T,N,Nsp,Nv,type,typeadd},
@@ -93,25 +107,17 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
         rho = Array{T,Nsp}(undef, sz)
         sz = sizeall(pc.adv)
         t_data = []
-        t_bufc_sp = []
-        t_bufc_v = []
+        t_bufc = []
         if type == StdPoisson2dTry
             t_sp = zeros(T, sz)
             t_v = zeros(T, sz)
             for ind in CartesianIndices(sz)
-                t_sp[ind] = ind.I[1]-1
-                t_v[ind] = ind.I[2]-1
-            end
-        elseif type == StdAB
-            t_sp = [zeros(T,sz) for i=0:typeadd]
-            t_v = [zeros(T,sz) for i=0:typeadd]
-            for ind in CartesianIndices(sz), i=1:typeadd+1
-                t_sp[i][ind] = ind.I[1]-1
-                t_v[i][ind] = ind.I[2]-1
+                t_sp[ind] = ind.I[1] - 1
+                t_v[ind] = ind.I[2] - 1
             end
         else
-            t_sp = zeros(T,ntuple(x-> 1,N))
-            t_v = zeros(T,ntuple(x-> 1,N))
+            t_sp = zeros(T, ntuple(x -> 1, N))
+            t_v = zeros(T, ntuple(x -> 1, N))
         end
         return new{T,N,Nsp,Nv,type,typeadd}(
             pc,
@@ -121,11 +127,15 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
             t_data,
             t_sp,
             t_v,
-            t_bufc_sp,
-            t_bufc_v,
+            t_bufc,
             missing,
             missing,
-            missing
+            missing,
+            0,
+            0,
+            [],
+            [],
+            false
         )
     end
 end
@@ -302,64 +312,7 @@ function initcoef!(
     pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
 end
-function initcoef!(
-    pv::PoissonVar{T,N,Nsp,Nv,StdAB2},
-    self::AdvectionData{T,N},
-) where {T,N,Nsp,Nv}
-    #    st = getst(self)
-    adv = self.adv
-    sz = sizeall(adv)
-    compute_charge!(self)
-    compute_elfield!(self)
 
-    vecbufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
-    vecbufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
-    bufc_v = zeros(T, sz)
-    bufc_sp = zeros(T, sz)
-    for ind in CartesianIndices(sz)
-        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
-        bufc_v[ind] = vecbufc_v[ind.I[1]]
-    end
-    pushfirst!(pv.t_bufc_sp,bufc_sp)
-    pushfirst!(pv.t_bufc_v, bufc_v)
-
-    if length(pv.t_bufc_sp) == 3
-        deleteat!(pv.t_bufc_sp, 3)
-        deleteat!(pv.t_bufc_v, 3)
-    end
-    fmrbuf = zeros(T, sz)
-    for i=1:length(pv.t_bufc_sp)
-        interpolate!(fmrbuf,pv.t_bufc_sp[i], ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp )
-        pv.t_bufc_sp[i] .= fmrbuf
-        interpolate!(fmrbuf,pv.t_bufc_v[i], ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp )
-        pv.t_bufc_v[i] .= fmrbuf
-    end
-
-
-    if ismissing(pv.bufcur_sp)
-        pv.bufcur_sp = zeros(T,sz)
-        pv.bufcur_v = zeros(T,sz)
-    end
-
-    if length(pv.t_bufc_sp) == 2
-        pv.bufcur_sp .= (3pv.t_bufc_sp[1] - pv.t_bufc_sp[2])/2
-        pv.bufcur_v .= (3pv.t_bufc_v[1] - pv.t_bufc_v[2])/2
-    else
-        pv.bufcur_sp .= pv.t_bufc_sp[1]
-        pv.bufcur_v .= pv.t_bufc_v[1]
-    end
-
-end
-@inline function getalpha(
-    pv::PoissonVar{T,N,Nsp,Nv,StdAB2},
-    self::AdvectionData{T},
-    indext,
-    ind,
-) where {T,N,Nsp,Nv}
-    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
-    #    @show ind.I
-    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
-end
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
     self::AdvectionData{T},
@@ -400,23 +353,23 @@ function initcoef!(
 
     vmin, vmax = extrema(pv.bufcur_v)
     spmin, spmax = extrema(pv.bufcur_sp)
-    
+
     cnvmin(x) = x < 0 ? Int(-floor(x)) : 0
     cnvmax(x) = x > 0 ? Int(ceil(x)) : 0
 
-    decbegin = cnvmin.((spmin,vmin))
+    decbegin = cnvmin.((spmin, vmin))
     decend = cnvmax.((spmax, vmax))
 
     @show decbegin, decend, typeof(decbegin), typeof(decend)
 
-   interpolatemod!(
+    interpolatemod!(
         buf,
         pv.t_sp,
         ind -> getalpha(pv, self, 0, ind),
         adv.t_interp,
         T(length(adv.t_mesh[1])),
         decbegin,
-        decend
+        decend,
     )
 
     pv.t_sp .= buf
@@ -428,7 +381,7 @@ function initcoef!(
         adv.t_interp,
         T(length(adv.t_mesh[2])),
         decbegin,
-        decend
+        decend,
     )
 
     pv.t_v .= buf
@@ -511,87 +464,439 @@ function initcoef!(
     ]
     missing
 end
-function firstinitdata(
-    pv::PoissonVar{T,N,Nsp,Nv,StdAB,typeadd},
-    self::AdvectionData,
-) where {T,N,Nsp,Nv,typeadd}
+function initcoef!(
+    pv::PoissonVar{T,N,Nsp,Nv,StdAB2},
+    self::AdvectionData{T,N},
+) where {T,N,Nsp,Nv}
+    #    st = getst(self)
     adv = self.adv
-    pc = pv.pc
     sz = sizeall(adv)
-    tabref = [zeros(T, sz) for i = 1:2typeadd+1]
-    buf = zeros(T, sz)
-    revtabref = reverse(tabref)
-    ref_i = typeadd + 1
+    compute_charge!(self)
+    compute_elfield!(self)
+    dt = getcur_t(self)
+    @show "initcoef AB2", self.time_cur, dt
 
-    copyto!(tabref[ref_i], self.data)
+    vecbufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
-    rho = zeros(T, sz[1])
+#    @show vecbufc_v
+@show "AB2", cod(vecbufc_v)
 
-    elf = zeros(T, sz[1])
+    bufc_v = zeros(T, sz)
+    bufc_sp = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    if length(pv.t_bufc_sp) > 0
+        @show "TR1", sum(pv.t_bufc_sp[1])
+    end
+
+    pushfirst!(pv.t_bufc_sp, bufc_sp)
+    pushfirst!(pv.t_bufc_v, bufc_v)
+
+    if length(pv.t_bufc_sp) > 1
+        @show "TR2", sum(pv.t_bufc_sp[2])
+    end
+
+    if length(pv.t_bufc_sp) == 3
+        deleteat!(pv.t_bufc_sp, 3)
+        deleteat!(pv.t_bufc_v, 3)
+    end
+    fmrbuf = zeros(T, sz)
+    fmr_sp = copy(bufc_sp)
+    fmr_v = copy(bufc_v)
+    for i = 1:length(pv.t_bufc_sp)
+        @show "TR5", i, pv.t_bufc_sp[i][2:2], fmr_sp[2:2], fmr_v[2:2]
+        interpolate!(
+            fmrbuf,
+            pv.t_bufc_sp[i],
+#            ind -> (bufc_sp[ind], bufc_v[ind]),
+            ind -> (fmr_sp[ind], fmr_v[ind]),
+            adv.t_interp,
+        )
+        pv.t_bufc_sp[i] .= fmrbuf
+        interpolate!(
+            fmrbuf,
+            pv.t_bufc_v[i],
+            ind -> (fmr_sp[ind], fmr_v[ind]),
+            adv.t_interp,
+        )
+        pv.t_bufc_v[i] .= fmrbuf
+    end
+    @show sum(pv.t_bufc_sp[1])
+    @show sum(pv.t_bufc_v[1])
+    if length(pv.t_bufc_sp) > 1
+        @show sum(pv.t_bufc_sp[2])
+        @show sum(pv.t_bufc_v[2])
+    end
 
 
-    for ord = 0:typeadd-1
-        tabsens = ord == 0 ? [-1] : [1, -1]
-        for sens in tabsens
-            tab = sens == -1 ? revtabref : tabref
-            borne = sens == -1 ? ord + 1 : ord
-            for i = 1:borne
-                buf .= sum([c(pc.abcoef, i, ord) * tab[ref_i+borne-1-i] for i = 0:ord])
-                compute_charge!(rho, (adv.t_mesh[2],), buf)
-                compute_elfield!(elf, adv.t_mesh[1], rho)
-                bufc_v = (sens * getcur_t(self) / step(adv.t_mesh[2])) * elf
-                bufc_sp =
-                    (-sens * getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
-                interpolate!(
-                    tab[ref_i+borne],
-                    tab[ref_i+borne-1],
-                    ind -> (bufc_sp[ind.I[2]], bufc_v[ind.I[1]]),
-                    adv.t_interp,
-                )
-            end
+    if ismissing(pv.bufcur_sp)
+        pv.bufcur_sp = zeros(T, sz)
+        pv.bufcur_v = zeros(T, sz)
+    end
+
+    if length(pv.t_bufc_sp) == 2
+        pv.bufcur_sp .= (3pv.t_bufc_sp[1] - pv.t_bufc_sp[2]) / 2
+        pv.bufcur_v .= (3pv.t_bufc_v[1] - pv.t_bufc_v[2]) / 2
+    else
+        pv.bufcur_sp .= pv.t_bufc_sp[1]
+        pv.bufcur_v .= pv.t_bufc_v[1]
+    end
+    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+end
+@inline function getalpha(
+    pv::PoissonVar{T,N,Nsp,Nv,StdAB2},
+    self::AdvectionData{T},
+    indext,
+    ind,
+) where {T,N,Nsp,Nv}
+    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+    #    @show ind.I
+    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
+end
+
+
+# function getcur_t(
+#     self::AdvectionData{T,2},
+#     pv::PoissonVar{T,2,1,1,StdAB,order},
+# ) where {T,order}
+#     c_ord = pv.ordcur - (pv.indord == 1 && pv.ordcur != 1)
+#     ret = getcur_t(self.adv, self.state_gen)
+#     if c_ord == order
+#         return ret
+#     else
+#         return ret / prod(c_ord+1:order)
+#     end
+# end
+# function retns(self::AdvectionData{T,2}, pv::PoissonVar{T,2,1,1,StdAB,order},) where {T,order}
+#     @show "retns", pv.ordcur, order
+#     return pv.ordcur != order
+# end
+
+function sum_ab!(
+    pv::PoissonVar{T,2,1,1,StdAB,order},
+    self::AdvectionData{T,2},
+) where {T,order}
+    dt = getcur_t(self)
+    if pv.ordcur == pv.indord == order
+         coefs = map( i -> dt*c(pv.pc.abcoef, i, order), 1:order)
+    else
+        tabv = map( i -> pv.t_bufc[i].t, 1:pv.ordcur)
+        tabv .-= tabv[1]
+        coefs = map( i -> _c( dt, tabv, i, pv.ordcur), 1:pv.ordcur)
+    end
+#    coefs = map( i -> c(pv.pc.abcoef, i, pv.ordcur), 1:pv.ordcur)
+    ords = map( i -> pv.t_bufc[i].order, 1:pv.ordcur)
+    @show " sum_ab ", pv.ordcur, pv.indord, coefs, ords
+    pv.bufcur_sp .= sum(map( i -> coefs[i] * pv.t_bufc[i].bufc_sp, 1:pv.ordcur ))
+    pv.bufcur_v .= sum(map( i -> coefs[i] * pv.t_bufc[i].bufc_v, 1:pv.ordcur ))
+end
+
+function deletebufc!(pv::PoissonVar{T,2,1,1,StdAB,order}) where {T,order}
+    mindiff = Inf
+    ind = -1
+    for i = 2:length(pv.t_bufc)-1
+        dt = pv.t_bufc[i-1].t - pv.t_bufc[i+1].t
+        if dt < mindiff && 0 < pv.t_bufc[i].order < pv.ordcur
+            mindiff = dt
+            ind = i
         end
     end
-    ret = revtabref[ref_i:end]
-    @show length(ret), typeadd
-    return ret
+    if ind > 0
+        println("delete order=$(pv.t_bufc[ind].order)")
+        deleteat!(pv.t_bufc, ind)
+    end
 end
-function initcoef!(
-    pv::PoissonVar{T,N,Nsp,Nv,StdAB,typeadd},
-    self::AdvectionData{T,N},
-) where {T,N,Nsp,Nv,typeadd}
-    #    st = getst(self)
-    pc = pv.pc
+function interpbufc!(
+    pv::PoissonVar{T,2,1,1,StdAB,typeadd},
+    self::AdvectionData{T,2},
+    vec_sp::Vector{T},
+    vec_v::Vector{T},
+) where {T,typeadd}
     adv = self.adv
     sz = sizeall(adv)
-    # NOTE !!!! a ameliorer pour la gestion de la memoire !!!!
-    if length(pv.t_data) == 0
-        pv.t_data = firstinitdata(pv, self)
-    else
-        pv.t_data = circshift(pv.t_data, 1)
-        pv.t_data[1] = copy(self.data)
+    fmrbuf = zeros(T, sz)
+    for bct in pv.t_bufc
+        interpolate!(
+            fmrbuf,
+            bct.bufc_sp,
+            ind -> (vec_sp[ind.I[2]], vec_v[ind.I[1]]),
+            adv.t_interp,
+        )
+        bct.bufc_sp .= fmrbuf
+        interpolate!(
+            fmrbuf,
+            bct.bufc_v,
+            ind -> (vec_sp[ind.I[2]], vec_v[ind.I[1]]),
+            adv.t_interp,
+        )
+        bct.bufc_v .= fmrbuf
     end
+end
+function getenergyall(adv, buf::Array{T,2}) where {T} 
+    sz = size(buf, 1) 
+    rho = zeros(T, sz)
+    elf = zeros(T, sz)
+    compute_charge!(rho, (adv.t_mesh[2],), buf)
+    compute_elfield!(elf, adv.t_mesh[1], rho)
 
-    ord = length(pv.t_data) - 1
+    elenergy = compute_ee((adv.t_mesh[1],), (elf,))
+    kinenergy = compute_ke((adv.t_mesh[1],),(adv.t_mesh[2],), buf)
+    energyall = elenergy + kinenergy
+    return energyall
+end
 
-    locdata = sum([c(pc.abcoef, i, ord) * pv.t_data[i+1] for i = 0:ord])
+function interpbufc!(
+    pv::PoissonVar{T,2,1,1,StdAB,typeadd},
+    self::AdvectionData{T,2},
+    bufc_sp::Array{T,2},
+    bufc_v::Array{T, 2},
+) where {T,typeadd}
+    adv = self.adv
+    sz = sizeall(adv)
+    fmrbuf = zeros(T, sz)
+    ind = 1
+    for bct in pv.t_bufc
+        @show "TR3", ind, sum(bct.bufc_sp)
+        @show "TR5", ind, bct.bufc_sp[2:2], bufc_sp[2:2], bufc_v[2:2]
+        interpolate!(
+            fmrbuf,
+            bct.bufc_sp,
+            ind -> (bufc_sp[ind], bufc_v[ind]),
+            adv.t_interp,
+        )
+        bct.bufc_sp .= fmrbuf
+        @show "TR4", ind, sum(bct.bufc_sp)
+        interpolate!(
+            fmrbuf,
+            bct.bufc_v,
+            ind -> (bufc_sp[ind], bufc_v[ind]),
+            adv.t_interp,
+        )
+        bct.bufc_v .= fmrbuf
+        ind += 1
+    end
+end
+struct BufcFmr{T}
+    oriplus_sp::Array{T,2}
+    oriplus_v::Array{T,2}
+    orimoins_sp::Array{T,2}
+    orimoins_v::Array{T,2}
+    cur_sp::Array{T,2}
+    cur_v::Array{T,2}
+    function BufcFmr(T::DataType, sz::Tuple{Int,Int})
+        return new{T}(
+            zeros(T,sz),
+            zeros(T,sz),
+            zeros(T,sz),
+            zeros(T,sz),
+            zeros(T,sz),
+            zeros(T,sz),
+        )
+    end
+end
+function decall!(tab::Vector{BufcFmr{T}}, adv::Advection, sens::Int, ref_i::Int, nb::Int, dec::Int=0) where {T}
+    for j=1:nb
+        ptab = tab[ref_i-nb+j+dec]
+    
+        dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
+        dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
+
+        ori_sp, ori_v = if j == nb
+            dec_sp, dec_v
+        else
+            copy(ptab.cur_sp), copy(ptab.cur_v)
+        end
+
+        interpolate!( ptab.cur_sp, ori_sp, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+        interpolate!( ptab.cur_v, ori_v, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+    end
+end
+
+function initfirst(
+    pv::PoissonVar{T,2,1,1,StdAB,order},
+    self::AdvectionData,
+    bufcc_sp::Array{T,2},
+    bufcc_v::Array{T,2}
+) where {T,order}
+    adv = self.adv
+    pc = pv.pc
+    sz = sizeall(adv)
+    tabref = [BufcFmr(T,sz) for i = 1:2order-1]
+    buf = copy(self.data)
+    buf_sp = zeros(T, sz)
+    buf_v = zeros(T, sz)
+    revtabref = reverse(tabref)
+    ref_i = order
+
+    dt = getcur_t(self)
+
+    ptab = tabref[ref_i]
+    copyto!(tabref[ref_i].oriplus_sp, bufcc_sp)
+    copyto!(tabref[ref_i].oriplus_sp, bufcc_v)
+
+    interpolate!(buf_sp, ptab.oriplus_sp, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+    interpolate!(buf_v, ptab.oriplus_v, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+
+
+    resinv = getinverse((buf_sp,buf_v), adv.t_interp)
+    tabref[ref_i].orimoins_sp .= resinv[1]
+    tabref[ref_i].orimoins_v .= resinv[2]
+
+    # tabref[ref_i].orimoins_sp .= - tabref[ref_i].oriplus_sp
+    # tabref[ref_i].orimoins_v .= - tabref[ref_i].oriplus_v
 
     rho = zeros(T, sz[1])
 
     elf = zeros(T, sz[1])
 
-    compute_charge!(rho, (adv.t_mesh[2],), locdata)
-    compute_elfield!(elf, adv.t_mesh[1], rho)
-    pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2])) * elf
-    pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
-    missing
+
+    refen = getenergyall(self.adv, self.data)
+
+    @show refen
+
+
+    for ord = 1:order-1
+        tabsens = ord == 1 ? [-1] : [1, -1]
+        for sens in tabsens
+            tab = sens == -1 ? revtabref : tabref
+            borne = sens == -1 ? ord  : ord -1
+            for j=1:ord-1
+                decall!(tab, adv, sens, ref_i, j)
+                # for k = 1:j
+                #     ptab = tab[ref_i-ord+k]
+                
+                #     dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
+                #     dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
+                
+                #     ori_sp, ori_v = if k == j
+                #         dec_sp, dec_v
+                #     else
+                #         copy(ptab.cur_sp), copy(ptab.cur_v)
+                #     end
+                #     interpolate!( ptab.cur_sp, ori_sp, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+                #     interpolate!( ptab.cur_v, ori_v, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+                # end
+            end
+            for i = 1:borne
+                decall!(tab, adv, sens, ref_i, ord, i-1)
+                # for j=1:ord
+                #     ptab = tab[ref_i-ord+i+j-1]
+                 
+                #     dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
+                #     dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
+
+                #     ori_sp, ori_v = if j == ord
+                #         dec_sp, dec_v
+                #     else
+                #         copy(ptab.cur_sp), copy(ptab.cur_v)
+                #     end
+    
+                #     interpolate!( ptab.cur_sp, ori_sp, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+                #     interpolate!( ptab.cur_v, ori_v, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+                # end
+
+                buf_sp .= sum([c(pc.abcoef, j, ord) * tab[ref_i+i-j].cur_sp for j = 1:ord])
+                buf_v .= sum([c(pc.abcoef, j, ord) * tab[ref_i+i-j].cur_v for j = 1:ord])
+                interpolate!(buf, copy(buf), ind ->(buf_sp[ind], buf_v[ind]), adv.t_interp)
+                @show refen
+                diffen = abs(refen-getenergyall(self.adv, buf))
+                @show sens, ord, i, diffen
+                compute_charge!(rho, (adv.t_mesh[2],), buf)
+                compute_elfield!(elf, adv.t_mesh[1], rho)
+                ptab = tab[ref_i+i]
+                vec_v =  ( getcur_t(self) / step(adv.t_mesh[2])) * elf
+                vec_sp =
+                    (- getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+                for ind in CartesianIndices(sz)
+                    ptab.oriplus_sp[ind] = vec_sp[ind.I[2]]
+                    ptab.oriplus_v[ind] = vec_v[ind.I[1]]
+                end
+                # ptab.orimoins_sp .= - ptab.oriplus_sp
+                # ptab.orimoins_v .= - ptab.oriplus_v
+#                 ptab
+                interpolate!(buf_sp, ptab.oriplus_sp, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+                interpolate!(buf_v, ptab.oriplus_v, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+
+#                resinv = getinverse((ptab.oriplus_sp,ptab.oriplus_v), adv.t_interp)
+                resinv = getinverse((buf_sp,buf_v), adv.t_interp)
+                ptab.orimoins_sp .= resinv[1]
+                ptab.orimoins_v .= resinv[2]
+# #                interpolate!(ptab.orimoins_sp, resinv[1], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
+#                 # interpolate!(ptab.orimoins_v, resinv[2], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
+#                 interpolate!(ptab.orimoins_sp, resinv[1], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+#                 interpolate!(ptab.orimoins_v, resinv[2], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+             end
+        end
+    end
+    for i=1:order-1
+        decall!(tabref, adv, 1, ref_i, i)
+    end
+    return tabref
 end
 
-function caldata!( bufdata::Array{T,2}, adv::Advection, buf_sp::Array{T,2}, buf_v::Array{T,2}) where{T}
+function initcoef!(
+    pv::PoissonVar{T,2,1,1,StdAB,order},
+    self::AdvectionData{T,2},
+) where {T,order}
+    adv = self.adv
+    sz = sizeall(adv)
+
+    compute_charge!(self)
+    compute_elfield!(self)
+    dt = getcur_t(self)
+
+    vecbufc_v = (dt/step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v = zeros(T, sz)
+    bufc_sp = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    if ismissing(pv.bufcur_sp)
+        pv.bufcur_sp = zeros(T, sz)
+        pv.bufcur_v = zeros(T, sz)
+        tabref = initfirst(pv,self, copy(bufc_sp), copy(bufc_v))
+        for i = 1:order-1
+            ptab = tabref[i]
+            pushfirst!(pv.t_bufc, BufcT(ptab.cur_sp, ptab.cur_v, (i-order)*dt))
+        end
+    end
+      
+    pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), self.time_cur))
+
+    interpbufc!(pv, self, bufc_sp, bufc_v)
+
+    pv.bufcur_sp .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
+    pv.bufcur_v .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+
+    deleteat!(pv.t_bufc,length(pv.t_bufc))
+
+#    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+
+end
+@inline function getalpha(
+    pv::PoissonVar{T,2,1,1,StdAB},
+    self::AdvectionData{T},
+    indext,
+    ind,
+) where {T}
+    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
+end
+function caldata!(
+    bufdata::Array{T,2},
+    adv::Advection,
+    buf_sp::Array{T,2},
+    buf_v::Array{T,2},
+) where {T}
     coef = 1 / sqrt(2T(pi))
     for ind in CartesianIndices(sz)
-        sp = stdtomesh(adv.t_mesh[1],buf_sp[ind])
-        v = stdtomesh(adv.t_mesh[2],buf_v[ind])
-        bufdata[ind] = coef * exp(T(-0.5) * v^2) * (1 + T(big"0.001") * cos( sp / 2))
+        sp = stdtomesh(adv.t_mesh[1], buf_sp[ind])
+        v = stdtomesh(adv.t_mesh[2], buf_v[ind])
+        bufdata[ind] = coef * exp(T(-0.5) * v^2) * (1 + T(big"0.001") * cos(sp / 2))
     end
 end
 
@@ -642,13 +947,13 @@ end
 #                 # )
 #                 vmin, vmax = extrema(bufc_v)
 #                 spmin, spmax = extrema(bufc_sp)
-                
+
 #                 cnvmin(x) = x < 0 ? Int(-floor(x)) : 0
 #                 cnvmax(x) = x > 0 ? Int(ceil(x)) : 0
-            
+
 #                 decbegin = cnvmin.((spmin,vmin))
 #                 decend = cnvmax.((spmax, vmax))
-            
+
 #                 @show decbegin, decend, typeof(decbegin), typeof(decend)
 #                 interpolatemod!(
 #                     tab_sp[ref_i+borne],
@@ -710,16 +1015,7 @@ end
 #     missing
 # end
 
-@inline function getalpha(
-    pv::PoissonVar{T,N,Nsp,Nv,StdAB},
-    self::AdvectionData{T},
-    indext,
-    ind,
-) where {T,N,Nsp,Nv}
-    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
-    #    @show ind.I
-    return (pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
-end
+
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdOrder2_2},
     self::AdvectionData{T},

@@ -609,7 +609,8 @@ getext(self) = self.parext
 getdata(self) = self.data
 getnbdims(self::AdvectionData)=getst(self).ndims
 getstcoef(self::AdvectionData)=getstcoef(self.adv, self.state_gen)
-getcur_t(self::AdvectionData) = getcur_t(self.adv, self.state_gen)
+getcur_t(self::AdvectionData, extdata::AbstractExtDataAdv) = getcur_t(self.adv, self.state_gen)
+getcur_t(self::AdvectionData) = getcur_t(self, self.parext)
 isvelocity(self::AdvectionData) = isvelocity(self.adv, self.state_gen)
 _getcurrentindice(self::AdvectionData)=getst(self).perm[1]
 function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
@@ -639,6 +640,10 @@ Function called at the end of advection function to update internal state of Adv
 - `ret::Bool` : `true` if the series must continue
                 `false` at the end of the series.
 """
+function retns(self::AdvectionData, extdata::AbstractExtDataAdv)
+    println("generic retns")
+    return false
+end
 function nextstate!(self::AdvectionData)
     if self.state_gen < self.adv.nbstates
         self.state_gen += 1
@@ -646,8 +651,8 @@ function nextstate!(self::AdvectionData)
     else
         self.state_gen = 1
         printall(self.clobs)
-        self.time_cur += self.adv.dt_base
-        return false
+        self.time_cur += getcur_t(self)
+        return retns(self,self.parext)
     end
 end
 # default function of the interface

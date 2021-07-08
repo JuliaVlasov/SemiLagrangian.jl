@@ -1,4 +1,4 @@
-
+using LinearAlgebra
 import Base.isless
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
@@ -548,7 +548,7 @@ function interpolate!(
         ),
     )
     sz = size(fp)
-    @show sz
+    @show "interpolate!", sz
     res = sol(interp_t, fi)
 
     order = get_order.(interp_t)
@@ -575,7 +575,7 @@ function interpolate!(
         diffmax = max(diff, diffmax)
         fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
     end
-    @show "std2d", diffmax, decminmin, decmaxmax
+#    @show "std2d", diffmax, decminmin, decmaxmax
 end
 function interpolatemod!(
     fp::AbstractArray{T,N},
@@ -641,7 +641,72 @@ function interpolatemod!(
     # @show fp[1:10,1:10]
     missing
 end
+function interpolatemod!(
+    fp::AbstractArray{T,N},
+    fi::AbstractArray{T,N},
+    bufc::Tuple{Array{T,N},Array{T,N}},
+    interp_t::AbstractVector{I},
+    lgmesh::Union{T,UniformMesh{T}},
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
 
+    (N == 2 && N == length(interp_t)) || thrown(
+        ArgumentError(
+            "The number of Interpolation $(length(interp_t)) is different of N=$N",
+        ),
+    )
+
+    sz = size(fp)
+
+    res = sol(interp_t, fi)
+
+    extr = extrema.(bufc)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+
+    order = totuple(get_order.(interp_t))
+    origin = 0 .- div.(order, (2,))
+
+    dec_b = decbegin .- origin
+    dec_e = decend .+ order .+ origin
+    fiext = getextarray(res, dec_b, dec_e)
+
+    decall = decbegin
+
+    traitmodbegin!(lgmesh, fiext)
+
+    cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp)))
+    diffmax = 0
+    decminmin = ntuple(x -> Inf, N)
+    decmaxmax = ntuple(x -> -Inf, N)
+    decabs = ntuple(x -> 0, N)
+
+    # @show size(fi), decbegin, decend
+    # @show order, origin, dec_b, dec_e, size(fiext), decall
+    for ind in CartesianIndices(sz)
+        dint, tab = getprecal(cache, (bufc[1][ind],bufc[2][ind]))
+        decabs = max.(decabs, abs.((bufc[1][ind],bufc[2][ind])))
+        decmin, decmax = extrema(tab)
+        decminmin = min.(decminmin, dint .+ decmin)
+        decmaxmax = max.(decmaxmax, dint .+ decmax)
+
+        deb_i = dint .+ decall .+ ind.I
+        end_i = deb_i .+ order
+        vmin, vmax = extrema(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...])
+        diff = vmax - vmin
+        diffmax = max(diff, diffmax)
+        fp[ind] = sum(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...] .* tab)
+        # if ind.I[1] <= 10 && ind.I[2] <= 10
+        #     indcor = ind +CartesianIndex(decall .- origin)
+        #     @show decall, dint, origin
+        #     @show ind, fp[ind], indcor, fiext[indcor]
+        # end
+    end
+    # @show diffmax, decminmin, decmaxmax, decabs
+    # @show fp[1:10,1:10]
+    traitmodend!(lgmesh, fp)
+    # @show fp[1:10,1:10]
+    missing
+end
 # function interpolate!(
 #     fp::AbstractVector{T},
 #     fi::AbstractVector{T},
@@ -677,3 +742,68 @@ end
 # ) where {T,I<:AbstractInterpolation{T}}
 #     interpolate!(fp, fi, dec, interp_t[1], tabmod[1], cache)
 # end
+function getinverse(dec::NTuple{N,Array{T,N}}, interp::Vector{I}) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    sz = size(dec[1])
+    res = ntuple(x -> [T(ind.I[x]-1) for ind in CartesianIndices(sz)], N)
+    decinv = ntuple(x -> [T(ind.I[x]-1) for ind in CartesianIndices(sz)], N)
+    buf = zeros(T,sz)
+    res2 = ntuple( x -> zeros(T,sz), N)
+    res3 = ntuple( x -> zeros(T,sz), N)
+    res4 = ntuple( x -> zeros(T,sz), N)
+    decfmr = ntuple( x -> zeros(T,sz), N)
+
+    sz_2 = div.(sz,2)
+
+    for i=1:N
+        interpolatemod!(res2[i],res[i],dec,interp, T(sz[i]))
+        interpolatemod!(decfmr[i], -dec[i], dec, interp, T(sz[i]))
+        decfmr[i] .= mod.(decfmr[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+
+        res4[i] .= res2[i]
+
+        res3[i] .= mod.( res2[i] .- res[i] .- dec[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+
+    end
+
+    @show norm(res3)
+    
+
+ 
+    borne = log(eps(T)*prod(sz))
+
+    for z=1:2
+        ind = 1
+        note = Inf
+        while note > borne
+            for i=1:N
+                interpolatemod!(res3[i], res2[i], decfmr, interp, T(sz[i]))
+                interpolatemod!(buf, decinv[i], decfmr, interp, T(sz[i]))
+                decinv[i] .= buf
+            end
+            for i=1:N
+                decfmr[i] .= mod.(res[i] .- res3[i] .+ sz_2[i] , sz[i]) .- sz_2[i]
+                res2[i] .= res3[i]
+            end
+            note = log(2, norm(decfmr))
+            if note > 1
+                for i=1:N
+                    decfmr[i] .= decfmr[i]/note
+                end
+            end
+            @show ind,note,borne
+            ind += 1
+        end
+        for i=1:N
+            decinv[i] .= mod.(decinv[i] .- res[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+            if z == 1
+                decfmr[i] .= decinv[i]
+                decinv[i] .= res[i]
+                res2[i] .= res4[i]
+            end 
+        end
+        
+    end
+    return decinv
+end
+    
+

@@ -17,7 +17,8 @@ using SemiLagrangian:
     CircEdge,
     gettuple_x,
     interpolatemod!,
-    calinverse!
+    calinverse!,
+    getinverse
 
 function test_interp(
     interp::AbstractInterpolation{Rational{BigInt},edge},
@@ -308,13 +309,174 @@ function test_inv(
     # # end
 
 end
+function test_invfmr(
+    t_interp::Vector{I},
+    coeff::T,
+    sz::NTuple{N,Int},
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    res = ntuple(x -> zeros(T, sz), N)
+    res2 = ntuple(x -> zeros(T, sz), N)
+    res3 = ntuple(x -> zeros(T, sz), N)
+    dec = ntuple(x -> zeros(T, sz), N)
+    dec2 = ntuple(x -> zeros(T, sz), N)
+    resnew = ntuple(x -> zeros(T, sz), N)
+    for ind in CartesianIndices(sz)
+        for i = 1:N
+            dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
+            res[i][ind] = T(ind.I[i] - 1)
+        end
+    end
+    extr = extrema.(dec)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+    for i = 1:N
+        interpolatemod!(
+            res2[i],
+            res[i],
+            ind -> ntuple(x -> dec[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+    @show res
+    @show res2
+    extr = extrema.( ntuple(x-> -dec[x], N))
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+     for i = 1:N
+        interpolatemod!(
+            dec2[i],
+            - dec[i],
+            ind -> ntuple(x -> dec[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+    for i=1:N
+        dec2[i] .= mod.(dec2[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+    end
+    @show dec
+    @show dec2
+    extr = extrema.(dec2)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
 
-# @testset "test inverse" begin
-#     T = Double64
-#     test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
-#     test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
-#     test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
-# end
+    for i = 1:N
+        interpolatemod!(
+            res3[i],
+            res2[i],
+            ind -> ntuple(x -> dec2[x][ind], N),
+            t_interp,
+            T(sz[i]),
+            decbegin,
+            decend,
+        )
+    end
+
+    @show res2
+    @show res3 
+
+
+    
+
+    res4 = ntuple(x-> res[x] - res3[x], N)
+    for i=1:N
+        res4[i] .= mod.(res4[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+    end
+
+    @show res4
+
+    @show norm(res4)
+    res5 =  ntuple(x -> zeros(T, sz), N)
+    ind = 1
+    while norm(res4) > eps(Double64)*length(res4[1])
+        if norm(res4) > 1
+            res4 = ntuple( x -> res4[x]/2,N)
+        end 
+        extr = extrema.(res4)
+        decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+        decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+            for i = 1:N
+            interpolatemod!(
+                res5[i],
+                res3[i],
+                ind -> ntuple(x -> res4[x][ind], N),
+                t_interp,
+                T(sz[i]),
+                decbegin,
+                decend,
+            )
+        end
+        res4 = ntuple(x-> res[x] - res5[x], N)
+        for i=1:N
+            res4[i] .= mod.(res4[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+            res3[i] .= res5[i]
+        end
+
+        @show res4
+
+        @show ind, norm(res4)
+
+        ind += 1
+
+        
+    end
+
+
+
+
+end
+function test_getinv(
+    t_interp::Vector{I},
+    coeff::T,
+    sz::NTuple{N,Int},
+) where {T,N, I<:AbstractInterpolation{T,CircEdge}}
+    res = ntuple(x -> zeros(T, sz), N)
+    res2 = ntuple(x -> zeros(T, sz), N)
+    res3 = ntuple(x -> zeros(T, sz), N)
+    dec = ntuple(x -> zeros(T, sz), N)
+    dec2 = ntuple(x -> zeros(T, sz), N)
+    resnew = ntuple(x -> zeros(T, sz), N)
+    for ind in CartesianIndices(sz)
+        for i = 1:N
+            dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
+            res[i][ind] = T(ind.I[i] - 1)
+        end
+    end
+
+    sz_2 = div.(sz,2)
+
+    for i=1:N
+        interpolatemod!(res2[i], res[i], dec, t_interp, T(sz[i]))
+    end
+
+    dec2 = getinverse(dec, t_interp)
+
+    for i=1:N
+        interpolatemod!(res3[i], res2[i], dec2, t_interp, T(sz[i]))
+
+        res2[i] .= mod.(res[i] .- res3[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+    end
+
+    note = norm( res2)
+    @show note, sqrt(eps(T))
+    @test  note< sqrt(eps(T))
+
+end
+
+
+
+@testset "test inverse" begin
+    T = Double64
+    test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
+    # test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
+    # test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
+    # test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
+end
 
 function test_interpfloat(
     interp::AbstractInterpolation{T,edge},

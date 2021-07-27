@@ -41,12 +41,16 @@ function landau(advd::AdvectionData, nbdt)
  #   @show typeof(refel)
     #    printall(cl_obs)
     #    clockreset(cl_obs)
+    maxel = refel
+    minel = refel
     for i = 1:nbdt
         while advection!(advd)
         end
         el = trace_energy(advd, i * dt)
  #       @show typeof(el)
-        maxdiff = max(maxdiff,abs(refel - el))
+        maxel = max(maxel ,el)
+        minel = min(minel, el)
+        maxdiff = maxel - minel
         @show i,el,diff, maxdiff
         flush(stdout)
         # printall(cl_obs)
@@ -55,6 +59,7 @@ function landau(advd::AdvectionData, nbdt)
     # printall(cl_obs)
     return maxdiff
 end
+
 function landau2(
     t_max::T,
     timeopt,
@@ -82,6 +87,7 @@ function landau2(
         tab_coef=nosplit(dt), 
         timeopt = timeopt)
 
+
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
 
@@ -96,6 +102,29 @@ function landau2(
     pvar = getpoissonvar(adv, type=type, typeadd=typeadd)
 
     advd = AdvectionData(adv, data, pvar)
+
+
+    if type == StdABinit
+        tabst_2 = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
+        adv_2 = Advection(
+        (mesh_sp,mesh_v,), 
+        [interp,interp], 
+        dt,
+        tabst_2,
+        tab_coef=order6split(dt), 
+        timeopt = timeopt)
+        
+        pvar_2 = getpoissonvar(adv_2)
+
+        advd_2 = AdvectionData(adv_2, data, pvar_2)
+
+        init_data = map(x->zeros(T,sz), 1:(typeadd-1))
+        for i=1:(typeadd-1)
+            while advection!(advd_2)
+            end
+            pvar.init_data[i] .= advd_2.data
+        end
+    end
 
     # advdata = Advection1dData(adv, data, pvar)
 
@@ -159,11 +188,12 @@ function run_mesure(
 ) where{T}
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
-tabsplit = [standardsplit, strangsplit]
-tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
-tabtypeadd = [1, 2, 3, 4, 5, 6 ]
+tabsplit = [standardsplit, strangsplit, triplejumpsplit]
+# tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
+tabtype = [StdPoisson2d, StdAB2, StdABinit, StdABinit, StdABinit, StdABinit, StdABinit,]
+tabtypeadd = [0, 0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "std2d", "stdAB_2", "stdAB_3", "stdAB_4"]
+tabtxt = ["stdsplit", "strangsplit", "triplejumpsplit", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3"]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))
@@ -206,7 +236,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
     end
 end
 T=Double64
-run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(7,T), T(0.5))
+run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(9,T), T(0.5))
 
 
 

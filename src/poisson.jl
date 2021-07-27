@@ -1,6 +1,6 @@
 
 @enum TypePoisson StdPoisson = 1 StdPoisson2d = 2 StdOrder2_1 = 3 StdOrder2_2 = 4 StdAB = 5 StdPoisson2dTry =
-    6 StdABNew = 7 StdAB2 = 8
+    6 StdABNew = 7 StdAB2 = 8 StdRK4 = 9 StdABinit = 10
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -99,6 +99,7 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
     t_bufc_sp
     t_bufc_v
     flend::Bool
+    init_data::Vector{Array{T,N}}
 
     function PoissonVar(
         pc::PoissonConst{T,N,Nsp,Nv,type,typeadd},
@@ -135,7 +136,8 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
             0,
             [],
             [],
-            false
+            false,
+            map(x->zeros(T,sz),1:(typeadd-1))
         )
     end
 end
@@ -610,11 +612,11 @@ function deletebufc!(pv::PoissonVar{T,2,1,1,StdAB,order}) where {T,order}
     end
 end
 function interpbufc!(
-    pv::PoissonVar{T,2,1,1,StdAB,typeadd},
+    pv::PoissonVar{T,2,1,1,type,typeadd},
     self::AdvectionData{T,2},
     vec_sp::Vector{T},
     vec_v::Vector{T},
-) where {T,typeadd}
+) where {T,type,typeadd}
     adv = self.adv
     sz = sizeall(adv)
     fmrbuf = zeros(T, sz)
@@ -649,11 +651,11 @@ function getenergyall(adv, buf::Array{T,2}) where {T}
 end
 
 function interpbufc!(
-    pv::PoissonVar{T,2,1,1,StdAB,typeadd},
+    pv::PoissonVar{T,2,1,1,type,typeadd},
     self::AdvectionData{T,2},
     bufc_sp::Array{T,2},
     bufc_v::Array{T, 2},
-) where {T,typeadd}
+) where {T,type, typeadd}
     adv = self.adv
     sz = sizeall(adv)
     fmrbuf = zeros(T, sz)
@@ -880,6 +882,195 @@ function initcoef!(
 end
 @inline function getalpha(
     pv::PoissonVar{T,2,1,1,StdAB},
+    self::AdvectionData{T},
+    indext,
+    ind,
+) where {T}
+    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
+end
+
+
+
+
+function initcoef!(
+    pv::PoissonVar{T,2,1,1,StdABinit,order},
+    self::AdvectionData{T,2},
+) where {T,order}
+    adv = self.adv
+    sz = sizeall(adv)
+
+    dt = getcur_t(self)
+
+    indice = Int(div(self.time_cur+dt/2, dt))+1
+
+    flag_zero = indice < order
+
+    compute_charge!(self)
+    compute_elfield!(self)
+
+    vecbufc_v = (dt/step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v = zeros(T, sz)
+    bufc_sp = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    if ismissing(pv.bufcur_sp)
+        pv.bufcur_sp = zeros(T, sz)
+        pv.bufcur_v = zeros(T, sz)
+    end
+      
+    pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), self.time_cur))
+
+#    interpbufc!(pv, self, bufc_sp, bufc_v)
+
+
+
+#    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+    if flag_zero
+        self.data .= pv.init_data[indice]
+#        fill!(pv.bufcur_sp,0)
+#        fill!(pv.bufcur_v,0)
+        fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice ))
+        fmr_v = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice ))
+        fmr2_sp = zeros(T,sz)
+        fmr2_v = zeros(T,sz)
+        interpolate!(fmr2_sp, fmr_sp, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        interpolate!(fmr2_v, fmr_v, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        interpbufc!(pv, self, fmr2_sp, fmr2_v)
+    else
+        fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
+        fmr_v = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+        fmr2_sp = zeros(T,sz)
+        fmr2_v = zeros(T,sz)
+        interpolate!(fmr2_sp, fmr_sp, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        interpolate!(fmr2_v, fmr_v, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        interpbufc!(pv, self, fmr2_sp, fmr2_v)
+        pv.bufcur_sp .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
+        pv.bufcur_v .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+        deleteat!(pv.t_bufc,length(pv.t_bufc))
+    end
+    
+end
+@inline function getalpha(
+    pv::PoissonVar{T,2,1,1,StdABinit},
+    self::AdvectionData{T},
+    indext,
+    ind,
+) where {T}
+    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
+end
+function initcoef!(
+    pv::PoissonVar{T,2,1,1,StdRK4,order},
+    self::AdvectionData{T,2},
+) where {T,order}
+    adv = self.adv
+    sz = sizeall(adv)
+
+    rho = zeros(T, sz[1])
+
+    elf = zeros(T, sz[1])
+
+
+    compute_charge!(self)
+    compute_elfield!(self)
+    dt = getcur_t(self)
+    dt2 = dt/2
+
+    vecbufc_v = (dt2/step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt2/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v1 = zeros(T, sz)
+    bufc_sp1 = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp1[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v1[ind] = vecbufc_v[ind.I[1]]
+    end
+    bufc_spref = copy(bufc_sp1)
+    bufc_vref = copy(bufc_v1)
+    bufc_v = zeros(T, sz)
+    bufc_sp = zeros(T, sz)
+    bufc_vfmr = zeros(T, sz)
+    bufc_spfmr = zeros(T, sz)
+
+    interpolate!(bufc_spfmr, bufc_sp1, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_vfmr, bufc_v1, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_sp, bufc_sp1, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+    interpolate!(bufc_v, bufc_v1, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+
+    fmrdata = zeros(T,sz)
+
+    interpolate!( fmrdata, self.data, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
+
+    bufc_spref = copy(bufc_sp)
+    bufc_vref = copy(bufc_v)
+    interpolate!(bufc_spfmr, bufc_sp, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_vfmr, bufc_v, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_sp1, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+    interpolate!(bufc_v1, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+     
+
+
+    compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
+    compute_elfield!(elf, adv.t_mesh[1], rho)
+    vecbufc_v = (dt2/step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt2/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v2 = zeros(T, sz)
+    bufc_sp2 = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    bufc_spref = copy(bufc_sp)
+    bufc_vref = copy(bufc_v)
+    interpolate!(bufc_spfmr, bufc_sp, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_vfmr, bufc_v, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_sp2, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+    interpolate!(bufc_v2, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+
+    interpolate!( fmrdata, self.data, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
+    compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
+    compute_elfield!(elf, adv.t_mesh[1], rho)
+    vecbufc_v = (dt/step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v3 = zeros(T, sz)
+    bufc_sp3 = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    bufc_spref = bufc_sp/2
+    bufc_vref = bufc_v/2
+    interpolate!(bufc_spfmr, bufc_sp/2, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_vfmr, bufc_v/2, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
+    interpolate!(bufc_sp3, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+    interpolate!(bufc_v3, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+
+    interpolate!( fmrdata, self.data, ind -> (bufc_sp3[ind], bufc_v3[ind]), adv.t_interp)
+    compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
+    compute_elfield!(elf, adv.t_mesh[1], rho)
+
+    vecbufc_v = (dt/step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v4 = zeros(T, sz)
+    bufc_sp4 = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp4[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v4[ind] = vecbufc_v[ind.I[1]]
+    end
+
+    if ismissing(pv.bufcur_sp)
+        pv.bufcur_sp = zeros(T, sz)
+        pv.bufcur_v = zeros(T, sz)
+    end
+
+    pv.bufcur_v .= ( 2bufc_v1 + 4bufc_v2 + 2bufc_v3 + bufc_v4)/6
+    pv.bufcur_sp .= ( 2bufc_sp1 + 4bufc_sp2 + 2bufc_sp3 + bufc_sp4)/6
+
+end
+
+@inline function getalpha(
+    pv::PoissonVar{T,2,1,1,StdRK4},
     self::AdvectionData{T},
     indext,
     ind,

@@ -188,12 +188,12 @@ function run_mesure(
 ) where{T}
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
-tabsplit = [standardsplit, strangsplit, triplejumpsplit]
+tabsplit = [standardsplit, strangsplit, order6split]
 # tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
 tabtype = [StdPoisson2d, StdAB2, StdABinit, StdABinit, StdABinit, StdABinit, StdABinit,]
 tabtypeadd = [0, 0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "triplejumpsplit", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3", "stdABinit_4", "stdABinit_5", "stdABinit_6",]
+tabtxt = ["stdsplit", "strangsplit", "order6split", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3", "stdABinit_4", "stdABinit_5", "stdABinit_6",]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))

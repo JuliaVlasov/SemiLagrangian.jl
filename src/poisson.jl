@@ -934,18 +934,34 @@ function initcoef!(
 #        fill!(pv.bufcur_v,0)
         fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice ))
         fmr_v = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice ))
+        fmr3_sp = copy(fmr_sp)
+        fmr3_v = copy(fmr_v)
         fmr2_sp = zeros(T,sz)
         fmr2_v = zeros(T,sz)
-        interpolate!(fmr2_sp, fmr_sp, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
-        interpolate!(fmr2_v, fmr_v, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        for i=1:order
+            interpolate!(fmr2_sp, fmr_sp, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            interpolate!(fmr2_v, fmr_v, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            if i != order
+                fmr3_sp .= fmr2_sp
+                fmr3_v .= fmr2_v
+            end
+        end
         interpbufc!(pv, self, fmr2_sp, fmr2_v)
     else
         fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
         fmr_v = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+        fmr3_sp = copy(fmr_sp)
+        fmr3_v = copy(fmr_v)
         fmr2_sp = zeros(T,sz)
         fmr2_v = zeros(T,sz)
-        interpolate!(fmr2_sp, fmr_sp, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
-        interpolate!(fmr2_v, fmr_v, ind->(fmr_sp[ind], fmr_v[ind]), adv.t_interp)
+        for i=1:order
+            interpolate!(fmr2_sp, fmr_sp, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            interpolate!(fmr2_v, fmr_v, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            if i != order
+                fmr3_sp .= fmr2_sp
+                fmr3_v .= fmr2_v
+            end
+        end
         interpbufc!(pv, self, fmr2_sp, fmr2_v)
         pv.bufcur_sp .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
         pv.bufcur_v .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))

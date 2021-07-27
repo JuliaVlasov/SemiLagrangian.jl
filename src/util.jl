@@ -57,7 +57,7 @@ end
 @inline modone(ind, n) = mod(ind - 1, n) + 1
 @inline modone(ind::CartesianIndex, n) = CartesianIndex(modone.(ind.I, n))
 divone(ind, n) = div(ind - 1, n) + 1
-gettabmod(lg) = modone.(1:3lg, lg)
+gettabmod(lg) = modone.(1:5lg, lg)
 
 # dotprod(v_v::Vector{Vector{T}}) where{T}=dotprod(totuple(v_v))
 # modone(x,n)=(x-1)%n+1

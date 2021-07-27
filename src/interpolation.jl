@@ -553,7 +553,7 @@ function interpolate!(
 
     order = get_order.(interp_t)
     origin = -div.(order, (2,))
-    decall = (5 .* sz .+ origin) .% sz
+    decall = (5 .* sz .+ origin) .% sz .+ sz
 
     diffmax = 0
     decminmin = ntuple(x -> Inf, N)

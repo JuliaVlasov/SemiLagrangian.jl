@@ -111,7 +111,7 @@ function landau2(
         [interp,interp], 
         dt,
         tabst_2,
-        tab_coef=order6split(dt), 
+        tab_coef=hamsplit_3_11(dt), 
         timeopt = timeopt)
         
         pvar_2 = getpoissonvar(adv_2)
@@ -188,12 +188,12 @@ function run_mesure(
 ) where{T}
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
-tabsplit = [standardsplit, strangsplit, order6split]
+tabsplit = [standardsplit, strangsplit, hamsplit_3_11]
 # tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
 tabtype = [StdPoisson2d, StdAB2, StdABinit, StdABinit, StdABinit, StdABinit, StdABinit,]
 tabtypeadd = [0, 0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "order6split", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3", "stdABinit_4", "stdABinit_5", "stdABinit_6",]
+tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3", "stdABinit_4", "stdABinit_5", "stdABinit_6",]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))
@@ -236,7 +236,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
     end
 end
 T=Double64
-run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(9,T), T(0.5))
+run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(11,T), T(0.5))
 
 
 

@@ -337,8 +337,9 @@ end
   ret2, datanorm20 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 20, StdPoisson2d, 0)
   @show ret, ret2
 
-  @show norm(datanorm10-data10)
-  @show norm(datanorm20-datanorm10)
+  ret10 = norm(datanorm10-data10)
+  ret20 = norm(datanorm20-datanorm10)
+  @test isapprox(2ret10, ret20, atol=1e-2)
 
   normnorm = norm(datanorm10-datanorm20)
   norm1020 = norm(data10-datanorm10)

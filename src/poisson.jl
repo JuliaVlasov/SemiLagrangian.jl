@@ -950,7 +950,7 @@ function initcoef!(
             pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), (indice - order) * dt))
             fmr_sp = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice))
             fmr_v = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice))
-            autointerp!((fmr_sp, fmr_v),(copy(fmr_sp), copy(fmr_v)), indice, adv.t_interp)
+            autointerp!((fmr_sp, fmr_v),(copy(fmr_sp), copy(fmr_v)), indice-1, adv.t_interp)
             interpbufc!(pv, self, fmr_sp, fmr_v)
         end
     end

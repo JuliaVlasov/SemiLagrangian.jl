@@ -38,7 +38,7 @@ export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar
 export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt
-export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2, StdAB, StdAB2, StdRK4, StdABinit
+export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2, StdAB, StdAB2, StdRK4, StdABinit, StdABp
 export get_type, sizeall, getdata
 
 end

@@ -1,6 +1,6 @@
 
 @enum TypePoisson StdPoisson = 1 StdPoisson2d = 2 StdOrder2_1 = 3 StdOrder2_2 = 4 StdAB = 5 StdPoisson2dTry =
-    6 StdABNew = 7 StdAB2 = 8 StdRK4 = 9 StdABinit = 10
+    6 StdABNew = 7 StdAB2 = 8 StdRK4 = 9 StdABinit = 10 StdABp = 11
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -13,7 +13,7 @@ function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
 end
 
 using SHA
-cod(a::Array)=bytes2hex(sha256(reinterpret(UInt8,collect(Iterators.flatten(a)))))
+cod(a::Array) = bytes2hex(sha256(reinterpret(UInt8, collect(Iterators.flatten(a)))))
 
 
 
@@ -96,8 +96,8 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
     tupleind::Any
     ordcur::Int
     indord::Int
-    t_bufc_sp
-    t_bufc_v
+    t_bufc_sp::Any
+    t_bufc_v::Any
     flend::Bool
     init_data::Vector{Array{T,N}}
 
@@ -137,7 +137,7 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
             [],
             [],
             false,
-            map(x->zeros(T,sz),1:(typeadd-1))
+            map(x -> zeros(T, sz), 1:(typeadd-1)),
         )
     end
 end
@@ -481,8 +481,8 @@ function initcoef!(
     vecbufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
     vecbufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
-#    @show vecbufc_v
-@show "AB2", cod(vecbufc_v)
+    #    @show vecbufc_v
+    @show "AB2", cod(vecbufc_v)
 
     bufc_v = zeros(T, sz)
     bufc_sp = zeros(T, sz)
@@ -513,17 +513,12 @@ function initcoef!(
         interpolate!(
             fmrbuf,
             pv.t_bufc_sp[i],
-#            ind -> (bufc_sp[ind], bufc_v[ind]),
+            #            ind -> (bufc_sp[ind], bufc_v[ind]),
             ind -> (fmr_sp[ind], fmr_v[ind]),
             adv.t_interp,
         )
         pv.t_bufc_sp[i] .= fmrbuf
-        interpolate!(
-            fmrbuf,
-            pv.t_bufc_v[i],
-            ind -> (fmr_sp[ind], fmr_v[ind]),
-            adv.t_interp,
-        )
+        interpolate!(fmrbuf, pv.t_bufc_v[i], ind -> (fmr_sp[ind], fmr_v[ind]), adv.t_interp)
         pv.t_bufc_v[i] .= fmrbuf
     end
     @show sum(pv.t_bufc_sp[1])
@@ -583,17 +578,17 @@ function sum_ab!(
 ) where {T,order}
     dt = getcur_t(self)
     if pv.ordcur == pv.indord == order
-         coefs = map( i -> dt*c(pv.pc.abcoef, i, order), 1:order)
+        coefs = map(i -> dt * c(pv.pc.abcoef, i, order), 1:order)
     else
-        tabv = map( i -> pv.t_bufc[i].t, 1:pv.ordcur)
+        tabv = map(i -> pv.t_bufc[i].t, 1:pv.ordcur)
         tabv .-= tabv[1]
-        coefs = map( i -> _c( dt, tabv, i, pv.ordcur), 1:pv.ordcur)
+        coefs = map(i -> _c(dt, tabv, i, pv.ordcur), 1:pv.ordcur)
     end
-#    coefs = map( i -> c(pv.pc.abcoef, i, pv.ordcur), 1:pv.ordcur)
-    ords = map( i -> pv.t_bufc[i].order, 1:pv.ordcur)
+    #    coefs = map( i -> c(pv.pc.abcoef, i, pv.ordcur), 1:pv.ordcur)
+    ords = map(i -> pv.t_bufc[i].order, 1:pv.ordcur)
     @show " sum_ab ", pv.ordcur, pv.indord, coefs, ords
-    pv.bufcur_sp .= sum(map( i -> coefs[i] * pv.t_bufc[i].bufc_sp, 1:pv.ordcur ))
-    pv.bufcur_v .= sum(map( i -> coefs[i] * pv.t_bufc[i].bufc_v, 1:pv.ordcur ))
+    pv.bufcur_sp .= sum(map(i -> coefs[i] * pv.t_bufc[i].bufc_sp, 1:pv.ordcur))
+    pv.bufcur_v .= sum(map(i -> coefs[i] * pv.t_bufc[i].bufc_v, 1:pv.ordcur))
 end
 
 function deletebufc!(pv::PoissonVar{T,2,1,1,StdAB,order}) where {T,order}
@@ -637,15 +632,34 @@ function interpbufc!(
         bct.bufc_v .= fmrbuf
     end
 end
-function getenergyall(adv, buf::Array{T,2}) where {T} 
-    sz = size(buf, 1) 
+function autointerp!(
+    to::NTuple{2,Array{T,2}},
+    from::NTuple{2,Array{T,2}},
+    nb::Int,
+    t_interp::Vector{I},
+)   where{T, I<:AbstractInterpolation}
+
+    fmr = copy.(from)
+
+    for i=1:nb
+        interpolate!(to[1], from[1], ind ->(fmr[1][ind], fmr[2][ind]), t_interp)
+        interpolate!(to[2], from[2], ind ->(fmr[1][ind], fmr[2][ind]), t_interp)
+        if i != nb
+            fmr[1] .= to[1]
+            fmr[2] .= to[2]
+        end
+    end
+end
+
+function getenergyall(adv, buf::Array{T,2}) where {T}
+    sz = size(buf, 1)
     rho = zeros(T, sz)
     elf = zeros(T, sz)
     compute_charge!(rho, (adv.t_mesh[2],), buf)
     compute_elfield!(elf, adv.t_mesh[1], rho)
 
     elenergy = compute_ee((adv.t_mesh[1],), (elf,))
-    kinenergy = compute_ke((adv.t_mesh[1],),(adv.t_mesh[2],), buf)
+    kinenergy = compute_ke((adv.t_mesh[1],), (adv.t_mesh[2],), buf)
     energyall = elenergy + kinenergy
     return energyall
 end
@@ -654,8 +668,8 @@ function interpbufc!(
     pv::PoissonVar{T,2,1,1,type,typeadd},
     self::AdvectionData{T,2},
     bufc_sp::Array{T,2},
-    bufc_v::Array{T, 2},
-) where {T,type, typeadd}
+    bufc_v::Array{T,2},
+) where {T,type,typeadd}
     adv = self.adv
     sz = sizeall(adv)
     fmrbuf = zeros(T, sz)
@@ -663,20 +677,10 @@ function interpbufc!(
     for bct in pv.t_bufc
         @show "TR3", ind, sum(bct.bufc_sp)
         @show "TR5", ind, bct.bufc_sp[2:2], bufc_sp[2:2], bufc_v[2:2]
-        interpolate!(
-            fmrbuf,
-            bct.bufc_sp,
-            ind -> (bufc_sp[ind], bufc_v[ind]),
-            adv.t_interp,
-        )
+        interpolate!(fmrbuf, bct.bufc_sp, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
         bct.bufc_sp .= fmrbuf
         @show "TR4", ind, sum(bct.bufc_sp)
-        interpolate!(
-            fmrbuf,
-            bct.bufc_v,
-            ind -> (bufc_sp[ind], bufc_v[ind]),
-            adv.t_interp,
-        )
+        interpolate!(fmrbuf, bct.bufc_v, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
         bct.bufc_v .= fmrbuf
         ind += 1
     end
@@ -690,19 +694,26 @@ struct BufcFmr{T}
     cur_v::Array{T,2}
     function BufcFmr(T::DataType, sz::Tuple{Int,Int})
         return new{T}(
-            zeros(T,sz),
-            zeros(T,sz),
-            zeros(T,sz),
-            zeros(T,sz),
-            zeros(T,sz),
-            zeros(T,sz),
+            zeros(T, sz),
+            zeros(T, sz),
+            zeros(T, sz),
+            zeros(T, sz),
+            zeros(T, sz),
+            zeros(T, sz),
         )
     end
 end
-function decall!(tab::Vector{BufcFmr{T}}, adv::Advection, sens::Int, ref_i::Int, nb::Int, dec::Int=0) where {T}
-    for j=1:nb
+function decall!(
+    tab::Vector{BufcFmr{T}},
+    adv::Advection,
+    sens::Int,
+    ref_i::Int,
+    nb::Int,
+    dec::Int = 0,
+) where {T}
+    for j = 1:nb
         ptab = tab[ref_i-nb+j+dec]
-    
+
         dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
         dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
 
@@ -712,8 +723,8 @@ function decall!(tab::Vector{BufcFmr{T}}, adv::Advection, sens::Int, ref_i::Int,
             copy(ptab.cur_sp), copy(ptab.cur_v)
         end
 
-        interpolate!( ptab.cur_sp, ori_sp, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
-        interpolate!( ptab.cur_v, ori_v, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
+        interpolate!(ptab.cur_sp, ori_sp, ind -> (dec_sp[ind], dec_v[ind]), adv.t_interp)
+        interpolate!(ptab.cur_v, ori_v, ind -> (dec_sp[ind], dec_v[ind]), adv.t_interp)
     end
 end
 
@@ -721,12 +732,12 @@ function initfirst(
     pv::PoissonVar{T,2,1,1,StdAB,order},
     self::AdvectionData,
     bufcc_sp::Array{T,2},
-    bufcc_v::Array{T,2}
+    bufcc_v::Array{T,2},
 ) where {T,order}
     adv = self.adv
     pc = pv.pc
     sz = sizeall(adv)
-    tabref = [BufcFmr(T,sz) for i = 1:2order-1]
+    tabref = [BufcFmr(T, sz) for i = 1:2order-1]
     buf = copy(self.data)
     buf_sp = zeros(T, sz)
     buf_v = zeros(T, sz)
@@ -739,11 +750,21 @@ function initfirst(
     copyto!(tabref[ref_i].oriplus_sp, bufcc_sp)
     copyto!(tabref[ref_i].oriplus_sp, bufcc_v)
 
-    interpolate!(buf_sp, ptab.oriplus_sp, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
-    interpolate!(buf_v, ptab.oriplus_v, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+    interpolate!(
+        buf_sp,
+        ptab.oriplus_sp,
+        ind -> (ptab.oriplus_sp[ind], ptab.oriplus_v[ind]),
+        adv.t_interp,
+    )
+    interpolate!(
+        buf_v,
+        ptab.oriplus_v,
+        ind -> (ptab.oriplus_sp[ind], ptab.oriplus_v[ind]),
+        adv.t_interp,
+    )
 
 
-    resinv = getinverse((buf_sp,buf_v), adv.t_interp)
+    resinv = getinverse((buf_sp, buf_v), adv.t_interp)
     tabref[ref_i].orimoins_sp .= resinv[1]
     tabref[ref_i].orimoins_v .= resinv[2]
 
@@ -764,15 +785,15 @@ function initfirst(
         tabsens = ord == 1 ? [-1] : [1, -1]
         for sens in tabsens
             tab = sens == -1 ? revtabref : tabref
-            borne = sens == -1 ? ord  : ord -1
-            for j=1:ord-1
+            borne = sens == -1 ? ord : ord - 1
+            for j = 1:ord-1
                 decall!(tab, adv, sens, ref_i, j)
                 # for k = 1:j
                 #     ptab = tab[ref_i-ord+k]
-                
+
                 #     dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
                 #     dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
-                
+
                 #     ori_sp, ori_v = if k == j
                 #         dec_sp, dec_v
                 #     else
@@ -783,10 +804,10 @@ function initfirst(
                 # end
             end
             for i = 1:borne
-                decall!(tab, adv, sens, ref_i, ord, i-1)
+                decall!(tab, adv, sens, ref_i, ord, i - 1)
                 # for j=1:ord
                 #     ptab = tab[ref_i-ord+i+j-1]
-                 
+
                 #     dec_sp = sens == -1 ? ptab.orimoins_sp : ptab.oriplus_sp
                 #     dec_v = sens == -1 ? ptab.orimoins_v : ptab.oriplus_v
 
@@ -795,45 +816,54 @@ function initfirst(
                 #     else
                 #         copy(ptab.cur_sp), copy(ptab.cur_v)
                 #     end
-    
+
                 #     interpolate!( ptab.cur_sp, ori_sp, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
                 #     interpolate!( ptab.cur_v, ori_v, ind -> ( dec_sp[ind], dec_v[ind] ), adv.t_interp)
                 # end
 
                 buf_sp .= sum([c(pc.abcoef, j, ord) * tab[ref_i+i-j].cur_sp for j = 1:ord])
                 buf_v .= sum([c(pc.abcoef, j, ord) * tab[ref_i+i-j].cur_v for j = 1:ord])
-                interpolate!(buf, copy(buf), ind ->(buf_sp[ind], buf_v[ind]), adv.t_interp)
+                interpolate!(buf, copy(buf), ind -> (buf_sp[ind], buf_v[ind]), adv.t_interp)
                 @show refen
-                diffen = abs(refen-getenergyall(self.adv, buf))
+                diffen = abs(refen - getenergyall(self.adv, buf))
                 @show sens, ord, i, diffen
                 compute_charge!(rho, (adv.t_mesh[2],), buf)
                 compute_elfield!(elf, adv.t_mesh[1], rho)
                 ptab = tab[ref_i+i]
-                vec_v =  ( getcur_t(self) / step(adv.t_mesh[2])) * elf
-                vec_sp =
-                    (- getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+                vec_v = (getcur_t(self) / step(adv.t_mesh[2])) * elf
+                vec_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
                 for ind in CartesianIndices(sz)
                     ptab.oriplus_sp[ind] = vec_sp[ind.I[2]]
                     ptab.oriplus_v[ind] = vec_v[ind.I[1]]
                 end
                 # ptab.orimoins_sp .= - ptab.oriplus_sp
                 # ptab.orimoins_v .= - ptab.oriplus_v
-#                 ptab
-                interpolate!(buf_sp, ptab.oriplus_sp, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
-                interpolate!(buf_v, ptab.oriplus_v, ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+                #                 ptab
+                interpolate!(
+                    buf_sp,
+                    ptab.oriplus_sp,
+                    ind -> (ptab.oriplus_sp[ind], ptab.oriplus_v[ind]),
+                    adv.t_interp,
+                )
+                interpolate!(
+                    buf_v,
+                    ptab.oriplus_v,
+                    ind -> (ptab.oriplus_sp[ind], ptab.oriplus_v[ind]),
+                    adv.t_interp,
+                )
 
-#                resinv = getinverse((ptab.oriplus_sp,ptab.oriplus_v), adv.t_interp)
-                resinv = getinverse((buf_sp,buf_v), adv.t_interp)
+                #                resinv = getinverse((ptab.oriplus_sp,ptab.oriplus_v), adv.t_interp)
+                resinv = getinverse((buf_sp, buf_v), adv.t_interp)
                 ptab.orimoins_sp .= resinv[1]
                 ptab.orimoins_v .= resinv[2]
-# #                interpolate!(ptab.orimoins_sp, resinv[1], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
-#                 # interpolate!(ptab.orimoins_v, resinv[2], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
-#                 interpolate!(ptab.orimoins_sp, resinv[1], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
-#                 interpolate!(ptab.orimoins_v, resinv[2], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
-             end
+                # #                interpolate!(ptab.orimoins_sp, resinv[1], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
+                #                 # interpolate!(ptab.orimoins_v, resinv[2], ind ->(resinv[1][ind],resinv[2][ind]), adv.t_interp)
+                #                 interpolate!(ptab.orimoins_sp, resinv[1], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+                #                 interpolate!(ptab.orimoins_v, resinv[2], ind ->(ptab.oriplus_sp[ind],ptab.oriplus_v[ind]), adv.t_interp)
+            end
         end
     end
-    for i=1:order-1
+    for i = 1:order-1
         decall!(tabref, adv, 1, ref_i, i)
     end
     return tabref
@@ -850,8 +880,8 @@ function initcoef!(
     compute_elfield!(self)
     dt = getcur_t(self)
 
-    vecbufc_v = (dt/step(adv.t_mesh[2])) * pv.t_elfield[1]
-    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    vecbufc_v = (dt / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v = zeros(T, sz)
     bufc_sp = zeros(T, sz)
     for ind in CartesianIndices(sz)
@@ -861,23 +891,26 @@ function initcoef!(
     if ismissing(pv.bufcur_sp)
         pv.bufcur_sp = zeros(T, sz)
         pv.bufcur_v = zeros(T, sz)
-        tabref = initfirst(pv,self, copy(bufc_sp), copy(bufc_v))
+        tabref = initfirst(pv, self, copy(bufc_sp), copy(bufc_v))
         for i = 1:order-1
             ptab = tabref[i]
-            pushfirst!(pv.t_bufc, BufcT(ptab.cur_sp, ptab.cur_v, (i-order)*dt))
+            pushfirst!(pv.t_bufc, BufcT(ptab.cur_sp, ptab.cur_v, (i - order) * dt))
         end
     end
-      
+
     pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), self.time_cur))
 
-    interpbufc!(pv, self, bufc_sp, bufc_v)
+    bufc_sp .= sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order))
+    bufc_v .= sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order))
 
-    pv.bufcur_sp .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
-    pv.bufcur_v .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+    autointerp!((pv.bufcur_sp, pv.bufcur_v),(bufc_sp, bufc_v), order, adv.t_interp)
 
-    deleteat!(pv.t_bufc,length(pv.t_bufc))
+    deleteat!(pv.t_bufc, length(pv.t_bufc))
 
-#    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+    interpbufc!(pv, self, pv.bufcur_sp, pv.bufcur_v)
+
+
+    #    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
 
 end
 @inline function getalpha(
@@ -888,7 +921,63 @@ end
 ) where {T}
     return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
 end
+function initcoef!(
+    pv::PoissonVar{T,2,1,1,StdABp,order},
+    self::AdvectionData{T,2},
+) where {T,order}
+    adv = self.adv
+    sz = sizeall(adv)
 
+    compute_charge!(self)
+    compute_elfield!(self)
+    dt = getcur_t(self)
+
+    vecbufc_v = (dt / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v = zeros(T, sz)
+    bufc_sp = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
+    if ismissing(pv.bufcur_sp)
+        pv.bufcur_sp = zeros(T, sz)
+        pv.bufcur_v = zeros(T, sz)
+        fmr_v = zeros(T, sz)
+        fmr_sp = zeros(T, sz)
+    
+        for indice = 1:order-1
+            pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), (indice - order) * dt))
+            fmr_sp = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice))
+            fmr_v = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice))
+            autointerp!((fmr_sp, fmr_v),(copy(fmr_sp), copy(fmr_v)), indice, adv.t_interp)
+            interpbufc!(pv, self, fmr_sp, fmr_v)
+        end
+    end
+        
+    pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), self.time_cur))
+
+    bufc_sp .= sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order))
+    bufc_v .= sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order))
+
+    autointerp!((pv.bufcur_sp, pv.bufcur_v),(bufc_sp, bufc_v), order-1, adv.t_interp)
+
+    deleteat!(pv.t_bufc, length(pv.t_bufc))
+
+    interpbufc!(pv, self, pv.bufcur_sp, pv.bufcur_v)
+
+
+    #    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+
+end
+@inline function getalpha(
+    pv::PoissonVar{T,2,1,1,StdABp},
+    self::AdvectionData{T},
+    indext,
+    ind,
+) where {T}
+    return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
+end
 
 
 
@@ -901,15 +990,15 @@ function initcoef!(
 
     dt = getcur_t(self)
 
-    indice = Int(div(self.time_cur+dt/2, dt))+1
+    indice = Int(div(self.time_cur + dt / 2, dt)) + 1
 
     flag_zero = indice < order
 
     compute_charge!(self)
     compute_elfield!(self)
 
-    vecbufc_v = (dt/step(adv.t_mesh[2])) * pv.t_elfield[1]
-    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    vecbufc_v = (dt / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v = zeros(T, sz)
     bufc_sp = zeros(T, sz)
     for ind in CartesianIndices(sz)
@@ -920,54 +1009,84 @@ function initcoef!(
         pv.bufcur_sp = zeros(T, sz)
         pv.bufcur_v = zeros(T, sz)
     end
-      
+
     pushfirst!(pv.t_bufc, BufcT(copy(bufc_sp), copy(bufc_v), self.time_cur))
 
-#    interpbufc!(pv, self, bufc_sp, bufc_v)
+    #    interpbufc!(pv, self, bufc_sp, bufc_v)
 
 
 
-#    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
+    #    @show "TR6", sum(pv.bufcur_sp), sum(pv.bufcur_v)
     if flag_zero
         self.data .= pv.init_data[indice]
-#        fill!(pv.bufcur_sp,0)
-#        fill!(pv.bufcur_v,0)
-        fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice ))
-        fmr_v = sum(map( i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice ))
+        #        fill!(pv.bufcur_sp,0)
+        #        fill!(pv.bufcur_v,0)
+        fmr_sp = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_sp, 1:indice))
+        fmr_v = sum(map(i -> c(pv.pc.abcoef, i, indice) * pv.t_bufc[i].bufc_v, 1:indice))
         fmr3_sp = copy(fmr_sp)
         fmr3_v = copy(fmr_v)
-        fmr2_sp = zeros(T,sz)
-        fmr2_v = zeros(T,sz)
-        for i=1:order
-            interpolate!(fmr2_sp, fmr_sp, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
-            interpolate!(fmr2_v, fmr_v, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
-            if i != order
+        fmr2_sp = zeros(T, sz)
+        fmr2_v = zeros(T, sz)
+        # resprec = Inf
+        # prec_sp = eps(T)
+        # prec_v = eps(T)
+        # i = 1
+        for i = 1:order-1
+            interpolate!(fmr2_sp, fmr_sp, ind -> (fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            interpolate!(fmr2_v, fmr_v, ind -> (fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            resnorm_sp = norm(fmr2_sp - fmr3_sp)
+            resnorm_v = norm(fmr2_v - fmr3_v)
+            @show i, order, resnorm_sp, resnorm_v
+            # res = resnorm_sp/prec_sp + resnorm_v/prec_v
+            # if res > resprec || i > order ^3
+            #     break
+            # end
+            # resprec = res
+            # prec_sp = resnorm_sp
+            # prec_v = resnorm_v
+            if i != order - 1
                 fmr3_sp .= fmr2_sp
                 fmr3_v .= fmr2_v
             end
         end
         interpbufc!(pv, self, fmr2_sp, fmr2_v)
     else
-        fmr_sp = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
-        fmr_v = sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
+        fmr_sp = sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order))
+        fmr_v = sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order))
         fmr3_sp = copy(fmr_sp)
         fmr3_v = copy(fmr_v)
-        fmr2_sp = zeros(T,sz)
-        fmr2_v = zeros(T,sz)
-        for i=1:order
-            interpolate!(fmr2_sp, fmr_sp, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
-            interpolate!(fmr2_v, fmr_v, ind->(fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
-            if i != order
+        fmr2_sp = zeros(T, sz)
+        fmr2_v = zeros(T, sz)
+        # resprec = Inf
+        # prec_sp = eps(T)
+        # prec_v = eps(T)
+        # i= 1
+        for i = 1:order-1
+            interpolate!(fmr2_sp, fmr_sp, ind -> (fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            interpolate!(fmr2_v, fmr_v, ind -> (fmr3_sp[ind], fmr3_v[ind]), adv.t_interp)
+            resnorm_sp = norm(fmr2_sp - fmr3_sp)
+            resnorm_v = norm(fmr2_v - fmr3_v)
+            @show i, order, resnorm_sp, resnorm_v
+            # res = resnorm_sp/prec_sp + resnorm_v/prec_v
+            # if res > resprec || i > order ^3
+            #     break
+            # end
+            # resprec = res
+            # prec_sp = resnorm_sp
+            # prec_v = resnorm_v
+            if i != order - 1
                 fmr3_sp .= fmr2_sp
                 fmr3_v .= fmr2_v
             end
         end
         interpbufc!(pv, self, fmr2_sp, fmr2_v)
-        pv.bufcur_sp .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order ))
-        pv.bufcur_v .= sum(map( i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order ))
-        deleteat!(pv.t_bufc,length(pv.t_bufc))
+        pv.bufcur_sp .=
+            sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_sp, 1:order))
+        pv.bufcur_v .=
+            sum(map(i -> c(pv.pc.abcoef, i, order) * pv.t_bufc[i].bufc_v, 1:order))
+        deleteat!(pv.t_bufc, length(pv.t_bufc))
     end
-    
+
 end
 @inline function getalpha(
     pv::PoissonVar{T,2,1,1,StdABinit},
@@ -977,6 +1096,7 @@ end
 ) where {T}
     return (pv.bufcur_sp[ind], pv.bufcur_v[ind])
 end
+
 function initcoef!(
     pv::PoissonVar{T,2,1,1,StdRK4,order},
     self::AdvectionData{T,2},
@@ -992,82 +1112,72 @@ function initcoef!(
     compute_charge!(self)
     compute_elfield!(self)
     dt = getcur_t(self)
-    dt2 = dt/2
+    dt2 = dt / 2
 
-    vecbufc_v = (dt2/step(adv.t_mesh[2])) * pv.t_elfield[1]
-    vecbufc_sp = (-dt2/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    vecbufc_v = (dt2 / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    vecbufc_sp = (-dt2 / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v1 = zeros(T, sz)
     bufc_sp1 = zeros(T, sz)
-    for ind in CartesianIndices(sz)
-        bufc_sp1[ind] = vecbufc_sp[ind.I[2]]
-        bufc_v1[ind] = vecbufc_v[ind.I[1]]
-    end
-    bufc_spref = copy(bufc_sp1)
-    bufc_vref = copy(bufc_v1)
     bufc_v = zeros(T, sz)
     bufc_sp = zeros(T, sz)
-    bufc_vfmr = zeros(T, sz)
-    bufc_spfmr = zeros(T, sz)
+    for ind in CartesianIndices(sz)
+        bufc_sp[ind] = vecbufc_sp[ind.I[2]]
+        bufc_v[ind] = vecbufc_v[ind.I[1]]
+    end
 
-    interpolate!(bufc_spfmr, bufc_sp1, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_vfmr, bufc_v1, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_sp, bufc_sp1, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
-    interpolate!(bufc_v, bufc_v1, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
+    autointerp!((bufc_sp1, bufc_v1), (bufc_sp, bufc_v), 4, adv.t_interp)
 
-    fmrdata = zeros(T,sz)
+    fmrdata = zeros(T, sz)
+    interpolate!(fmrdata, self.data, ind -> (bufc_sp1[ind], bufc_v1[ind]), adv.t_interp)
 
-    interpolate!( fmrdata, self.data, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
+    autointerp!((bufc_sp, bufc_v), (bufc_sp1, bufc_v1), 4, adv.t_interp)
+    bufc_sp1 .= bufc_sp
+    bufc_v1 .= bufc_v
 
-    bufc_spref = copy(bufc_sp)
-    bufc_vref = copy(bufc_v)
-    interpolate!(bufc_spfmr, bufc_sp, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_vfmr, bufc_v, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_sp1, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
-    interpolate!(bufc_v1, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
-     
 
 
     compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
     compute_elfield!(elf, adv.t_mesh[1], rho)
-    vecbufc_v = (dt2/step(adv.t_mesh[2])) * elf
-    vecbufc_sp = (-dt2/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+    vecbufc_v = (dt2 / step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt2 / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v2 = zeros(T, sz)
     bufc_sp2 = zeros(T, sz)
     for ind in CartesianIndices(sz)
         bufc_sp[ind] = vecbufc_sp[ind.I[2]]
         bufc_v[ind] = vecbufc_v[ind.I[1]]
     end
-    bufc_spref = copy(bufc_sp)
-    bufc_vref = copy(bufc_v)
-    interpolate!(bufc_spfmr, bufc_sp, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_vfmr, bufc_v, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_sp2, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
-    interpolate!(bufc_v2, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
 
-    interpolate!( fmrdata, self.data, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
+    autointerp!((bufc_sp2, bufc_v2), (bufc_sp, bufc_v), 4, adv.t_interp)
+
+    # interpolate!(bufc_sp, bufc_sp1, ind ->(bufc_sp2[ind], bufc_v2[ind]), adv.t_interp)
+    # interpolate!(bufc_v, bufc_v1, ind ->(bufc_sp2[ind], bufc_v2[ind]), adv.t_interp)
+    # bufc_sp1 .= bufc_sp
+    # bufc_v1 .= bufc_v
+
+    interpolate!(fmrdata, self.data, ind -> (bufc_sp[ind], bufc_v[ind]), adv.t_interp)
+
     compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
     compute_elfield!(elf, adv.t_mesh[1], rho)
-    vecbufc_v = (dt/step(adv.t_mesh[2])) * elf
-    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    vecbufc_v = (dt2 / step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt2 / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v3 = zeros(T, sz)
     bufc_sp3 = zeros(T, sz)
     for ind in CartesianIndices(sz)
         bufc_sp[ind] = vecbufc_sp[ind.I[2]]
         bufc_v[ind] = vecbufc_v[ind.I[1]]
     end
-    bufc_spref = bufc_sp/2
-    bufc_vref = bufc_v/2
-    interpolate!(bufc_spfmr, bufc_sp/2, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_vfmr, bufc_v/2, ind -> (bufc_spref[ind], bufc_vref[ind]), adv.t_interp)
-    interpolate!(bufc_sp3, bufc_sp, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
-    interpolate!(bufc_v3, bufc_v, ind -> (bufc_spfmr[ind], bufc_vfmr[ind]), adv.t_interp)
 
-    interpolate!( fmrdata, self.data, ind -> (bufc_sp3[ind], bufc_v3[ind]), adv.t_interp)
+    autointerp!((bufc_sp3, bufc_v3), (bufc_sp, bufc_v), 4, adv.t_interp)
+
+ 
+    interpolate!(fmrdata, self.data, ind -> (2bufc_sp3[ind], 2bufc_v3[ind]), adv.t_interp)
+
     compute_charge!(rho, (adv.t_mesh[2],), fmrdata)
     compute_elfield!(elf, adv.t_mesh[1], rho)
 
-    vecbufc_v = (dt/step(adv.t_mesh[2])) * elf
-    vecbufc_sp = (-dt/step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    vecbufc_v = (dt / step(adv.t_mesh[2])) * elf
+    vecbufc_sp = (-dt / step(adv.t_mesh[1])) * adv.t_mesh[2].points
     bufc_v4 = zeros(T, sz)
     bufc_sp4 = zeros(T, sz)
     for ind in CartesianIndices(sz)
@@ -1080,8 +1190,11 @@ function initcoef!(
         pv.bufcur_v = zeros(T, sz)
     end
 
-    pv.bufcur_v .= ( 2bufc_v1 + 4bufc_v2 + 2bufc_v3 + bufc_v4)/6
-    pv.bufcur_sp .= ( 2bufc_sp1 + 4bufc_sp2 + 2bufc_sp3 + bufc_sp4)/6
+    pv.bufcur_v .= (2bufc_v1 + 4bufc_v2 + 4bufc_v3 + bufc_v4) / 6
+    pv.bufcur_sp .= (2bufc_sp1 + 4bufc_sp2 + 4bufc_sp3 + bufc_sp4) / 6
+
+
+
 
 end
 

@@ -105,24 +105,27 @@ function landau2(
 
 
     if type == StdABinit
-        tabst_2 = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
-        adv_2 = Advection(
-        (mesh_sp,mesh_v,), 
-        [interp,interp], 
-        dt,
-        tabst_2,
-        tab_coef=hamsplit_3_11(dt), 
-        timeopt = timeopt)
+        # tabst_2 = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
+        # adv_2 = Advection(
+        # (mesh_sp,mesh_v,), 
+        # [interp,interp], 
+        # dt,
+        # tabst_2,
+        # tab_coef=hamsplit_3_11(dt), 
+        # timeopt = timeopt)
         
-        pvar_2 = getpoissonvar(adv_2)
+        # pvar_2 = getpoissonvar(adv_2)
 
-        advd_2 = AdvectionData(adv_2, data, pvar_2)
+        # advd_2 = AdvectionData(adv_2, data, pvar_2)
 
-        init_data = map(x->zeros(T,sz), 1:(typeadd-1))
-        for i=1:(typeadd-1)
-            while advection!(advd_2)
-            end
-            pvar.init_data[i] .= advd_2.data
+        # init_data = map(x->zeros(T,sz), 1:(typeadd-1))
+        # for i=1:(typeadd-1)
+        #     while advection!(advd_2)
+        #     end
+        #     pvar.init_data[i] .= advd_2.data
+        # end
+        for i = 1:(typeadd-1)
+            pvar.init_data[i] .= data
         end
     end
 
@@ -190,10 +193,12 @@ function run_mesure(
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 tabsplit = [standardsplit, strangsplit, hamsplit_3_11]
 # tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
-tabtype = [StdPoisson2d, StdAB2, StdABinit, StdABinit, StdABinit, StdABinit, StdABinit,]
+tabtype = [StdPoisson2d, StdAB2, StdABp, StdABp, StdABp, StdABp, StdABp,]
+#tabtype = [StdRK4,]
 tabtypeadd = [0, 0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB2", "stdABinit_2", "stdABinit_3", "stdABinit_4", "stdABinit_5", "stdABinit_6",]
+tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB2", "stdABp_2", "stdABp_3", "stdABp_4", "stdABp_5", "stdABp_6",]
+# tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "stdRK4",]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))

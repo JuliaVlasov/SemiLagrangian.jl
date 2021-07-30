@@ -1,5 +1,6 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
+@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg = 2
 
 struct StateAdv{N}
     ind::Int          # indice
@@ -542,7 +543,7 @@ Mutable structure that contains variable parameters of advection series
 - `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
-mutable struct AdvectionData{T,N,timeopt}
+mutable struct AdvectionData{T,N,timeopt, timealg, ordalg}
     adv::Advection{T,N}
     state_gen::Int # indice of the calls of advection!
     time_cur::T # current time
@@ -556,11 +557,15 @@ mutable struct AdvectionData{T,N,timeopt}
     parext::AbstractExtDataAdv
     clobs::AbstractClockObs
     flagdebvelovity::Bool
+    bufcur::Union{Array{Complex{T},2}, Missing}
+    t_bufc::Vector{Array{Complex{T},2}}
     function AdvectionData(
         adv::Advection{T,N,I, timeopt},
         data::Array{T,N},
         parext::AbstractExtDataAdv;
-        clockobs=false
+        clockobs=false,
+        timealg::TimeAlgorithm=ABTimeAlg,
+        ordalg::Int=4,
     ) where {T, N, I, timeopt}
         s = size(data)
         s == sizeall(adv) ||
@@ -586,7 +591,7 @@ mutable struct AdvectionData{T,N,timeopt}
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
         tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
         t_cache = map(x->map( i -> CachePrecal(getinterp(adv,x), zero(T)), 1:nbthr), 1:nbst)
-        return new{T,N,timeopt}(
+        return new{T,N,timeopt, timealg, ordalg}(
             adv,
             1,
             zero(T),
@@ -600,6 +605,8 @@ mutable struct AdvectionData{T,N,timeopt}
             t_cache,
             parext,
             clockobs ? ClockObs(10) : NoClockObs(),
+            missing,
+            []
         )
     end
 end

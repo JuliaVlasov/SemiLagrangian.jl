@@ -18,7 +18,8 @@ using SemiLagrangian:
     gettuple_x,
     interpolatemod!,
     calinverse!,
-    getinverse
+    getinverse,
+    interpolate2!
 
 function test_interp(
     interp::AbstractInterpolation{Rational{BigInt},edge},
@@ -187,6 +188,53 @@ function test_inv0(
     end
 
 end
+
+function test_interp2d(t_interp::Vector{I}, coeff::T, sz::Tuple{Int,Int}) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    ref = zeros(T, sz)
+    cmplxref = zeros(Complex{T}, sz)
+    bufdec = zeros(Complex{T}, sz)
+    res1 = zeros(T, sz)
+    res2 = zeros(T, sz)
+    res3 = zeros(T, sz)
+    cmplxres1 = zeros(Complex{T}, sz)
+    cmplxres2 = zeros(Complex{T}, sz)
+    cmplxres3 = zeros(Complex{T}, sz)
+
+
+    for ind in CartesianIndices(sz)
+        x =  2T(pi)*sum(ind.I ./ sz)
+        bufdec[ind] = coeff * (cos(x +1)+im*cos( x +2))
+        ref[ind] = sin( x +3) +cos(x-1)
+        cmplxref[ind] = coeff * (sin( x +4)+im*cos(x +5))
+    end
+
+    @time interpolate2!(res1, ref, bufdec, t_interp)
+    @time interpolate!(res2, ref, bufdec, t_interp)
+    @time interpolate!(res3, ref, ind -> reim(bufdec[ind]), t_interp)
+
+    norm1 = norm(res1-res3)
+    norm2 = norm(res2 - res3)
+
+    @test norm1 < 1e-8
+    @test norm2 < 1e-8
+    @show norm1, norm2
+
+    @time interpolate2!(cmplxres1, cmplxref, bufdec, t_interp)
+    @time interpolate!(cmplxres2, cmplxref, bufdec, t_interp)
+    @time interpolate!(cmplxres3, cmplxref, ind -> reim(bufdec[ind]), t_interp)
+
+    norm1 = norm(cmplxres1-cmplxres3)
+    norm2 = norm(cmplxres2 - cmplxres3)
+
+    @test norm1 < 1e-8
+    @test norm2 < 1e-8
+    @show norm1, norm2
+
+
+end
+
+
+
 function test_inv(
     t_interp::Vector{I},
     coeff::T,
@@ -472,7 +520,7 @@ end
 
 @testset "test inverse" begin
     T = Double64
-    test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
+#    test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
     # test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
@@ -538,7 +586,8 @@ function test_interpfloat(
         @show typeof(interp), sz, nb, nmax
     end
 end
-
+T = Double64
+test_interp2d([Lagrange(11,T),Lagrange(11,T)], T(7.25), (512,400) )
 
 # test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
 
@@ -574,6 +623,6 @@ end
 # test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
 
 
-# # test_interpfloat(B_SplineLU(7,1024,BigFloat; edge=InsideEdge),1024, 1e-4, 1)
+# test_interpfloat(B_SplineLU(7,1024,BigFloat; edge=InsideEdge),1024, 1e-4, 1)
 
-# # test_interpfloat(B_SplineLU(21,1024,BigFloat; edge=InsideEdge),1024, 1e-18, 5)
+# test_interpfloat(B_SplineLU(21,1024,BigFloat; edge=InsideEdge),1024, 1e-18, 5)

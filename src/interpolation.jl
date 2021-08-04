@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Base: isless, zero, +, *
+import Base: isless, zero, iterate, +, -, *
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
@@ -50,9 +50,13 @@ struct OpTuple{N,T}
 end
 
 (+)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .+ v2.v)
+(-)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .- v2.v)
 (*)(a::Number, v::OpTuple) = OpTuple( a .* v.v)
 (*)(v::OpTuple, a::Number) = OpTuple( v.v .* a)
 Base.zero(::Type{OpTuple{N,T}}) where{N,T}=OpTuple(ntuple(x->zero(T),N))
+Base.iterate(v::OpTuple)=Base.iterate(v.v)
+Base.iterate(v::OpTuple, state)=Base.iterate(v.v, state)
+Base.length(::OpTuple{N}) where N=N
 
 function sol!(
     Y::AbstractArray{T,N},
@@ -927,6 +931,7 @@ function autointerp!(
     fmr = copy(from)
     for i=1:nb
         interpolate!(to, from, fmr, t_interp)
+        @show "autointerp!", i, nb, norm(fmr-to)
         if i != nb
             fmr .= to
         end

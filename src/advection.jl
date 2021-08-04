@@ -409,7 +409,7 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection{T, N, I, timeopt}
+struct Advection{T, N, I, timeopt, timealg, ordalg}
     sizeall::NTuple{N, Int}
     t_mesh::NTuple{N,UniformMesh{T}}
     t_interp::Vector{I}
@@ -420,6 +420,7 @@ struct Advection{T, N, I, timeopt}
     tab_coef::Vector{T}
     nbsplit::Int
     mpid::Any
+    abcoef::ABcoef
     function Advection(
         t_mesh::NTuple{N,UniformMesh{T}},
         t_interp::Vector{I},
@@ -427,6 +428,8 @@ struct Advection{T, N, I, timeopt}
         states::Vector{Tuple{Vector{Int}, Int, Int, Bool, Vararg{Bool,N2}}};
         tab_coef::Vector{T} = strangsplit(dt_base),
         timeopt::TimeOptimization = NoTimeOpt,
+        timealg::TimeAlgorithm=NoTimeAlg,
+        ordalg::Int=timealg == ABTimeAlg ? 4 : 0,
     ) where {T, N, N2, I <: AbstractInterpolation{T}}
         length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
         sizeall = length.(t_mesh)
@@ -450,7 +453,7 @@ struct Advection{T, N, I, timeopt}
         else
             1
         end
-        return new{T, N, I, timeopt}(
+        return new{T, N, I, timeopt, timealg, ordalg}(
             sizeall,
             t_mesh,
             t_interp,
@@ -461,6 +464,7 @@ struct Advection{T, N, I, timeopt}
             tab_coef,
             nbsplit,
             mpid,
+            ABcoef(ordalg)
         )
     end
 end
@@ -485,6 +489,8 @@ function getinterp(adv::Advection, x)
     return adv.t_interp[st.perm[1:st.ndims]]
 end
 isvelocity(adv::Advection, curid)=getst(adv,curid).isvelocity
+
+getordalg(adv::Advection{T, N, I, timeopt, timealg, ordalg}) where{T, N, I, timeopt, timealg, ordalg}=ordalg
 
 
 
@@ -543,7 +549,7 @@ Mutable structure that contains variable parameters of advection series
 - `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
-mutable struct AdvectionData{T,N,timeopt, timealg, ordalg}
+mutable struct AdvectionData{T,N,timeopt, timealg}
     adv::Advection{T,N}
     state_gen::Int # indice of the calls of advection!
     time_cur::T # current time
@@ -556,17 +562,14 @@ mutable struct AdvectionData{T,N,timeopt, timealg, ordalg}
     t_cache::Vector{Vector{CachePrecal{T}}}
     parext::AbstractExtDataAdv
     clobs::AbstractClockObs
-    flagdebvelovity::Bool
-    bufcur::Union{Array{Complex{T},2}, Missing}
-    t_bufc::Vector{Array{Complex{T},2}}
+    bufcur::Union{Array{OpTuple{N,T},N}, Missing}
+    t_bufc::Vector{Array{OpTuple{N,T},N}}
     function AdvectionData(
-        adv::Advection{T,N,I, timeopt},
+        adv::Advection{T,N,I, timeopt, timealg},
         data::Array{T,N},
         parext::AbstractExtDataAdv;
-        clockobs=false,
-        timealg::TimeAlgorithm=ABTimeAlg,
-        ordalg::Int=4,
-    ) where {T, N, I, timeopt}
+        clockobs=false
+    ) where {T, N, I, timeopt, timealg}
         s = size(data)
         s == sizeall(adv) ||
             thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
@@ -591,7 +594,7 @@ mutable struct AdvectionData{T,N,timeopt, timealg, ordalg}
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
         tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
         t_cache = map(x->map( i -> CachePrecal(getinterp(adv,x), zero(T)), 1:nbthr), 1:nbst)
-        return new{T,N,timeopt, timealg, ordalg}(
+        return new{T,N,timeopt, timealg}(
             adv,
             1,
             zero(T),
@@ -684,14 +687,46 @@ function getformdata(advd::AdvectionData)
     return f
 end
 function copydata!(
-    advd::AdvectionData{T,N,timeopt},
+    advd::AdvectionData{T,N,timeopt, timealg},
     f,
-) where {T,N,timeopt}
+) where {T,N,timeopt, timealg}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
     permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
+
+
+function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,timealg}
+    isbegin = ismissing(self.bufcur)
+    initcoef!(getext(self), self)
+    if timealg == ABTimeAlg
+        adv = self.adv
+        ordalg = getordalg(adv)
+        if isbegin
+            println("debut begin")
+            for indice = 1:ordalg-1
+                pushfirst!(self.t_bufc, copy(self.bufcur))
+                fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
+                autointerp!(fmrdec, copy(fmrdec), indice-1, adv.t_interp)
+                interpbufc!(self.t_bufc, fmrdec, adv.t_interp)
+            end
+            println("fin begin")
+        end
+
+        pushfirst!(self.t_bufc, copy(self.bufcur))
+
+        bufc = sum(map(i -> c(adv.abcoef, i, ordalg) * self.t_bufc[i], 1:ordalg))
+    
+        autointerp!(self.bufcur, bufc, ordalg-1, adv.t_interp)
+    
+        deleteat!(self.t_bufc, length(self.t_bufc))
+    
+        interpbufc!(self.t_bufc, self.bufcur, adv.t_interp)
+    end
+end
+
+
 
 
 """
@@ -707,13 +742,13 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 - `false` : means that the advection series is ended.
 """
 function advection!(
-    self::AdvectionData{T,N,timeopt},
-) where {T,N,timeopt}
+    self::AdvectionData{T,N,timeopt, timealg},
+) where {T,N,timeopt, timealg}
     fltrace = true
     f = self.data
     interp = getinterp(self)
     extdata = getext(self)
-    initcoef!(extdata, self)
+    initcoef!(self)
     curind = _getcurrentindice(self)
     f = getformdata(self)
     st=getst(self)
@@ -724,7 +759,9 @@ function advection!(
 
     coltuple = ntuple( x -> Colon(), st.ndims)
 
-    if timeopt == NoTimeOpt || timeopt == MPIOpt
+    if timeopt == NoTimeOpt && timealg == ABTimeAlg
+        interpolate!(f, self.data, self.bufcur, interp, tabmod=tabmod)
+    elseif timeopt == NoTimeOpt || timeopt == MPIOpt
         #        @inbounds for ind in getitr(self)
         # fmrcpt=1
         local buf = view(self.t_buf[st.ind], coltuple..., 1)

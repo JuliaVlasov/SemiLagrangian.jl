@@ -66,7 +66,7 @@ function landau2(
     dt::T,
     sz,
     interp::AbstractInterpolation,
-    type::TypePoisson,
+    type::TimeAlgorithm,
     epsilon::T,
     typeadd,
 ) where {T}
@@ -85,7 +85,9 @@ function landau2(
         dt,
         tabst,
         tab_coef=nosplit(dt), 
-        timeopt = timeopt)
+        timeopt = timeopt,
+        timealg=type,
+        ordalg=typeadd)
 
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -99,7 +101,7 @@ function landau2(
     resint = sum(data)*(vmax-vmin)/length(data)
     data /= resint
     
-    pvar = getpoissonvar(adv, type=type, typeadd=typeadd)
+    pvar = getpoissonvar(adv, type=StdPoisson2d, typeadd=typeadd)
 
     advd = AdvectionData(adv, data, pvar)
 
@@ -193,11 +195,11 @@ function run_mesure(
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 tabsplit = [standardsplit, strangsplit, hamsplit_3_11]
 # tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
-tabtype = [StdPoisson2d, StdAB2, StdABp, StdABp, StdABp, StdABp, StdABp,]
+tabtype = [NoTimeAlg, ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,]
 #tabtype = [StdRK4,]
-tabtypeadd = [0, 0, 2, 3, 4, 5, 6]
+tabtypeadd = [0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB2", "stdABp_2", "stdABp_3", "stdABp_4", "stdABp_5", "stdABp_6",]
+tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB_2", "stdAB_3", "stdAB_4", "stdAB_5", "stdAB_6",]
 # tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "stdRK4",]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 

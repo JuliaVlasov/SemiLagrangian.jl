@@ -197,7 +197,9 @@ function test_poisson2dadv(
     t_max::T,
     nbdt::Int,
     type::TypePoisson,
-    typeadd=0
+    typeadd=0,
+    timealg::TimeAlgorithm=NoTimeAlg,
+    ordalg=0
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-9), T(9), sz[2]
@@ -219,7 +221,7 @@ function test_poisson2dadv(
 
     tabst = [([1,2], 2, 1, false, false)]
 
-    adv = Advection((mesh_sp,mesh_v),interp, dt,tabst, tab_coef=nosplit(dt))
+    adv = Advection((mesh_sp,mesh_v),interp, dt,tabst, tab_coef=nosplit(dt), timealg=timealg, ordalg=ordalg)
 
     data = zeros(T, sz)
     copyto!(data, tabref)
@@ -329,7 +331,25 @@ end
 #     @test ret2 < (ret*1.1)/4
 #    @show ret, ret2
    T = Double64
-   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdABp, 4)
+   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 2)
+   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 2)
+   @test ret2 < (ret*1.25)/4
+  @show ret, ret2, ret/ret2
+
+  T = Double64
+   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 3)
+   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 3)
+   @test ret2 < (ret*1.1)/8
+  @show ret, ret2, ret/ret2
+
+  T = Double64
+   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 4)
+   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 4)
+   @test ret2 < (ret*1.1)/16
+  @show ret, ret2, ret/ret2
+
+
+  @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdABp, 4)
   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdABp, 4)
    @test ret2 < (ret*1.1)/16
   @show ret, ret2

@@ -19,7 +19,8 @@ using SemiLagrangian:
     interpolatemod!,
     calinverse!,
     getinverse,
-    interpolate2!
+    interpolate2!,
+    OpTuple
 
 function test_interp(
     interp::AbstractInterpolation{Rational{BigInt},edge},
@@ -190,45 +191,64 @@ function test_inv0(
 end
 
 function test_interp2d(t_interp::Vector{I}, coeff::T, sz::Tuple{Int,Int}) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    prec = 1000*eps(T)
+    @show prec
     ref = zeros(T, sz)
+    ref2 = zeros(T, sz)
     cmplxref = zeros(Complex{T}, sz)
+    opref = zeros(OpTuple{2,T}, sz)
     bufdec = zeros(Complex{T}, sz)
+    opbufdec = zeros(OpTuple{2,T}, sz)
     res1 = zeros(T, sz)
     res2 = zeros(T, sz)
     res3 = zeros(T, sz)
-    cmplxres1 = zeros(Complex{T}, sz)
+    res4 = zeros(T, sz)
+    opres1 = zeros(OpTuple{2,T}, sz)
     cmplxres2 = zeros(Complex{T}, sz)
     cmplxres3 = zeros(Complex{T}, sz)
+    cmplxres4 = zeros(Complex{T}, sz)
 
 
     for ind in CartesianIndices(sz)
         x =  2T(pi)*sum(ind.I ./ sz)
         bufdec[ind] = coeff * (cos(x +1)+im*cos( x +2))
+        opbufdec[ind] = coeff * OpTuple((cos(x +1), cos( x +2)))
         ref[ind] = sin( x +3) +cos(x-1)
+        ref2[ind] = sin(x+1) +3cos(-x+2)/5
         cmplxref[ind] = coeff * (sin( x +4)+im*cos(x +5))
+        opref[ind] = coeff * OpTuple((sin( x +4), cos(x +5)))
     end
 
-    @time interpolate2!(res1, ref, bufdec, t_interp)
+#    @time interpolate2!(res1, ref, bufdec, t_interp)
+    @time interpolate!(res1, ref, opbufdec, t_interp)
     @time interpolate!(res2, ref, bufdec, t_interp)
     @time interpolate!(res3, ref, ind -> reim(bufdec[ind]), t_interp)
+    @time interpolate!(res4, ref2, bufdec, t_interp)
 
-    norm1 = norm(res1-res3)
+#    norm1 = norm(res1-res3)
     norm2 = norm(res2 - res3)
+    norm1 = norm(res1 - res3)
 
-    @test norm1 < 1e-8
-    @test norm2 < 1e-8
+    @test norm1 < prec
+    @test norm2 < prec
     @show norm1, norm2
 
-    @time interpolate2!(cmplxres1, cmplxref, bufdec, t_interp)
+    @time interpolate!(opres1, opref, opbufdec, t_interp)
     @time interpolate!(cmplxres2, cmplxref, bufdec, t_interp)
     @time interpolate!(cmplxres3, cmplxref, ind -> reim(bufdec[ind]), t_interp)
+    @time interpolate!(cmplxres4, ref + im*ref2, bufdec, t_interp)
 
-    norm1 = norm(cmplxres1-cmplxres3)
+    optocmplx(v::OpTuple{2,T}) where T=v.v[1] +im*v.v[2]
+
+    norm1 = norm(optocmplx.(opres1)-cmplxres3)
     norm2 = norm(cmplxres2 - cmplxres3)
 
-    @test norm1 < 1e-8
-    @test norm2 < 1e-8
-    @show norm1, norm2
+    norm4 = norm(res2 + im*res4 - cmplxres4)
+
+    @test norm1 < prec
+    @test norm2 < prec
+    @test norm4 < prec
+    @show norm1, norm2,norm4
 
 
 end
@@ -520,7 +540,7 @@ end
 
 @testset "test inverse" begin
     T = Double64
-#    test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
+    # test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
     # test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
@@ -587,7 +607,7 @@ function test_interpfloat(
     end
 end
 T = Double64
-test_interp2d([Lagrange(11,T),Lagrange(11,T)], T(7.25), (512,400) )
+test_interp2d([Lagrange(11,T),Lagrange(11,T)], T(1.25), (1024,1000) )
 
 # test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
 

@@ -302,8 +302,8 @@ end
 
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T,N},
-) where {T,N,Nsp,Nv}
+    self::AdvectionData{T,N, timeopt, NoTimeAlg},
+) where {T,N,Nsp,Nv, timeopt}
     #    st = getst(self)
     adv = self.adv
     compute_charge!(self)
@@ -317,14 +317,44 @@ end
 
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T},
+    self::AdvectionData{T,N, timeopt, NoTimeAlg},
     indext,
     ind,
-) where {T,N,Nsp,Nv}
+) where {T,N,Nsp,Nv, timeopt}
     @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
     #    @show ind.I
     return (pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
 end
+function initcoef!(
+    pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
+    self::AdvectionData{T,N, timeopt, ABTimeAlg},
+) where {T,N,Nsp,Nv, timeopt}
+    #    st = getst(self)
+    adv = self.adv
+    compute_charge!(self)
+    compute_elfield!(self)
+
+    bufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    bufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+    if ismissing(self.bufcur)
+        self.bufcur = zeros(OpTuple{N,T}, sizeall(adv))
+    end
+    for ind in CartesianIndices(sizeall(adv))
+        self.bufcur[ind] = OpTuple((bufc_sp[ind.I[2]], bufc_v[ind.I[1]]))
+    end
+end
+
+# @inline function getalpha(
+#     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
+#     self::AdvectionData{T},
+#     indext,
+#     ind,
+# ) where {T,N,Nsp,Nv}
+#     @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+#     #    @show ind.I
+#     return (pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
+# end
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2dTry},
     self::AdvectionData{T},

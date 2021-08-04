@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Base.isless
+import Base: isless, zero, +, *
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
@@ -45,7 +45,14 @@ isbspline(_::AbstractInterpolation) = false
 
 Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 
+struct OpTuple{N,T}
+    v::NTuple{N,T}
+end
 
+(+)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .+ v2.v)
+(*)(a::Number, v::OpTuple) = OpTuple( a .* v.v)
+(*)(v::OpTuple, a::Number) = OpTuple( v.v .* a)
+Base.zero(::Type{OpTuple{N,T}}) where{N,T}=OpTuple(ntuple(x->zero(T),N))
 
 function sol!(
     Y::AbstractArray{T,N},
@@ -91,7 +98,7 @@ function sol!(
 end
 function sol(
     interp_t::AbstractVector{I},
-    b::Union{AbstractArray{T,N},AbstractArray{Complex{T},N}}
+    b::Union{AbstractArray{T,N},AbstractArray{Complex{T},N},AbstractArray{OpTuple{N,T},N} }
 ) where {T<: Real,N,I<:AbstractInterpolation{T}}
     if all(issolidentity.(interp_t))
         return b
@@ -510,6 +517,7 @@ mutable struct CachePrecal{T,N,I}
         return new{T,N,I}(interps, cache_alpha, cache_int, precal)
     end
     CachePrecal(interps::Vector{I}, x::Complex{T}) where {T <: Real,I<:AbstractInterpolation{T}}=CachePrecal(interps,real(x))
+    CachePrecal(interps::Vector{I}, x::OpTuple{N,T}) where {N,T <: Real,I<:AbstractInterpolation{T}}=CachePrecal(interps,x.v[1])
 end
 @inline function getprecal(self::CachePrecal{T,N}, alpha::NTuple{N,T}) where {T,N}
     if alpha != self.cache_alpha
@@ -522,6 +530,7 @@ end
     return self.cache_int, self.precal
 end
 @inline getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real}=getprecal(self,reim(alpha))
+@inline getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real}=getprecal(self,alpha.v)
 @inline function getprecal(self::CachePrecal{T,1}, alpha::T) where {T}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
@@ -594,7 +603,37 @@ function interpolate!(
         ),
     )
     sz = size(fp)
-    @show "interpolate2!", sz
+    @show "interpolate!", sz
+    res = sol(interp_t, fi)
+
+    order = get_order.(interp_t)
+    origin = -div.(order, (2,))
+    decall = (5 .* sz .+ origin) .% sz .+ sz
+
+    for ind in CartesianIndices(sz)
+        dint, tab = getprecal(cache, bufdec[ind])
+        deb_i = dint .+ decall .+ ind.I
+        end_i = deb_i + order
+        fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
+    end
+#    @show "std2d", diffmax, decminmin, decmaxmax
+end
+function interpolate!(
+    fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
+    fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
+    bufdec::AbstractArray{OpTuple{N,T},N},
+    interp_t::AbstractVector{I};
+    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
+    cache::CachePrecal{T,N} = CachePrecal(interp_t, zero(eltype(fp))),
+) where {T,N,I<:AbstractInterpolation{T}}
+
+    N == length(interp_t) || thrown(
+        ArgumentError(
+            "The number of Interpolation $(length(interp_t)) is different of N=$N",
+        ),
+    )
+    sz = size(fp)
+    @show "interpolate!", sz
     res = sol(interp_t, fi)
 
     order = get_order.(interp_t)
@@ -622,7 +661,7 @@ function interpolate2!(
         ),
     )
     sz = size(fp)
-    @show "interpolate!", sz
+    @show "interpolate2!", sz
     res = sol(interp_t, fi)
     supval(x) = x>0 ? x : 0
     extr = extrema.((real.(bufdec), imag(bufdec)))
@@ -875,5 +914,31 @@ function getinverse(dec::NTuple{N,Array{T,N}}, interp::Vector{I}) where {T,N,I<:
     end
     return decinv
 end
-    
+ 
+function autointerp!(
+    to::Array{OpTuple{N,T},N},
+    from::Array{OpTuple{N,T},N},
+    nb::Int,
+    t_interp::Vector{I},
+)   where{N,T, I<:AbstractInterpolation}
+    if nb < 1
+        to .= from
+    end
+    fmr = copy(from)
+    for i=1:nb
+        interpolate!(to, from, fmr, t_interp)
+        if i != nb
+            fmr .= to
+        end
+    end
+end
+function interpbufc!(
+    t_buf::Vector{Array{OpTuple{N,T}, N}},
+    bufdec::Array{OpTuple{N,T}, N},
+    t_interp::Vector{I}
+) where {N, T, I <: AbstractInterpolation{T}}
 
+    for buf in t_buf
+        interpolate!(buf, copy(buf), bufdec, t_interp)
+    end
+end

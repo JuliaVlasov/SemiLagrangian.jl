@@ -16,5 +16,5 @@ struct GeoConst{T,N}
     end
 end
 
-function caldec(geoc::GeoConst{T,N}, advd::AdvectionData{T,N})
-    
+function caldec(geoc::GeoConst{T,N}, advd::AdvectionData{T,N}) where {T,N}
+end

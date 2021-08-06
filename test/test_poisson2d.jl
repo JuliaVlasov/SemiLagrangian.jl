@@ -33,7 +33,10 @@ using SemiLagrangian:
     StdRK4,
     StdPoisson2dTry,
     stdtomesh,
-    StdABp
+    StdABp,
+    TimeAlgorithm,
+    NoTimeAlg,
+    ABTimeAlg
 
 # """
 
@@ -325,7 +328,7 @@ end
 
 
 @testset "test poisson2d" begin
-#     T = Double64
+     T = Double64
 #     @time ret = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdAB, 2)
 #    @time ret2 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdAB, 2)
 #     @test ret2 < (ret*1.1)/4
@@ -348,11 +351,13 @@ end
    @test ret2 < (ret*1.1)/16
   @show ret, ret2, ret/ret2
 
+  
 
-  @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdABp, 4)
-  @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdABp, 4)
-   @test ret2 < (ret*1.1)/16
-  @show ret, ret2
+
+#   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdABp, 4)
+#   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdABp, 4)
+#    @test ret2 < (ret*1.1)/16
+#   @show ret, ret2
   ret, datanorm10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0)
   ret2, datanorm20 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 20, StdPoisson2d, 0)
   @show ret, ret2

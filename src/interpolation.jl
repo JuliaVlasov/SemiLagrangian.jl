@@ -48,6 +48,7 @@ Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 struct OpTuple{N,T}
     v::NTuple{N,T}
 end
+Base.show(io::IO, ot::OpTuple) = print(io, ot.v)
 
 (+)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .+ v2.v)
 (-)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .- v2.v)
@@ -592,36 +593,7 @@ function interpolate!(
     end
 #    @show "std2d", diffmax, decminmin, decmaxmax
 end
-function interpolate!(
-    fp::Union{AbstractArray{T,2},AbstractArray{Complex{T},2}},
-    fi::Union{AbstractArray{T,2},AbstractArray{Complex{T},2}},
-    bufdec::AbstractArray{Complex{T},2},
-    interp_t::AbstractVector{I};
-    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
-    cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp))),
-) where {T,N,I<:AbstractInterpolation{T}}
 
-    2 == length(interp_t) || thrown(
-        ArgumentError(
-            "The number of Interpolation $(length(interp_t)) is different of N=$N",
-        ),
-    )
-    sz = size(fp)
-    @show "interpolate!", sz
-    res = sol(interp_t, fi)
-
-    order = get_order.(interp_t)
-    origin = -div.(order, (2,))
-    decall = (5 .* sz .+ origin) .% sz .+ sz
-
-    for ind in CartesianIndices(sz)
-        dint, tab = getprecal(cache, bufdec[ind])
-        deb_i = dint .+ decall .+ ind.I
-        end_i = deb_i + order
-        fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
-    end
-#    @show "std2d", diffmax, decminmin, decmaxmax
-end
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
     fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
@@ -629,8 +601,10 @@ function interpolate!(
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     cache::CachePrecal{T,N} = CachePrecal(interp_t, zero(eltype(fp))),
-) where {T,N,I<:AbstractInterpolation{T}}
-
+    mpid::Union{MPIData, Missing}=missing,
+    t_split::Union{Tuple, Missing}=missing
+#    itr::AbstractArray=CartesianIndices(fi)
+) where {T,N,I <: AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -644,12 +618,18 @@ function interpolate!(
     origin = -div.(order, (2,))
     decall = (5 .* sz .+ origin) .% sz .+ sz
 
-    for ind in CartesianIndices(sz)
+    itr = ismissing(mpid) ? CartesianIndices(sz) : CartesianIndices(sz)[t_split[mpid.ind]]
+
+    for ind in itr
         dint, tab = getprecal(cache, bufdec[ind])
         deb_i = dint .+ decall .+ ind.I
         end_i = deb_i + order
         fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
     end
+    if !ismissing(mpid)
+        mpibroadcast(mpid, t_split, fp)
+    end
+    true
 #    @show "std2d", diffmax, decminmin, decmaxmax
 end
 function interpolate2!(
@@ -923,14 +903,16 @@ function autointerp!(
     to::Array{OpTuple{N,T},N},
     from::Array{OpTuple{N,T},N},
     nb::Int,
-    t_interp::Vector{I},
+    interp_t::AbstractVector{I};
+     mpid::Union{MPIData, Missing}=missing,
+    t_split::Union{Tuple, Missing}=missing
 )   where{N,T, I<:AbstractInterpolation}
     if nb < 1
         to .= from
     end
     fmr = copy(from)
     for i=1:nb
-        interpolate!(to, from, fmr, t_interp)
+        interpolate!(to, from, fmr, interp_t; mpid=mpid, t_split=t_split)
         @show "autointerp!", i, nb, norm(fmr-to)
         if i != nb
             fmr .= to
@@ -940,10 +922,12 @@ end
 function interpbufc!(
     t_buf::Vector{Array{OpTuple{N,T}, N}},
     bufdec::Array{OpTuple{N,T}, N},
-    t_interp::Vector{I}
+    interp_t::AbstractVector{I};
+    mpid::Union{MPIData, Missing}=missing,
+    t_split::Union{Tuple, Missing}=missing
 ) where {N, T, I <: AbstractInterpolation{T}}
 
     for buf in t_buf
-        interpolate!(buf, copy(buf), bufdec, t_interp)
+        interpolate!(buf, copy(buf), bufdec, interp_t, mpid=mpid, t_split=t_split)
     end
 end

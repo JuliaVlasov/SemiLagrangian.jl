@@ -4,6 +4,7 @@ using LinearAlgebra
 using SemiLagrangian:
     Advection,
     magicsplit,
+    nosplit,
     sizeall,
     AdvectionData,
     getdata,
@@ -15,7 +16,9 @@ using SemiLagrangian:
     Hermite,
     B_SplineLU,
     B_SplineFFT,
-    interpolate!
+    interpolate!,
+    NoTimeAlg,
+    ABTimeAlg
 """
 
    exact(tf, mesh1, mesh2)
@@ -31,7 +34,7 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         s, c = sincos(tf)
         xn, yn = c * x - s * y, +s * x + c * y
-        f[i, j] = exp(-5 * ((xn)^2 + (yn + T(6 // 5))^2))
+        f[i, j] = exp(-2 * ((xn)^2 + (yn + T(6 // 5))^2))
     end
 end
 
@@ -88,7 +91,72 @@ end
     return diffmax
 
 end
+function maxind(tab::Array{T,N}) where {T,N}
+    v=-Inf
+    res = CartesianIndex(0,0)
+    for ind in CartesianIndices(tab)
+        if tab[ind] > v
+            res = ind
+            v = tab[ind]
+        end
+    end
+    return res
+end
 
+function test_rotation2d(
+    sz::NTuple{2,Int},
+    interp::Vector{I},
+    nbdt::Int,
+    timealg,
+    ordalg
+) where {T, I <: AbstractInterpolation{T} }
+    spmin, spmax, nsp = T(-5), T(5), sz[1]
+    vmin, vmax, nv = -T(5), T(5), sz[2]
+
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+    dt = T(2big(pi) / nbdt)
+    adv = Advection(
+        (mesh_sp,mesh_v,),
+        interp,
+        dt,
+        [([1,2], 2, 1, false),];
+        tab_coef=nosplit(dt),
+        timealg=timealg,
+        ordalg=ordalg
+    )
+    #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
+
+
+    sz = sizeall(adv)
+    tabref = zeros(T, sz)
+    exact!(tabref, mesh_sp, mesh_v, T(0))
+
+    pvar = getrotationvar(adv)
+
+    advdata = AdvectionData(adv, tabref, pvar)
+
+    diffmax = 0
+    data = getdata(advdata)
+
+
+
+    for ind = 1:nbdt
+        while advection!(advdata)
+        end
+        exact!(tabref, mesh_sp, mesh_v, dt * ind)
+
+        indmaxdata = maxind(advdata.data)
+        indmaxexact = maxind(tabref)
+
+        diff = norm(data .- tabref, Inf)
+        diffmax = max(diffmax, diff)
+        @show ind, diff, indmaxdata, indmaxexact
+    end
+    println("test_rotation sz=$sz diffmax=$diffmax")
+    return diffmax
+
+end
 function test_rotation(
     sz::NTuple{2,Int},
     interp::Vector{I},
@@ -152,6 +220,29 @@ end
 @testset "test rotation" begin
     T = Float64
 #    @time @test test_rotation((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
+@time ret1 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 1)
+@time ret2 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 1)
+@show ret1, ret2, ret1/ret2
+
+@test ret2 < (ret1*1.1)/2 
+
+@time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 2)
+@time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 2)
+@show ret1, ret2, ret1/ret2
+
+@test ret2 < (ret1*1.1)/4 
+
+@time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 3)
+@time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 3)
+@show ret1, ret2, ret1/ret2
+
+@test ret2 < (ret1*1.1)/8
+
+@time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 4)
+@time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 4)
+@show ret1, ret2, ret1/ret2
+
+@test ret2 < (ret1*1.1)/16
 @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
 @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
 @time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3

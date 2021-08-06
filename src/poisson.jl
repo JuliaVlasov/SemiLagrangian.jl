@@ -12,8 +12,8 @@ function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     return ntuple(x -> reshape(v_k[x], tupleshape(x, Nsp, sz[x])) .* fctv_k_gen, Nsp)
 end
 
-using SHA
-cod(a::Array) = bytes2hex(sha256(reinterpret(UInt8, collect(Iterators.flatten(a)))))
+# using SHA
+# cod(a::Array) = bytes2hex(sha256(reinterpret(UInt8, collect(Iterators.flatten(a)))))
 
 
 
@@ -300,34 +300,34 @@ end
     #    return isvelocitystate(self) ? pv.bufcur[ind.I[Nsum-Nsp:Nsum-1]...] : pv.bufcur[ind.I[end]]
 end
 
+# function initcoef!(
+#     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
+#     self::AdvectionData{T,N, timeopt, NoTimeAlg},
+# ) where {T,N,Nsp,Nv, timeopt}
+#     #    st = getst(self)
+#     adv = self.adv
+#     compute_charge!(self)
+#     compute_elfield!(self)
+
+#     pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
+
+#     pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+
+# end
+
+# @inline function getalpha(
+#     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
+#     self::AdvectionData{T,N, timeopt, NoTimeAlg},
+#     indext,
+#     ind,
+# ) where {T,N,Nsp,Nv, timeopt}
+#     @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
+#     #    @show ind.I
+#     return (pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
+# end
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T,N, timeopt, NoTimeAlg},
-) where {T,N,Nsp,Nv, timeopt}
-    #    st = getst(self)
-    adv = self.adv
-    compute_charge!(self)
-    compute_elfield!(self)
-
-    pv.bufcur_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
-
-    pv.bufcur_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
-
-end
-
-@inline function getalpha(
-    pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T,N, timeopt, NoTimeAlg},
-    indext,
-    ind,
-) where {T,N,Nsp,Nv, timeopt}
-    @assert Nsp == Nv == 1 "Nsp=$Nsp Nv=$Nv they must be equal to one"
-    #    @show ind.I
-    return (pv.bufcur_sp[ind.I[2]], pv.bufcur_v[ind.I[1]])
-end
-function initcoef!(
-    pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T,N, timeopt, ABTimeAlg},
+    self::AdvectionData{T,N, timeopt},
 ) where {T,N,Nsp,Nv, timeopt}
     #    st = getst(self)
     adv = self.adv
@@ -512,7 +512,7 @@ function initcoef!(
     vecbufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
     #    @show vecbufc_v
-    @show "AB2", cod(vecbufc_v)
+ #   @show "AB2", cod(vecbufc_v)
 
     bufc_v = zeros(T, sz)
     bufc_sp = zeros(T, sz)

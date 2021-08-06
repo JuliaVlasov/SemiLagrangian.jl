@@ -583,16 +583,26 @@ mutable struct AdvectionData{T,N,timeopt, timealg}
         fmrtabdata = map(x -> initfmrdata(adv, bufdata, x), 1:nbst)
         copyto!(datanew, data)
 #        @show adv.nbsplit
-        t_itr = ntuple(
+        if nbst == 1
+            t_itr = (splitvec(adv.nbsplit, CartesianIndices(s)),)
+        else
+            t_itr = ntuple(
             x -> splitvec(adv.nbsplit, CartesianIndices(s[adv.states[x].perm][(adv.states[x].ndims + 1):N])),
             nbst,
         )
+        end
 #        @show t_itr
         t_linind = ntuple(x -> LinearIndices(s[adv.states[x].perm]), nbst)
         cartz(x)=CartesianIndices(s[adv.states[x].perm][1:adv.states[x].ndims])
         fbegin(x, y) = t_linind[x][cartz(x)[1], t_itr[x][y][1]]
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
-        tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
+        if nbst == 1
+            li = LinearIndices(s)
+            it = t_itr[1]
+            tt_split = (ntuple(y -> (li[it[y][1]]:li[it[y][end]]), adv.nbsplit),)
+        else
+            tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
+        end
         t_cache = map(x->map( i -> CachePrecal(getinterp(adv,x), zero(T)), 1:nbthr), 1:nbst)
         return new{T,N,timeopt, timealg}(
             adv,
@@ -690,7 +700,7 @@ function copydata!(
     advd::AdvectionData{T,N,timeopt, timealg},
     f,
 ) where {T,N,timeopt, timealg}
-    if timeopt == MPIOpt && advd.adv.nbsplit != 1
+    if timeopt == MPIOpt && advd.adv.nbsplit != 1 && length(advd.adv.states) != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
     permutedims!(advd.data, f, invperm(getst(advd).perm))
@@ -708,8 +718,8 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             for indice = 1:ordalg-1
                 pushfirst!(self.t_bufc, copy(self.bufcur))
                 fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
-                autointerp!(fmrdec, copy(fmrdec), indice-1, adv.t_interp)
-                interpbufc!(self.t_bufc, fmrdec, adv.t_interp)
+                autointerp!(fmrdec, copy(fmrdec), indice-1, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
+                interpbufc!(self.t_bufc, fmrdec, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
             end
             println("fin begin")
         end
@@ -718,11 +728,11 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
 
         bufc = sum(map(i -> c(adv.abcoef, i, ordalg) * self.t_bufc[i], 1:ordalg))
     
-        autointerp!(self.bufcur, bufc, ordalg-1, adv.t_interp)
+        autointerp!(self.bufcur, bufc, ordalg-1, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
     
         deleteat!(self.t_bufc, length(self.t_bufc))
     
-        interpbufc!(self.t_bufc, self.bufcur, adv.t_interp)
+        interpbufc!(self.t_bufc, self.bufcur, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
     end
 end
 
@@ -745,7 +755,7 @@ function advection!(
     self::AdvectionData{T,N,timeopt, timealg},
 ) where {T,N,timeopt, timealg}
     fltrace = true
-    f = self.data
+    adv = self.adv
     interp = getinterp(self)
     extdata = getext(self)
     initcoef!(self)
@@ -759,8 +769,9 @@ function advection!(
 
     coltuple = ntuple( x -> Colon(), st.ndims)
 
-    if timeopt == NoTimeOpt && timealg == ABTimeAlg
-        interpolate!(f, self.data, self.bufcur, interp, tabmod=tabmod)
+#    if timeopt == NoTimeOpt && timealg == ABTimeAlg
+    if length(self.adv.states) == 1
+            interpolate!(f, self.data, self.bufcur, adv.t_interp; tabmod=tabmod, mpid=adv.mpid, t_split=self.tt_split[1])
     elseif timeopt == NoTimeOpt || timeopt == MPIOpt
         #        @inbounds for ind in getitr(self)
         # fmrcpt=1

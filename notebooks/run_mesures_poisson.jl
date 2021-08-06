@@ -1,7 +1,7 @@
 using LinearAlgebra
 using DoubleFloats
 # using SemiLagMPI
-# using MPI
+using MPI
 using SemiLagrangian
 
 function printout(
@@ -222,7 +222,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
         else
             landau2(t_max, timeopt, dt, sz, interp, tp, epsilon, typadd)
         end
-#        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             println("# sz=$sz t_max=$t_max interp=$interp")
             for txt in tabtxt
                 print("# $txt\t")
@@ -237,13 +237,13 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
                 end
             end
             
-	    println("free memory : $(Sys.free_memory()/2^30)")
+	        println("free memory : $(Sys.free_memory()/2^30)")
             flush(stdout)
-        #        end
+        end
     end
 end
 T=Double64
-run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(11,T), T(0.5))
+run_mesure(T(1), MPIOpt, (128,128), Lagrange(11,T), T(0.5))
 
 
 

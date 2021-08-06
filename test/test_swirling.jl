@@ -19,7 +19,11 @@ using SemiLagrangian:
     CachePrecal,
     AbstractExtDataAdv,
     initcoef!,
-    getalpha
+    getalpha,
+    OpTuple,
+    TimeAlgorithm,
+    NoTimeAlg,
+    ABTimeAlg
 
 import SemiLagrangian: initcoef!, getalpha
 # """
@@ -139,31 +143,33 @@ function test_swirling(
     return diff
 end
 mutable struct Swirling{T} <: AbstractExtDataAdv
-    ref1::Array{T,2}
-    ref2::Array{T,2}
-    dec1::Array{T,2}
-    dec2::Array{T,2}
-    function Swirling(dec1::Array{T,2}, dec2::Array{T,2}) where {T}
-        return new{T}(dec1, dec2, zeros(T,size(dec1)), zeros(T,size(dec2)))
+    ref::Array{OpTuple{2,T},2}
+    function Swirling(dec::Array{OpTuple{2,T},2}) where {T}
+        return new{T}(copy(dec))
     end
 
 end
 @inbounds function initcoef!(ext::Swirling{T}, advd::AdvectionData{T}) where{T}
     coef = advd.adv.dt_base * cos(T(pi) * advd.time_cur/T(1.5))
-    ext.dec1 .= coef * ext.ref1
-    ext.dec2 .= coef * ext.ref2
+    sz = sizeall(advd.adv)
+    if ismissing(advd.bufcur)
+        advd.bufcur = zeros(OpTuple{2,T}, sz)
+    end
+    advd.bufcur .= coef * ext.ref
     missing
 end
-@inline @inbounds function getalpha(ext::Swirling, advd::AdvectionData, indext::CartesianIndex, indbuf::CartesianIndex) 
-    return (ext.dec1[indbuf], ext.dec2[indbuf])
-end
+# @inline @inbounds function getalpha(ext::Swirling, advd::AdvectionData, indext::CartesianIndex, indbuf::CartesianIndex) 
+#     return (ext.dec1[indbuf], ext.dec2[indbuf])
+# end
 
 
 function test_swirling_adv(
     sz::NTuple{2,Int},
     ::T,
     interp::AbstractVector{I},
-    nbdt::Int,
+    nbdt::Int;
+    timealg::TimeAlgorithm=NoTimeAlg,
+    ordalg=0
 ) where {T, I <: AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), T(1), sz[ 1]
     vmin, vmax, nv = T(0), T(1), sz[2]
@@ -176,29 +182,28 @@ function test_swirling_adv(
 
     # dec1 = -2tan(dt/2) / step(mesh_sp) * mesh_v.points
     # dec2 = 2tan(dt/2) / step(mesh_v) * mesh_sp.points
-    dec1 = zeros(T, sz)
-    dec2 = zeros(T, sz)
+    dec = zeros(OpTuple{2,T}, sz)
     # tgdt = 2tan(dt / 2)
     # coef = 1 / (1 + tgdt^2 / 4)
     tabref = zeros(T, sz)
     for i = 1:sz[1], j = 1:sz[2]
         x = mesh_sp.points[i]
         y = mesh_v.points[j]
-        v = [
+        v = (
             -cos(T(pi) * x)^2 * sin(2T(pi) * y) / step(mesh_sp),
             cos(T(pi) * y)^2 * sin(2T(pi) * x) / step(mesh_v),
-        ]
-        dec1[i, j], dec2[i, j] = v
+        )
+        dec[i, j] = OpTuple(v)
         tabref[i, j] = ((1 - x)^2 + (1 - y)^2 < 0.8) ? 1 : 0
     end
 
-    adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,])
+    adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,], timealg=timealg, ordalg=ordalg)
 
-    advd = AdvectionData(adv, tabref, Swirling(dec1,dec2))
+    advd = AdvectionData(adv, tabref, Swirling(dec))
 
-
-    @show minimum(dec1), maximum(dec1)
-    @show minimum(dec2), maximum(dec2)
+    f(v,x) = v.v[x]
+    @show extrema(f.(dec,(1,)))
+    @show extrema(f.(dec,(2,)))
 
     diff = norm(getdata(advd) .- tabref)
 
@@ -224,4 +229,8 @@ end
     @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 15
     @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 15
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 15
+
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
+#    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
 end

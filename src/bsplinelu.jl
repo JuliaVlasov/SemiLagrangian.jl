@@ -166,7 +166,7 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where {T}
         (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols))
     )
 end
-function sol!(X::AbstractVector, spA::LuSpline{T}, Y::AbstractVector{T}) where {T}
+function sol!(X::AbstractVector{I}, spA::LuSpline{T}, Y::AbstractVector{I}) where {T,I}
     szb = size(spA.band, 2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
     begrow = n - spA.ku
@@ -185,7 +185,7 @@ function sol!(X::AbstractVector, spA::LuSpline{T}, Y::AbstractVector{T}) where {
         end
     end
 #    X = zeros(T, n)
-    fill!(X, T(0))
+    fill!(X, zero(eltype(X)))
     if spA.iscirc
         for i = n:-1:begrow+1
             X[i] =
@@ -199,7 +199,7 @@ function sol!(X::AbstractVector, spA::LuSpline{T}, Y::AbstractVector{T}) where {
         if deb <= fin
             s = sum(spA.band[spA.ku+1+i-j, j] * X[j] for j = deb:fin)
         else
-            s = 0
+            s = zero(eltype(Y))
         end
         if spA.iscirc
             s += sum(spA.lastcols[i, 1:spA.kl] .* X[end-spA.kl+1:end])
@@ -208,7 +208,7 @@ function sol!(X::AbstractVector, spA::LuSpline{T}, Y::AbstractVector{T}) where {
     end
     return X, Y
 end
-sol(spA::LuSpline{T}, b::AbstractVector{T}) where {T} = sol!(zeros(T, size(b, 1)), spA, copy(b))
+sol(spA::LuSpline{T}, b::AbstractVector) where {T} = sol!(zeros(eltype(b), size(b, 1)), spA, copy(b))
 # get_n(sp::LuSpline)=sp.iscirc ? size(sp.lastrows, 2) : size(sp.band, 2)
 get_order(sp::LuSpline) = sp.ku + sp.kl + 1
 
@@ -254,9 +254,9 @@ struct B_SplineLU{T,edge,order} <: B_Spline{T,edge,order}
 end
 
 
-sol!(X::AbstractVector{T}, bsp::B_SplineLU{T}, Y::AbstractVector{T}) where {T} = sol!(X, bsp.ls, Y)[1]
+sol!(X::AbstractVector{I}, bsp::B_SplineLU{T}, Y::AbstractVector{I}) where {T,I} = sol!(X, bsp.ls, Y)[1]
 
-sol(bsp::B_SplineLU{T}, b::AbstractVector{T}) where {T<:Number} = sol!(zeros(T, length(b)), bsp, copy(b))
+sol(bsp::B_SplineLU{T}, b::AbstractVector{I}) where {T<:Number,I} = sol!(zeros(I, length(b)), bsp, copy(b))
 
 
 # get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)

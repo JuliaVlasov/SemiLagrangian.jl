@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Base: isless, zero, iterate, +, -, *
+import Base: isless, zero, iterate, +, -, *, /
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
@@ -54,16 +54,17 @@ Base.show(io::IO, ot::OpTuple) = print(io, ot.v)
 (-)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .- v2.v)
 (*)(a::Number, v::OpTuple) = OpTuple( a .* v.v)
 (*)(v::OpTuple, a::Number) = OpTuple( v.v .* a)
+(/)(v::OpTuple, a::Number) = OpTuple( v.v ./ a)
 Base.zero(::Type{OpTuple{N,T}}) where{N,T}=OpTuple(ntuple(x->zero(T),N))
 Base.iterate(v::OpTuple)=Base.iterate(v.v)
 Base.iterate(v::OpTuple, state)=Base.iterate(v.v, state)
 Base.length(::OpTuple{N}) where N=N
 
 function sol!(
-    Y::AbstractArray{T,N},
+    Y::AbstractArray{T2,N},
     interp_t::AbstractVector{I},
-    b::AbstractArray{T,N},
-) where {T,N,I<:AbstractInterpolation{T}}
+    b::AbstractArray{T2,N},
+) where {T,N,I<:AbstractInterpolation{T}, T2 <: Union{T,OpTuple{N,T}}}
     sz = size(Y)
     p = circshift(1:N, -1)
     perm = p
@@ -83,7 +84,7 @@ function sol!(
 
             #            @show i, sz
             bufin = (i == 1) ? b : permutedims(bufout, perm)
-            bufout = zeros(T, sz)
+            bufout = zeros(T2, sz)
             # diffmax = 0
             for c in CartesianIndices(sz[2:end])
                 bo = view(bufout, :, c)
@@ -108,7 +109,7 @@ function sol(
     if all(issolidentity.(interp_t))
         return b
     else
-        return sol!(zeros(T, size(b)), interp_t, b)
+        return sol!(zeros(eltype(b), size(b)), interp_t, b)
     end
 end
 
@@ -595,9 +596,9 @@ function interpolate!(
 end
 
 function interpolate!(
-    fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
-    fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N}},
-    bufdec::AbstractArray{OpTuple{N,T},N},
+    fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
+    fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
+    bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     cache::CachePrecal{T,N} = CachePrecal(interp_t, zero(eltype(fp))),

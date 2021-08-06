@@ -611,7 +611,7 @@ function interpolate!(
         ),
     )
     sz = size(fp)
-    @show "interpolate!", sz
+#    @show "interpolate!", sz
     res = sol(interp_t, fi)
 
     order = get_order.(interp_t)
@@ -913,7 +913,7 @@ function autointerp!(
     fmr = copy(from)
     for i=1:nb
         interpolate!(to, from, fmr, interp_t; mpid=mpid, t_split=t_split)
-        @show "autointerp!", i, nb, norm(fmr-to)
+#        @show "autointerp!", i, nb, norm(fmr-to)
         if i != nb
             fmr .= to
         end

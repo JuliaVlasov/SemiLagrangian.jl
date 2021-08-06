@@ -661,7 +661,7 @@ Function called at the end of advection function to update internal state of Adv
                 `false` at the end of the series.
 """
 function retns(self::AdvectionData, extdata::AbstractExtDataAdv)
-    println("generic retns")
+#    println("generic retns")
     return false
 end
 function nextstate!(self::AdvectionData)
@@ -714,14 +714,14 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-            println("debut begin")
+#            println("debut begin")
             for indice = 1:ordalg-1
                 pushfirst!(self.t_bufc, copy(self.bufcur))
                 fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
                 autointerp!(fmrdec, copy(fmrdec), indice-1, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
                 interpbufc!(self.t_bufc, fmrdec, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
             end
-            println("fin begin")
+#            println("fin begin")
         end
 
         pushfirst!(self.t_bufc, copy(self.bufcur))

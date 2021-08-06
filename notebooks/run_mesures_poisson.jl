@@ -51,8 +51,8 @@ function landau(advd::AdvectionData, nbdt)
         maxel = max(maxel ,el)
         minel = min(minel, el)
         maxdiff = maxel - minel
-        @show i,el,diff, maxdiff
-        flush(stdout)
+        # @show i,el,diff, maxdiff
+        # flush(stdout)
         # printall(cl_obs)
         # clockreset(cl_obs)
     end

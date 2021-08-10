@@ -81,6 +81,9 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
     pc::PoissonConst{T,N,Nsp,Nv,type,typeadd}
     rho::Array{T,Nsp}
     t_elfield::Union{NTuple{Nsp,Array{T,Nsp}},Missing}
+    bufcur_sp::Any
+    bufcur_v::Any
+    tupleind::Any
 
     function PoissonVar(
         pc::PoissonConst{T,N,Nsp,Nv,type,typeadd},
@@ -92,6 +95,9 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
             pc,
             rho,
             missing,
+            missing,
+            missing,
+            missing
         )
     end
 end

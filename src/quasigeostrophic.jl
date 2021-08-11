@@ -63,7 +63,9 @@ getgeovar(adv::Advection{T,N}; kwargs...) where {T,N} =
 function initdata!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
 
     mesh_x = advd.adv.t_mesh[1]
+    mesh_y = advd.adv.t_mesh[2]
     lx = stop(mesh_x) - start(mesh_x)
+    ly = stop(mesh_y) - start(mesh_y)
     x, y = points.(advd.adv.t_mesh)
     ee = 4
     σ = lx / 15 # Length scale close to the Rossby radius
@@ -81,7 +83,7 @@ function initdata!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     advd.data .-= anticyclone(3lx / 4, 3ly / 4)
 
     # Specify the amplitude of the buoyancy
-    advd.data .*= model.odg_b
+    advd.data .*= geoc.gc.odg_b
 
 end
 

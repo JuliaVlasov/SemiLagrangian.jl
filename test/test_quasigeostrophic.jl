@@ -9,7 +9,8 @@ using SemiLagrangian:
     TimeAlgorithm,
     NoTimeAlg,
     ABTimeAlg,
-    nosplit
+    nosplit,
+    initdata!
 
 using DoubleFloats
 
@@ -48,6 +49,8 @@ function test_quasigeostrophic(
 
 
     advd = AdvectionData(adv, data, pvar)
+
+    initdata!(pvar, advd)
 
     while advd.time_cur < t_max
         while advection!(advd)

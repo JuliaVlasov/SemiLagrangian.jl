@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Base: isless, zero, iterate, +, -, *, /
+import Base: isless, zero, iterate, getindex, +, -, *, /
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
@@ -56,9 +56,10 @@ Base.show(io::IO, ot::OpTuple) = print(io, ot.v)
 (*)(v::OpTuple, a::Number) = OpTuple( v.v .* a)
 (/)(v::OpTuple, a::Number) = OpTuple( v.v ./ a)
 Base.zero(::Type{OpTuple{N,T}}) where{N,T}=OpTuple(ntuple(x->zero(T),N))
-Base.iterate(v::OpTuple)=Base.iterate(v.v)
-Base.iterate(v::OpTuple, state)=Base.iterate(v.v, state)
+Base.iterate(v::OpTuple)=iterate(v.v)
+Base.iterate(v::OpTuple, state)=iterate(v.v, state)
 Base.length(::OpTuple{N}) where N=N
+Base.getindex(ot::OpTuple, ind...)=getindex(ot.v,ind...)
 
 function sol!(
     Y::AbstractArray{T2,N},

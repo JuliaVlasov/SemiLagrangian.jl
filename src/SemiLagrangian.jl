@@ -29,6 +29,7 @@ include("util_poisson.jl")
 include("poisson.jl")
 include("rotation.jl")
 include("translation.jl")
+include("quasigeostrophic.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
@@ -39,6 +40,6 @@ export compute_charge!,
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar
 export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt, TimeAlgorithm, NoTimeAlg, ABTimeAlg
 export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2, StdAB, StdAB2, StdRK4, StdABinit, StdABp
-export get_type, sizeall, getdata
+export get_type, sizeall, getdata, OpTuple, getgeovar
 
 end

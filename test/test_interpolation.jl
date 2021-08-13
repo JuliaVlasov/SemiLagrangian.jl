@@ -170,10 +170,10 @@ function test_inv0(
     calinverse!(resinv, res2)
     calinverse!(resinv2, resinv)
 
-    @show Float32.(res[1]) + im * Float32.(res[2])
-    @show Float32.(res2[1]) + im * Float32.(res2[2])
-    @show Float32.(dec[1]) + im * Float32.(dec[2])
-    @show Float32.(resinv[1]) + im * Float32.(resinv[2])
+    # @show Float32.(res[1]) + im * Float32.(res[2])
+    # @show Float32.(res2[1]) + im * Float32.(res2[2])
+    # @show Float32.(dec[1]) + im * Float32.(dec[2])
+    # @show Float32.(resinv[1]) + im * Float32.(resinv[2])
 
     #    note = resinv .- (res .+ dec)
     note = resinv .- res
@@ -540,7 +540,7 @@ end
 
 @testset "test inverse" begin
     T = Double64
-    # test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
+    test_getinv([Lagrange(11, T), Lagrange(11, T)], T(0.00911), (128, 100))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (zero(T),zero(T)), (20,30))
     # test_inv0([Lagrange(11,T), Lagrange(11,T)], (T(pi)/10,T(pi)/9), (20,30))
     # test_inv([Lagrange(11, T), Lagrange(11, T)], T(0.011), (20, 30))
@@ -643,6 +643,3 @@ test_interpfloat(B_SplineFFT(21, 256, BigFloat), 256, 1e-30)
 test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
 
 
-# test_interpfloat(B_SplineLU(7,1024,BigFloat; edge=InsideEdge),1024, 1e-4, 1)
-
-# test_interpfloat(B_SplineLU(21,1024,BigFloat; edge=InsideEdge),1024, 1e-18, 5)

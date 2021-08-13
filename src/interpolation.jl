@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Base: isless, zero, iterate, getindex, +, -, *, /
+import Base: isless
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
@@ -45,21 +45,7 @@ isbspline(_::AbstractInterpolation) = false
 
 Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 
-struct OpTuple{N,T}
-    v::NTuple{N,T}
-end
-Base.show(io::IO, ot::OpTuple) = print(io, ot.v)
 
-(+)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .+ v2.v)
-(-)(v1::OpTuple,v2::OpTuple) = OpTuple(v1.v .- v2.v)
-(*)(a::Number, v::OpTuple) = OpTuple( a .* v.v)
-(*)(v::OpTuple, a::Number) = OpTuple( v.v .* a)
-(/)(v::OpTuple, a::Number) = OpTuple( v.v ./ a)
-Base.zero(::Type{OpTuple{N,T}}) where{N,T}=OpTuple(ntuple(x->zero(T),N))
-Base.iterate(v::OpTuple)=iterate(v.v)
-Base.iterate(v::OpTuple, state)=iterate(v.v, state)
-Base.length(::OpTuple{N}) where N=N
-Base.getindex(ot::OpTuple, ind...)=getindex(ot.v,ind...)
 
 function sol!(
     Y::AbstractArray{T2,N},
@@ -267,13 +253,13 @@ function calinverse!(
                 tab .-= moyint
                 minre,maxre = extrema(real.(tab))
                 minim,maxim = extrema(imag.(tab))
-                @show minre,maxre,minim,maxim
+#                @show minre,maxre,minim,maxim
                 p = getpoly(tab)
                 corind = indextocmplx(ind-indlg)
             end
             v = p(roundcomplex(indextocmplx(indind) - moyint, sz)) + corind
-            @show indind, taballbig[ind+indorigin]
-            @show indind, ind, moyint, corind, v
+#            @show indind, taballbig[ind+indorigin]
+#            @show indind, ind, moyint, corind, v
             out[1][indind] = mod(real(v), sz[1])
             out[2][indind] = mod(imag(v), sz[2])
         end
@@ -672,6 +658,7 @@ function interpolate2!(
     end
 #    @show "std2d", diffmax, decminmin, decmaxmax
 end
+
 function interpolatemod!(
     fp::AbstractArray{T,N},
     fi::AbstractArray{T,N},
@@ -802,6 +789,72 @@ function interpolatemod!(
     # @show fp[1:10,1:10]
     missing
 end
+function interpolatemod!(
+    fp::AbstractArray{T2,N},
+    fi::AbstractArray{T2,N},
+    bufc::AbstractArray{OpTuple{N,T},N},
+    interp_t::AbstractVector{I},
+    lgmesh::Union{T,UniformMesh{T}, NTuple{N,T}, NTuple{N, UniformMesh{T}}},
+) where {T,N, T2<: Union{OpTuple{N,T},T},I<:AbstractInterpolation{T,CircEdge}}
+
+    (N == length(interp_t)) || thrown(
+        ArgumentError(
+            "The number of Interpolation $(length(interp_t)) is different of N=$N",
+        ),
+    )
+
+    sz = size(fp)
+
+    res = sol(interp_t, fi)
+
+    extr = ntuple( x-> extrema(getindex.(bufc,x)), N)
+    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
+    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
+
+    order = totuple(get_order.(interp_t))
+    origin = 0 .- div.(order, (2,))
+
+    dec_b = decbegin .- origin
+    dec_e = decend .+ order .+ origin
+    fiext = getextarray(res, dec_b, dec_e)
+
+    decall = decbegin
+
+    traitmodbegin!(lgmesh, fiext)
+
+    cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp)))
+    diffmax = 0
+    decminmin = ntuple(x -> Inf, N)
+    decmaxmax = ntuple(x -> -Inf, N)
+    decabs = ntuple(x -> 0, N)
+
+    # @show size(fi), decbegin, decend
+    # @show order, origin, dec_b, dec_e, size(fiext), decall
+    for ind in CartesianIndices(sz)
+        dint, tab = getprecal(cache, bufc[ind])
+        # decabs = max.(decabs, abs.((bufc[1][ind],bufc[2][ind])))
+        # decmin, decmax = extrema(tab)
+        # decminmin = min.(decminmin, dint .+ decmin)
+        # decmaxmax = max.(decmaxmax, dint .+ decmax)
+
+        deb_i = dint .+ decall .+ ind.I
+        end_i = deb_i .+ order
+        # vmin, vmax = extrema(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...])
+        # diff = vmax - vmin
+        # diffmax = max(diff, diffmax)
+        fp[ind] = sum(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...] .* tab)
+        # if ind.I[1] <= 10 && ind.I[2] <= 10
+        #     indcor = ind +CartesianIndex(decall .- origin)
+        #     @show decall, dint, origin
+        #     @show ind, fp[ind], indcor, fiext[indcor]
+        # end
+    end
+    # @show diffmax, decminmin, decmaxmax, decabs
+    # @show fp[1:10,1:10]
+    traitmodend!(lgmesh, fp)
+    # @show fp[1:10,1:10]
+    missing
+end
 # function interpolate!(
 #     fp::AbstractVector{T},
 #     fi::AbstractVector{T},
@@ -900,6 +953,71 @@ function getinverse(dec::NTuple{N,Array{T,N}}, interp::Vector{I}) where {T,N,I<:
     end
     return decinv
 end
+function getinverse(dec::AbstractArray{OpTuple{N,T},N}, interp::Vector{I}) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    sz = size(dec[1])
+    # res = ntuple(x -> [T(ind.I[x]-1) for ind in CartesianIndices(sz)], N)
+    res = [Optuple(T.(ind.I .- 1)) for ind in CartesianIndices(sz)]
+    # decinv = ntuple(x -> [T(ind.I[x]-1) for ind in CartesianIndices(sz)], N)
+    decinv = [Optuple(T.(ind.I .- 1)) for ind in CartesianIndices(sz)]
+    buf = zeros(T,sz)
+    res2 = zeros(OpTuple{N,T},sz)
+    res3 = zeros(OpTuple{N,T},sz)
+    res4 = zeros(OpTuple{N,T},sz)
+    decfmr = zeros(OpTuple{N,T},sz)
+
+    sz_2 = div.(sz,2)
+
+    for i=1:N
+        interpolatemod!(res2[i],res[i],dec,interp, T(sz[i]))
+        interpolatemod!(decfmr[i], -dec[i], dec, interp, T(sz[i]))
+        decfmr[i] .= mod.(decfmr[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+
+        res4[i] .= res2[i]
+
+        res3[i] .= mod.( res2[i] .- res[i] .- dec[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+
+    end
+
+    @show norm(res3)
+    
+
+ 
+    borne = log(eps(T)*prod(sz))
+
+    for z=1:2
+        ind = 1
+        note = Inf
+        while note > borne
+            for i=1:N
+                interpolatemod!(res3[i], res2[i], decfmr, interp, T(sz[i]))
+                interpolatemod!(buf, decinv[i], decfmr, interp, T(sz[i]))
+                decinv[i] .= buf
+            end
+            for i=1:N
+                decfmr[i] .= mod.(res[i] .- res3[i] .+ sz_2[i] , sz[i]) .- sz_2[i]
+                res2[i] .= res3[i]
+            end
+            note = log(2, norm(decfmr))
+            if note > 1
+                for i=1:N
+                    decfmr[i] .= decfmr[i]/note
+                end
+            end
+            @show ind,note,borne
+            ind += 1
+        end
+        for i=1:N
+            decinv[i] .= mod.(decinv[i] .- res[i] .+ sz_2[i], sz[i]) .- sz_2[i]
+            if z == 1
+                decfmr[i] .= decinv[i]
+                decinv[i] .= res[i]
+                res2[i] .= res4[i]
+            end 
+        end
+        
+    end
+    return decinv
+end
  
 function autointerp!(
     to::Array{OpTuple{N,T},N},
@@ -924,12 +1042,14 @@ end
 function interpbufc!(
     t_buf::Vector{Array{OpTuple{N,T}, N}},
     bufdec::Array{OpTuple{N,T}, N},
-    interp_t::AbstractVector{I};
+    interp_t::AbstractVector{I},
+    nb::Int=length(t_buf);
     mpid::Union{MPIData, Missing}=missing,
     t_split::Union{Tuple, Missing}=missing
 ) where {N, T, I <: AbstractInterpolation{T}}
 
-    for buf in t_buf
+    for i=0:nb-1
+        buf = t_buf[end-i]
         interpolate!(buf, copy(buf), bufdec, interp_t, mpid=mpid, t_split=t_split)
     end
 end

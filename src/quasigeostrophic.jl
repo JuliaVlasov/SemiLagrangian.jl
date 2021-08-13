@@ -87,9 +87,9 @@ function initdata!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
 
 end
 
-
 function initcoef!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     pfft = geoc.gc.pfftbig
+    dt = getcur_t(advd)
     buf = fftgenall(pfft, advd.data)
 
     if ismissing(advd.bufcur)
@@ -97,6 +97,6 @@ function initcoef!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     end
 
     advd.bufcur .=
-        OpTuple.(zip(ntuple(x -> real(ifftgenall(pfft, geoc.gc.coefrsqk[x] .* buf)), N)...))
+        dt * OpTuple.(zip(ntuple(x -> real(ifftgenall(pfft, geoc.gc.coefrsqk[x] .* buf)), N)...))
 end
 

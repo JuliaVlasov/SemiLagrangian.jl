@@ -9,25 +9,26 @@ struct StateAdv{N}
     ndims::Int        # count of dimension
     stcoef::Int   # state_coef
     isconstdec::Bool #true if constant dec
-    isvelocity::Bool 
-    StateAdv(ind, p, ndims, stc, isconst, isvelocity=false)=new{length(p)}(ind, p, invperm(p), ndims, stc, isconst, isvelocity)
+    isvelocity::Bool
+    StateAdv(ind, p, ndims, stc, isconst, isvelocity = false) =
+        new{length(p)}(ind, p, invperm(p), ndims, stc, isconst, isvelocity)
 end
 
-nosplit(dt::T) where T = dt*[1]
-standardsplit(dt::T) where{T}=dt*[1,1]
-strangsplit(dt::T) where{T}=dt*[1//2,1//1,1//2]
-magicsplit(dt::T) where{T}=[tan(dt/2), sin(dt), tan(dt/2)]
-function triplejumpsplit(dt::T) where{T}
-    c=T(2)^(1//3)
-    c1 = 1/(2(2-c))
-    c2 = (1-c)/(2(2-c))
-    d1 = 1/(2-c)
-    d2 = -c/(2-c)
-    return dt*[c1, d1, c2, d2, c2, d1, c1]
+nosplit(dt::T) where {T} = dt * [1]
+standardsplit(dt::T) where {T} = dt * [1, 1]
+strangsplit(dt::T) where {T} = dt * [1 // 2, 1 // 1, 1 // 2]
+magicsplit(dt::T) where {T} = [tan(dt / 2), sin(dt), tan(dt / 2)]
+function triplejumpsplit(dt::T) where {T}
+    c = T(2)^(1 // 3)
+    c1 = 1 / (2(2 - c))
+    c2 = (1 - c) / (2(2 - c))
+    d1 = 1 / (2 - c)
+    d2 = -c / (2 - c)
+    return dt * [c1, d1, c2, d2, c2, d1, c1]
 end
 
-function order6split(dt::T) where{T}
-    order6=[ 
+function order6split(dt::T) where {T}
+    order6 = [
         0.0414649985182624,
         0.123229775946271,
         0.198128671918067,
@@ -50,59 +51,68 @@ function order6split(dt::T) where{T}
         0.290553797799558,
         0.198128671918067,
         0.123229775946271,
-        0.0414649985182624
+        0.0414649985182624,
     ]
-    b = convert(Vector{T},order6)
-    b[11] = b[13] = T(1//2) - sum(b[1:2:9])
-    b[12] = T(1//1) - 2sum(b[2:2:10])
-    @assert isapprox(sum(b),T(2))
-    return dt*b
+    b = convert(Vector{T}, order6)
+    b[11] = b[13] = T(1 // 2) - sum(b[1:2:9])
+    b[12] = T(1 // 1) - 2sum(b[2:2:10])
+    @assert isapprox(sum(b), T(2))
+    return dt * b
 end
 
 
-function note(a,b,c, fltrace=false)
-    ap = zeros(BigFloat,6)
-    bp = zeros(BigFloat,6)
-    cp = zeros(BigFloat,6)
-    for i=1:3
+function note(a, b, c, fltrace = false)
+    ap = zeros(BigFloat, 6)
+    bp = zeros(BigFloat, 6)
+    cp = zeros(BigFloat, 6)
+    for i = 1:3
         ap[i] = ap[6-i] = i != 3 ? a[i] : 1 - 2a[1] - 2a[2]
         bp[i] = bp[7-i] = i != 3 ? b[i] : 0.5 - b[1] - b[2]
         cp[i] = cp[7-i] = c[i]
     end
 
 
-    res1 = sum([ bp[i]*sum(ap[1:(i-1)])^2 for i=1:6])
-    res2 = sum([ bp[i]*sum(ap[1:(i-1)])^4 for i=1:6])
-    res3 = sum( [ap[i]*sum(bp[i:6])^2 for i=1:6]) - 2sum(cp)
-    res4 = sum( [ bp[i]*sum([ bp[j]*sum(ap[j+1:i])^3 for j=1:i-1]) for i=2:6])
-    res5 = sum( [ ap[i]*(2sum([ ap[j]*sum(cp[j:i-1]) for j=1:i-1]) + sum( [ ap[j]*sum([ap[k]*sum(bp[j:k-1])*sum(bp[k:i-1]) for k=j+1:i-1]) for j=1:i-2])) for i=2:6])
+    res1 = sum([bp[i] * sum(ap[1:(i-1)])^2 for i = 1:6])
+    res2 = sum([bp[i] * sum(ap[1:(i-1)])^4 for i = 1:6])
+    res3 = sum([ap[i] * sum(bp[i:6])^2 for i = 1:6]) - 2sum(cp)
+    res4 = sum([bp[i] * sum([bp[j] * sum(ap[j+1:i])^3 for j = 1:i-1]) for i = 2:6])
+    res5 = sum([
+        ap[i] * (
+            2sum([ap[j] * sum(cp[j:i-1]) for j = 1:i-1]) + sum([
+                ap[j] * sum([ap[k] * sum(bp[j:k-1]) * sum(bp[k:i-1]) for k = j+1:i-1])
+                for j = 1:i-2
+            ])
+        ) for i = 2:6
+    ])
 
-    res6= 2sum([ ap[i]*(bp[i]*sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i=2:6])
-    res6 += sum([ ap[i]*( 
-        2sum(bp[i+1:6])*sum(cp[1:i-1]) 
-        + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
-    + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
-    ) for i=2:5])
-    @show res1,res2,res3,res4,res5,res6
-    result = (300abs(res1-BigFloat(1)/3))^2
-    result += (500abs(res2-BigFloat(1)/5))^2
-    result += (3abs(res3-BigFloat(1)/3))^2
-    result += (24abs(res4-BigFloat(1)/24))^2
-    result += (120abs(res5-BigFloat(1)/120))^2
-    result += (120abs(res6-BigFloat(1)/120))^2
+    res6 = 2sum([ap[i] * (bp[i] * sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i = 2:6])
+    res6 += sum([
+        ap[i] * (
+            2sum(bp[i+1:6]) * sum(cp[1:i-1]) +
+            2sum(cp[i+1:6]) * sum(bp[1:i-1]) +
+            sum(bp[1:i-1]) * sum([ap[j] * sum(bp[i:j-1]) * sum(bp[j:6]) for j = i+1:6])
+        ) for i = 2:5
+    ])
+    @show res1, res2, res3, res4, res5, res6
+    result = (300abs(res1 - BigFloat(1) / 3))^2
+    result += (500abs(res2 - BigFloat(1) / 5))^2
+    result += (3abs(res3 - BigFloat(1) / 3))^2
+    result += (24abs(res4 - BigFloat(1) / 24))^2
+    result += (120abs(res5 - BigFloat(1) / 120))^2
+    result += (120abs(res6 - BigFloat(1) / 120))^2
     if fltrace
         @show res1, res2, res3, res4, res5, res6
     end
 
-#    return result*(1e3 + norm([ap; bp; 1000cp])^2)
+    #    return result*(1e3 + norm([ap; bp; 1000cp])^2)
     return result
 end
 
 
 function recherche()
-    besta = zeros(BigFloat,2)
-    bestb = zeros(BigFloat,2)
-    bestc = zeros(BigFloat,3)
+    besta = zeros(BigFloat, 2)
+    bestb = zeros(BigFloat, 2)
+    bestc = zeros(BigFloat, 3)
 
     bestnote = 600000000000
     coef = 1.0
@@ -118,27 +128,27 @@ function recherche()
         locbc = bestc
         locbnote = bestnote
         fltrouve = false
-        for n=1:nbtent
-            a = besta + rayon*(rand(BigFloat,2)-[big"0.5",big"0.5"])
-            b = bestb + rayon*(rand(BigFloat,2)-[big"0.5",big"0.5"])
-            c = bestc + (rayon/10)*(rand(BigFloat,3)-[big"0.5",big"0.5",big"0.5"])
+        for n = 1:nbtent
+            a = besta + rayon * (rand(BigFloat, 2) - [big"0.5", big"0.5"])
+            b = bestb + rayon * (rand(BigFloat, 2) - [big"0.5", big"0.5"])
+            c = bestc + (rayon / 10) * (rand(BigFloat, 3) - [big"0.5", big"0.5", big"0.5"])
 
-            res = note(a,b,c) + norm(c)^2 
+            res = note(a, b, c) + norm(c)^2
             if res < locbnote
                 @show res, n
-                note(a,b,c,true)
-                locba, locbb, locbc = a,b,c
+                note(a, b, c, true)
+                locba, locbb, locbc = a, b, c
                 locbnote = res
                 fltrouve = true
             end
         end
         if fltrouve
             bestnote, besta, bestb, bestc = locbnote, locba, locbb, locbc
-            rayon = min(coef*bestnote^0.5,1.0)
+            rayon = min(coef * bestnote^0.5, 1.0)
 
         else
             coef *= 0.99
-            rayon = min(coef*bestnote^0.5,1.0)
+            rayon = min(coef * bestnote^0.5, 1.0)
         end
 
         @show bestnote
@@ -150,96 +160,93 @@ function recherche()
 
 
 
-#        rayon *= big"0.8"
+        #        rayon *= big"0.8"
     end
 end
-function hamsplit_3_11(dt::T, fltrace=false) where {T<: Number}
+function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
 
-a = [big"0.168735950563437422448195173400884809990898960535052167820406",
-big"0.377851589220928303880768408101213978086828975884075336276904",
-big"-0.093175079568731452657927163004197576155455872838255008194621",
-]
-b = [
-big"0.049086460976116245491441126327891629034401134948561362353776",
-big"0.264177609888976700200146195420764624729303307466109303375304",
-big"0.186735929134907054308412678251343746236295557585329334270919",
-]
-c = [
-big"-0.0000697287150553050840997049705543302201654369851434306789330",
-big"-0.000625704827430047189169785837050053054170994982227957762075",
-big"-0.00221308512404532556162738103226349162177713815465419673226",
-]
-d = [
-0,
-big"-2.91660045768984781641978316974322113103756038016905421426e-6",
-big"0.0000304848026170003878867997783299987163079240932335253763140",
-]
-e = [
-0,
-0,
-big"4.98554938787506812157863826561771683774617978763837906638e-7",
-]
+    a = [
+        big"0.168735950563437422448195173400884809990898960535052167820406",
+        big"0.377851589220928303880768408101213978086828975884075336276904",
+        big"-0.093175079568731452657927163004197576155455872838255008194621",
+    ]
+    b = [
+        big"0.049086460976116245491441126327891629034401134948561362353776",
+        big"0.264177609888976700200146195420764624729303307466109303375304",
+        big"0.186735929134907054308412678251343746236295557585329334270919",
+    ]
+    c = [
+        big"-0.0000697287150553050840997049705543302201654369851434306789330",
+        big"-0.000625704827430047189169785837050053054170994982227957762075",
+        big"-0.00221308512404532556162738103226349162177713815465419673226",
+    ]
+    d = [
+        0,
+        big"-2.91660045768984781641978316974322113103756038016905421426e-6",
+        big"0.0000304848026170003878867997783299987163079240932335253763140",
+    ]
+    e = [0, 0, big"4.98554938787506812157863826561771683774617978763837906638e-7"]
 
 
-#     if fltrace
-#         ap = zeros(BigFloat,6)
-#         bp = zeros(BigFloat,6)
-#         cp = zeros(BigFloat, 6)
-#         for i=1:3
-#             ap[i] = ap[6-i] = a[i]
-#             bp[i] = bp[7-i] = b[i]
-#             cp[i] = cp[7-i] = c[i]
-#         end
-#         resa = 1 - sum(ap)
-#         resb = 1 - sum(bp)
-#         @show resa, resb
-#         res1 = res2 = res3 = res4 = res5 = zero(BigFloat)
-#         for i = 1:6
-#             res1 += bp[i]*sum(ap[1:(i-1)])^2
-#         end
-#         # for i = 2:6
-#         #     res4int=0
-#         #     for j=1:i-1
-#         #         res4int += bp[j]*sum(ap[j+1:i])^3
-#         #     end
-#         #     res4 += bp[i]*res4int
-#         # end
-#         res1 = sum([ bp[i]*sum(ap[1:(i-1)])^2 for i=1:6])
-#         res2 = sum([ bp[i]*sum(ap[1:(i-1)])^4 for i=1:6])
-#         res3 = sum( [ap[i]*sum(bp[i:6])^2 for i=1:6]) - 2sum(cp)
-#         res4 = sum( [ bp[i]*sum([ bp[j]*sum(ap[j+1:i])^3 for j=1:i-1]) for i=2:6])
-#         res5 = sum( [ ap[i]*(2sum([ ap[j]*sum(cp[j:i-1]) for j=1:i-1]) + sum( [ ap[j]*sum([ap[k]*sum(bp[j:k-1])*sum(bp[k:i-1]) for k=j+1:i-1]) for j=1:i-2])) for i=2:6])
+    #     if fltrace
+    #         ap = zeros(BigFloat,6)
+    #         bp = zeros(BigFloat,6)
+    #         cp = zeros(BigFloat, 6)
+    #         for i=1:3
+    #             ap[i] = ap[6-i] = a[i]
+    #             bp[i] = bp[7-i] = b[i]
+    #             cp[i] = cp[7-i] = c[i]
+    #         end
+    #         resa = 1 - sum(ap)
+    #         resb = 1 - sum(bp)
+    #         @show resa, resb
+    #         res1 = res2 = res3 = res4 = res5 = zero(BigFloat)
+    #         for i = 1:6
+    #             res1 += bp[i]*sum(ap[1:(i-1)])^2
+    #         end
+    #         # for i = 2:6
+    #         #     res4int=0
+    #         #     for j=1:i-1
+    #         #         res4int += bp[j]*sum(ap[j+1:i])^3
+    #         #     end
+    #         #     res4 += bp[i]*res4int
+    #         # end
+    #         res1 = sum([ bp[i]*sum(ap[1:(i-1)])^2 for i=1:6])
+    #         res2 = sum([ bp[i]*sum(ap[1:(i-1)])^4 for i=1:6])
+    #         res3 = sum( [ap[i]*sum(bp[i:6])^2 for i=1:6]) - 2sum(cp)
+    #         res4 = sum( [ bp[i]*sum([ bp[j]*sum(ap[j+1:i])^3 for j=1:i-1]) for i=2:6])
+    #         res5 = sum( [ ap[i]*(2sum([ ap[j]*sum(cp[j:i-1]) for j=1:i-1]) + sum( [ ap[j]*sum([ap[k]*sum(bp[j:k-1])*sum(bp[k:i-1]) for k=j+1:i-1]) for j=1:i-2])) for i=2:6])
 
-#         res6= 2sum([ ap[i]*(bp[i]*sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i=2:6])
-#         res6 += sum([ ap[i]*( 
-#             2sum(bp[i+1:6])*sum(cp[1:i-1]) 
-#             + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
-#         + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
-#         ) for i=2:5])
+    #         res6= 2sum([ ap[i]*(bp[i]*sum(cp[1:i-1]) + cp[i]sum(bp[1:i-1])) for i=2:6])
+    #         res6 += sum([ ap[i]*( 
+    #             2sum(bp[i+1:6])*sum(cp[1:i-1]) 
+    #             + 2sum(cp[i+1:6])*sum(bp[1:i-1]) 
+    #         + sum(bp[1:i-1])*sum([ ap[j]*sum(bp[i:j-1])*sum(bp[j:6]) for j=i+1:6])
+    #         ) for i=2:5])
 
 
 
 
-#         res1 -= one(BigFloat)/3
-#         res2 -= one(BigFloat)/5
-# #        res3 -= one(BigFloat)/3
-#         println("res1=$res1, res2=$res2 res3=$res3 res4=$res4 res5=$res5 res6=$res6")
+    #         res1 -= one(BigFloat)/3
+    #         res2 -= one(BigFloat)/5
+    # #        res3 -= one(BigFloat)/3
+    #         println("res1=$res1, res2=$res2 res3=$res3 res4=$res4 res5=$res5 res6=$res6")
 
-#         result = note(a,b,c)
-#         @show result
-#     end
+    #         result = note(a,b,c)
+    #         @show result
+    #     end
 
-    result = zeros(T,11)
+    result = zeros(T, 11)
 
-    for j=1:6
-        i = div(j+1,2)
-        result[j] = if j%2 == 1 
-            dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
+    for j = 1:6
+        i = div(j + 1, 2)
+        result[j] = if j % 2 == 1
+            dt * (b[i] + 2c[i] * dt^2 + 4d[i] * dt^4 - 8e[i] * dt^6)
         else
-            dt*a[i]
+            dt * a[i]
         end
         result[12-j] = result[j]
-    end 
+    end
 
     return result
 
@@ -286,77 +293,67 @@ end
 
 # end
 
-function ymsplit( dt::T) where {T}
+function ymsplit(dt::T) where {T}
 
     a = [
         big"0.8139829195555458104979098217648888051316552486421891906867407724812089860641628",
         big"-0.106933886322235993755568450182305412663747576359129385173643275216256114240612",
-        big"-0.4140980664666196334846827431651667849358153445661196110261949945299057436470952"
+        big"-0.4140980664666196334846827431651667849358153445661196110261949945299057436470952",
     ]
     b = [
         big"0.04651752139132499278432511686356549102152589365750173478400375255989245673028492",
         big"0.2000550736145229026831469057101038052461456725280944909695615530345980120197072",
-        big"0.2534274049941521045325279774263307037323284338144037742464346944055095312500068"
+        big"0.2534274049941521045325279774263307037323284338144037742464346944055095312500068",
     ]
     c = [
-        big"0.0924986134646854078099064345309143122365785083821688789750863120460165522562261", 
-        big"-0.08143484956130759254568509461762997555036800516671930287457519290391707116535044", 
-        big"-0.05385533864823584287518808566120055838047115883542750710993690749321147425126124"
+        big"0.0924986134646854078099064345309143122365785083821688789750863120460165522562261",
+        big"-0.08143484956130759254568509461762997555036800516671930287457519290391707116535044",
+        big"-0.05385533864823584287518808566120055838047115883542750710993690749321147425126124",
     ]
     d = [
         0,
-        big"-2.91660045768984781641978316974322113103756038016905421426e-6", 
+        big"-2.91660045768984781641978316974322113103756038016905421426e-6",
         big"0.0000304848026170003878867997783299987163079240932335253763140",
     ]
-    e = [
-        0,
-        0,
-        big"4.98554938787506812157863826561771683774617978763837906638e-7",
-    ]
-    result = zeros(T,11)
+    e = [0, 0, big"4.98554938787506812157863826561771683774617978763837906638e-7"]
+    result = zeros(T, 11)
 
-    for j=1:6
-        i = div(j+1,2)
-        result[j] = if j%2 == 1 
-            dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
+    for j = 1:6
+        i = div(j + 1, 2)
+        result[j] = if j % 2 == 1
+            dt * (b[i] + 2c[i] * dt^2 + 4d[i] * dt^4 - 8e[i] * dt^6)
         else
-            dt*a[i]
+            dt * a[i]
         end
         result[12-j] = result[j]
-    end 
+    end
 
     return result
 
 end
-function table2split( dt::T) where T
-    a =  [ big"1.079852426382430882456991", 
-        -big"0.579852426382430882456991",
-        0
-    ]
-    b = [ big"0.359950808794143627485664",
+function table2split(dt::T) where {T}
+    a = [big"1.079852426382430882456991", -big"0.579852426382430882456991", 0]
+    b = [
+        big"0.359950808794143627485664",
         -big"0.1437147273026540434771131",
-        big"0.567527837017020831982899"
+        big"0.567527837017020831982899",
     ]
-    c = [
-        0,
-        -big"0.0139652542242388403673",
-        -big"0.039247029382345626020"
-    ]
-    note(a,b,c,true)
+    c = [0, -big"0.0139652542242388403673", -big"0.039247029382345626020"]
+    note(a, b, c, true)
     result = zeros(T, 9)
     for j = 1:5
-        i = div(j+1,2)
-        result[j] = if j%2 == 1 
-            dt*(b[i] + 2c[i]*dt^2)
+        i = div(j + 1, 2)
+        result[j] = if j % 2 == 1
+            dt * (b[i] + 2c[i] * dt^2)
         else
-            dt*a[i]
+            dt * a[i]
         end
         result[10-j] = result[j]
     end
     return result
 end
 
-        
+
 
 
 
@@ -409,8 +406,8 @@ Immutable structure that contains constant parameters for multidimensional advec
 - `ArgumentError` : `Nsp` must be less or equal to `Nv`.
 
 """
-struct Advection{T, N, I, timeopt, timealg, ordalg}
-    sizeall::NTuple{N, Int}
+struct Advection{T,N,I,timeopt,timealg,ordalg}
+    sizeall::NTuple{N,Int}
     t_mesh::NTuple{N,UniformMesh{T}}
     t_interp::Vector{I}
     dt_base::T
@@ -425,26 +422,27 @@ struct Advection{T, N, I, timeopt, timealg, ordalg}
         t_mesh::NTuple{N,UniformMesh{T}},
         t_interp::Vector{I},
         dt_base::T,
-        states::Vector{Tuple{Vector{Int}, Int, Int, Bool, Vararg{Bool,N2}}};
+        states::Vector{Tuple{Vector{Int},Int,Int,Bool,Vararg{Bool,N2}}};
         tab_coef::Vector{T} = strangsplit(dt_base),
         timeopt::TimeOptimization = NoTimeOpt,
-        timealg::TimeAlgorithm=NoTimeAlg,
-        ordalg::Int=timealg == ABTimeAlg ? 4 : 0,
-    ) where {T, N, N2, I <: AbstractInterpolation{T}}
-        length(t_interp) == N || throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
+        timealg::TimeAlgorithm = NoTimeAlg,
+        ordalg::Int = timealg == ABTimeAlg ? 4 : 0,
+    ) where {T,N,N2,I<:AbstractInterpolation{T}}
+        length(t_interp) == N ||
+            throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
         sizeall = length.(t_mesh)
 
-        newstates=map( i -> StateAdv(i, states[i]...), 1:length(states))
+        newstates = map(i -> StateAdv(i, states[i]...), 1:length(states))
 
-        maxcoef = maximum(x->x.stcoef, newstates)
+        maxcoef = maximum(x -> x.stcoef, newstates)
 
         restcoef = length(tab_coef) % maxcoef
 
-        nbstatesplus = length( filter( x -> x.stcoef in restcoef, newstates))
+        nbstatesplus = length(filter(x -> x.stcoef in restcoef, newstates))
 
-        nbstates = div(length(tab_coef), maxcoef)*length(states) + nbstatesplus
+        nbstates = div(length(tab_coef), maxcoef) * length(states) + nbstatesplus
 
-#        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
+        #        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing
         nbsplit = if timeopt == MPIOpt
             mpid.nb
@@ -453,7 +451,7 @@ struct Advection{T, N, I, timeopt, timealg, ordalg}
         else
             1
         end
-        return new{T, N, I, timeopt, timealg, ordalg}(
+        return new{T,N,I,timeopt,timealg,ordalg}(
             sizeall,
             t_mesh,
             t_interp,
@@ -464,7 +462,7 @@ struct Advection{T, N, I, timeopt, timealg, ordalg}
             tab_coef,
             nbsplit,
             mpid,
-            ABcoef(ordalg)
+            ABcoef(ordalg),
         )
     end
 end
@@ -478,9 +476,10 @@ Return a tuple of the sizes of each dimensions
 """
 sizeall(adv::Advection) = adv.sizeall
 
-getst(adv::Advection, x) = adv.states[modone(x,length(adv.states))]
+getst(adv::Advection, x) = adv.states[modone(x, length(adv.states))]
 
-getstcoef(adv::Advection, x) = div(x-1, length(adv.states))*adv.maxcoef + getst(adv,x).stcoef
+getstcoef(adv::Advection, x) =
+    div(x - 1, length(adv.states)) * adv.maxcoef + getst(adv, x).stcoef
 
 getcur_t(adv::Advection, x) = adv.tab_coef[getstcoef(adv, x)]
 
@@ -488,9 +487,11 @@ function getinterp(adv::Advection, x)
     st = getst(adv, x)
     return adv.t_interp[st.perm[1:st.ndims]]
 end
-isvelocity(adv::Advection, curid)=getst(adv,curid).isvelocity
+isvelocity(adv::Advection, curid) = getst(adv, curid).isvelocity
 
-getordalg(adv::Advection{T, N, I, timeopt, timealg, ordalg}) where{T, N, I, timeopt, timealg, ordalg}=ordalg
+getordalg(
+    adv::Advection{T,N,I,timeopt,timealg,ordalg},
+) where {T,N,I,timeopt,timealg,ordalg} = ordalg
 
 
 
@@ -504,7 +505,7 @@ function initfmrdata(adv::Advection, bufdata::Vector{T}, state) where {T}
         # the following call is safe because :
         #       - T type is an bits type
         #  and  - length(bufdata) == prod(sizeall(adv))
-        return unsafe_wrap(Array, ptr, sizeall(adv)[p], own=false)
+        return unsafe_wrap(Array, ptr, sizeall(adv)[p], own = false)
     else
         return zeros(T, sizeall(adv)[p])
     end
@@ -549,7 +550,7 @@ Mutable structure that contains variable parameters of advection series
 - `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
 
 """
-mutable struct AdvectionData{T,N,timeopt, timealg}
+mutable struct AdvectionData{T,N,timeopt,timealg}
     adv::Advection{T,N}
     state_gen::Int # indice of the calls of advection!
     time_cur::T # current time
@@ -562,38 +563,44 @@ mutable struct AdvectionData{T,N,timeopt, timealg}
     t_cache::Vector{Vector{CachePrecal{T}}}
     parext::AbstractExtDataAdv
     clobs::AbstractClockObs
-    bufcur::Union{Array{OpTuple{N,T},N}, Missing}
+    bufcur::Union{Array{OpTuple{N,T},N},Missing}
     t_bufc::Vector{Array{OpTuple{N,T},N}}
     function AdvectionData(
-        adv::Advection{T,N,I, timeopt, timealg},
+        adv::Advection{T,N,I,timeopt,timealg},
         data::Array{T,N},
         parext::AbstractExtDataAdv;
-        clockobs=false
-    ) where {T, N, I, timeopt, timealg}
+        clockobs = false,
+    ) where {T,N,I,timeopt,timealg}
         s = size(data)
         s == sizeall(adv) ||
             thrown(ArgumentError("size(data)=$s it must be $(sizeall(adv))"))
-        nbst=length(adv.states)
+        nbst = length(adv.states)
         nbthr =
             timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt ? Threads.nthreads() :
             1
-        t_buf = map(x -> zeros(T, s[getst(adv,x).perm][1:getst(adv,x).ndims]...,nbthr), 1:nbst)
+        t_buf = map(
+            x -> zeros(T, s[getst(adv, x).perm][1:getst(adv, x).ndims]..., nbthr),
+            1:nbst,
+        )
         datanew = Array{T,N}(undef, s)
         bufdata = Vector{T}(undef, length(data))
         fmrtabdata = map(x -> initfmrdata(adv, bufdata, x), 1:nbst)
         copyto!(datanew, data)
-#        @show adv.nbsplit
+        #        @show adv.nbsplit
         if nbst == 1
             t_itr = (splitvec(adv.nbsplit, CartesianIndices(s)),)
         else
             t_itr = ntuple(
-            x -> splitvec(adv.nbsplit, CartesianIndices(s[adv.states[x].perm][(adv.states[x].ndims + 1):N])),
-            nbst,
-        )
+                x -> splitvec(
+                    adv.nbsplit,
+                    CartesianIndices(s[adv.states[x].perm][(adv.states[x].ndims+1):N]),
+                ),
+                nbst,
+            )
         end
-#        @show t_itr
+        #        @show t_itr
         t_linind = ntuple(x -> LinearIndices(s[adv.states[x].perm]), nbst)
-        cartz(x)=CartesianIndices(s[adv.states[x].perm][1:adv.states[x].ndims])
+        cartz(x) = CartesianIndices(s[adv.states[x].perm][1:adv.states[x].ndims])
         fbegin(x, y) = t_linind[x][cartz(x)[1], t_itr[x][y][1]]
         fend(x, y) = t_linind[x][cartz(x)[end], t_itr[x][y][end]]
         if nbst == 1
@@ -601,10 +608,12 @@ mutable struct AdvectionData{T,N,timeopt, timealg}
             it = t_itr[1]
             tt_split = (ntuple(y -> (li[it[y][1]]:li[it[y][end]]), adv.nbsplit),)
         else
-            tt_split = ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
+            tt_split =
+                ntuple(x -> ntuple(y -> (fbegin(x, y):fend(x, y)), adv.nbsplit), nbst)
         end
-        t_cache = map(x->map( i -> CachePrecal(getinterp(adv,x), zero(T)), 1:nbthr), 1:nbst)
-        return new{T,N,timeopt, timealg}(
+        t_cache =
+            map(x -> map(i -> CachePrecal(getinterp(adv, x), zero(T)), 1:nbthr), 1:nbst)
+        return new{T,N,timeopt,timealg}(
             adv,
             1,
             zero(T),
@@ -619,20 +628,21 @@ mutable struct AdvectionData{T,N,timeopt, timealg}
             parext,
             clockobs ? ClockObs(10) : NoClockObs(),
             missing,
-            []
+            [],
         )
     end
 end
 
-getst(self::AdvectionData) = getst(self.adv,self.state_gen)
+getst(self::AdvectionData) = getst(self.adv, self.state_gen)
 getext(self) = self.parext
 getdata(self) = self.data
-getnbdims(self::AdvectionData)=getst(self).ndims
-getstcoef(self::AdvectionData)=getstcoef(self.adv, self.state_gen)
-getcur_t(self::AdvectionData, extdata::AbstractExtDataAdv) = getcur_t(self.adv, self.state_gen)
+getnbdims(self::AdvectionData) = getst(self).ndims
+getstcoef(self::AdvectionData) = getstcoef(self.adv, self.state_gen)
+getcur_t(self::AdvectionData, extdata::AbstractExtDataAdv) =
+    getcur_t(self.adv, self.state_gen)
 getcur_t(self::AdvectionData) = getcur_t(self, self.parext)
 isvelocity(self::AdvectionData) = isvelocity(self.adv, self.state_gen)
-_getcurrentindice(self::AdvectionData)=getst(self).perm[1]
+_getcurrentindice(self::AdvectionData) = getst(self).perm[1]
 function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     if self.adv.nbsplit != 1
         ind = timeopt == MPIOpt ? self.adv.mpid.ind : Threads.threadid()
@@ -641,7 +651,7 @@ function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     end
     return ind
 end
-getinterp(self::AdvectionData)=getinterp(self.adv, self.state_gen)
+getinterp(self::AdvectionData) = getinterp(self.adv, self.state_gen)
 
 getitr(self::AdvectionData) = self.t_itr[getst(self).ind][getindsplit(self)]
 gett_split(self::AdvectionData) = self.tt_split[getst(self).ind]
@@ -661,7 +671,7 @@ Function called at the end of advection function to update internal state of Adv
                 `false` at the end of the series.
 """
 function retns(self::AdvectionData, extdata::AbstractExtDataAdv)
-#    println("generic retns")
+    #    println("generic retns")
     return false
 end
 function nextstate!(self::AdvectionData)
@@ -672,7 +682,7 @@ function nextstate!(self::AdvectionData)
         self.state_gen = 1
         printall(self.clobs)
         self.time_cur += getcur_t(self)
-        return retns(self,self.parext)
+        return retns(self, self.parext)
     end
 end
 # default function of the interface
@@ -696,43 +706,154 @@ function getformdata(advd::AdvectionData)
     permutedims!(f, advd.data, getst(advd).perm)
     return f
 end
-function copydata!(
-    advd::AdvectionData{T,N,timeopt, timealg},
-    f,
-) where {T,N,timeopt, timealg}
+function copydata!(advd::AdvectionData{T,N,timeopt,timealg}, f) where {T,N,timeopt,timealg}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1 && length(advd.adv.states) != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
     permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
-
+function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I <: AbstractInterpolation}
+    indice = length(t_trv)
+    for i = 1:indice-1
+        buf = t_cal[end]
+        autointerp!(buf, copy(buf), indice-1, t_interp)
+        interpbufc!(t_trv, buf, t_interp, i)
+        deleteat!(t_cal, length(t_cal))
+    end
+end
 
 function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,timealg}
     isbegin = ismissing(self.bufcur)
-    initcoef!(getext(self), self)
+    extdata::AbstractExtDataAdv = getext(self)
+    initcoef!(extdata, self)
     if timealg == ABTimeAlg
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-#            println("debut begin")
+            #            println("debut begin")
+            t_ref = []
+            t_cal = []
+            push!(t_ref, copy(self.bufcur))
+            svdata = copy(self.data)
+            svbufcur = copy(self.bufcur)
+            sens = ordalg % 2 == 1 ? 1 : -1
+            f = zeros(T, sizeall(adv))
             for indice = 1:ordalg-1
-                pushfirst!(self.t_bufc, copy(self.bufcur))
-                fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
-                autointerp!(fmrdec, copy(fmrdec), indice-1, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
-                interpbufc!(self.t_bufc, fmrdec, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
+                t_ref = reverse(t_ref)
+                t_trv = sens * copy.(t_ref)
+
+                @show "1", length(t_trv)
+
+                decbegin!(t_trv, t_cal, adv.t_interp)
+                @show "2", length(t_trv)
+
+                t_cal = []
+                copy!(self.data, svdata)
+                for i = 1:indice
+                    @show "3", length(t_trv)
+
+                    fmrdec = sum(map(k -> c(adv.abcoef, k, indice) * t_trv[k], 1:indice))
+                    if i != 1
+                        push!(t_cal, -fmrdec)
+                        deleteat!(t_trv, length(t_trv))
+                        deleteat!(t_ref, length(t_ref))
+                    end
+                    autointerp!(
+                        self.bufcur,
+                        fmrdec,
+                        indice,
+                        adv.t_interp;
+                        mpid = adv.mpid,
+                        t_split = self.tt_split[1],
+                    )
+                    interpbufc!(
+                        self.t_bufc,
+                        self.bufcur,
+                        adv.t_interp;
+                        mpid = adv.mpid,
+                        t_split = self.tt_split[1],
+                    )
+                    interpolate!(
+                        f,
+                        self.data,
+                        self.bufcur,
+                        adv.t_interp;
+                        mpid = adv.mpid,
+                        t_split = self.tt_split[1],
+                    )
+                    copy!(self.data, f)
+                    initcoef!(extdata, self) # calculate bufcur
+                    pushfirst!(t_trv, copy(self.bufcur))
+                    pushfirst!(t_ref, copy(self.bufcur))
+                    @show "4", length(t_trv)
+
+                end
+                fmrdec = -sum(map(i -> c(adv.abcoef, i, indice + 1) * t_trv[i], 1:indice+1))
+                push!(t_cal, fmrdec)
+                sens = -sens
             end
-#            println("fin begin")
+            @assert sens == 1 "sens must be positive at this place"
+            @show "5", length(t_trv)
+
+            t_ref = reverse(t_ref)
+            t_trv = sens * copy.(t_ref)
+            deleteat!(t_trv, 1)
+            decbegin!(t_trv, t_cal, adv.t_interp)
+            self.t_bufc = t_trv
+            self.data .= svdata
+            self.bufcur .= svbufcur
+            @show "6", length(t_trv)
+            @show "6", length(self.t_bufc)
+
+            # old version that works at order 4 for poisson and order 2 for other
+            # for indice = 1:ordalg-1
+            #     pushfirst!(self.t_bufc, copy(self.bufcur))
+            #     fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
+            #     autointerp!(
+            #         fmrdec,
+            #         copy(fmrdec),
+            #         indice - 1,
+            #         adv.t_interp;
+            #         mpid = adv.mpid,
+            #         t_split = self.tt_split[1],
+            #     )
+            #     interpbufc!(
+            #         self.t_bufc,
+            #         fmrdec,
+            #         adv.t_interp;
+            #         mpid = adv.mpid,
+            #         t_split = self.tt_split[1],
+            #     )
+            # end
+            #            println("fin begin")
         end
+        @show "7", length(self.t_bufc)
 
         pushfirst!(self.t_bufc, copy(self.bufcur))
 
+        @show "8", length(self.t_bufc)
+
+
         bufc = sum(map(i -> c(adv.abcoef, i, ordalg) * self.t_bufc[i], 1:ordalg))
-    
-        autointerp!(self.bufcur, bufc, ordalg-1, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
-    
+
+        autointerp!(
+            self.bufcur,
+            bufc,
+            ordalg - 1,
+            adv.t_interp;
+            mpid = adv.mpid,
+            t_split = self.tt_split[1],
+        )
+
         deleteat!(self.t_bufc, length(self.t_bufc))
-    
-        interpbufc!(self.t_bufc, self.bufcur, adv.t_interp; mpid=adv.mpid, t_split=self.tt_split[1])
+
+        interpbufc!(
+            self.t_bufc,
+            self.bufcur,
+            adv.t_interp;
+            mpid = adv.mpid,
+            t_split = self.tt_split[1],
+        )
     end
 end
 
@@ -751,9 +872,7 @@ Advection function of a multidimensional function `f` discretized on `mesh`
 - `true` : means that the advection series must continue
 - `false` : means that the advection series is ended.
 """
-function advection!(
-    self::AdvectionData{T,N,timeopt, timealg},
-) where {T,N,timeopt, timealg}
+function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,timealg}
     fltrace = true
     adv = self.adv
     interp = getinterp(self)
@@ -761,17 +880,25 @@ function advection!(
     initcoef!(self)
     curind = _getcurrentindice(self)
     f = getformdata(self)
-    st=getst(self)
+    st = getst(self)
     sz = size(f)[1:st.ndims]
-#    @show size(f)
+    #    @show size(f)
     tabmod = gettabmod.(sz) # just for optimization of interpolation!
-#    @show sz, timeopt
+    #    @show sz, timeopt
 
-    coltuple = ntuple( x -> Colon(), st.ndims)
+    coltuple = ntuple(x -> Colon(), st.ndims)
 
-#    if timeopt == NoTimeOpt && timealg == ABTimeAlg
+    #    if timeopt == NoTimeOpt && timealg == ABTimeAlg
     if length(self.adv.states) == 1
-            interpolate!(f, self.data, self.bufcur, adv.t_interp; tabmod=tabmod, mpid=adv.mpid, t_split=self.tt_split[1])
+        interpolate!(
+            f,
+            self.data,
+            self.bufcur,
+            adv.t_interp;
+            tabmod = tabmod,
+            mpid = adv.mpid,
+            t_split = self.tt_split[1],
+        )
     elseif timeopt == NoTimeOpt || timeopt == MPIOpt
         #        @inbounds for ind in getitr(self)
         # fmrcpt=1
@@ -780,40 +907,47 @@ function advection!(
         local itr = getitr(self)
         # local colitr = collect(itr)
         # @show length(colitr), colitr[1]
-#       @show itr
-# clockbegin(self.clobs,1)
+        #       @show itr
+        # clockbegin(self.clobs,1)
         if st.isconstdec
             @inbounds for indext in itr
-                local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                local decint , precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
                 # if fltrace
                 #     @show typeof(buf),typeof(slc),length(buf),length(slc)
                 #     fltrace = false
                 # end
-#                clockbegin(self.clobs,2)
-#              interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
+                #                clockbegin(self.clobs,2)
+                #              interpolate!(buf, slc, decint, precal, interp, tabmod; clockobs=self.clobs)
                 interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
-#                clockend(self.clobs,2)
-            end           
+                #                clockend(self.clobs,2)
+            end
         else
             for indext in itr
                 local slc = view(f, coltuple..., indext)
-    #           @show ind
-                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp; tabmod=tabmod, cache=cache)
+                #           @show ind
+                interpolate!(
+                    buf,
+                    slc,
+                    indbuf -> getalpha(extdata, self, indext, indbuf),
+                    interp;
+                    tabmod = tabmod,
+                    cache = cache,
+                )
                 slc .= buf
             end
         end
-# clockend(self.clobs,1)
+        # clockend(self.clobs,1)
     elseif timeopt == SimpleThreadsOpt
         #        @inbounds begin
         local itr = collect(getitr(self))
         if st.isconstdec
-#            @show itr
+            #            @show itr
             @threads for indext in itr
                 local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
                 local cache = self.t_cache[st.ind][Threads.threadid()]
-                local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                local decint , precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
                 interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
@@ -823,7 +957,14 @@ function advection!(
                 local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
                 local cache = self.t_cache[st.ind][Threads.threadid()]
                 local slc = view(f, coltuple..., indext)
-                interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                interpolate!(
+                    buf,
+                    slc,
+                    indbuf -> getalpha(extdata, self, indext, indbuf),
+                    interp,
+                    tabmod,
+                    cache,
+                )
                 slc .= buf
             end
         end
@@ -834,19 +975,27 @@ function advection!(
             local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
             local cache = self.t_cache[st.ind][Threads.threadid()]
             local itr = getitr(self)
- #           @show itr
+            #           @show itr
             if st.isconstdec
                 for indext in itr
-                    local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+                    local decint , precal =
+                        getprecal(cache, getalpha(extdata, self, indext))
                     local slc = view(f, coltuple..., indext)
                     interpolate!(buf, slc, decint, precal, interp, tabmod)
                     slc .= buf
-                end           
+                end
             else
                 for indext in itr
                     local slc = view(f, coltuple..., indext)
-        #           @show ind
-                    interpolate!(buf, slc, indbuf -> getalpha(extdata, self, indext, indbuf), interp, tabmod, cache)
+                    #           @show ind
+                    interpolate!(
+                        buf,
+                        slc,
+                        indbuf -> getalpha(extdata, self, indext, indbuf),
+                        interp,
+                        tabmod,
+                        cache,
+                    )
                     slc .= buf
                 end
             end

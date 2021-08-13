@@ -114,58 +114,15 @@ end
 
 @inline function newval(valref, val, borne, width)
     diff = val - valref
-    return abs(diff) >= 0.5 ? valref + mod(diff +borne, width) - borne : val
+    return abs(diff) >= borne ? valref + mod(diff +borne, width) - borne : val
 end
-
-function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N}
-    sz = size(f)
-    wdth = width(mesh)
-    borne = wdth / 2
-    flagmod = false
-    list = [ones(Int, N)]
-    flagfait = zeros(Bool, sz)
-    incr = map(x -> map(y -> y == x, 1:N), 1:N)
-    while !isempty(list)
-        indice = popfirst!(list)
-#        @show indice
-        valref = f[indice...]
-        for i = 1:N
-            newindice = indice + incr[i]
-            if newindice[i] <= sz[i]
-                if !flagfait[newindice...]
-                    val = f[newindice...]
-                    nval = newval(valref, val, borne, wdth)
-                    if nval != val
-                        f[newindice...] = nval
-                        flagmod = true
-                    end
-                    flagfait[newindice...] = true
-                    push!(list, newindice)
-                end
-            end
-        end
-    end
-    return flagmod
+@inline function newval(valref::OpTuple{N,T}, val::OpTuple{N,T}, borne::OpTuple{N,T}, width::OpTuple{N,T}) where{N,T}
+    return OpTuple(ntuple(x -> newval(valref[x],val[x],borne[x],width[x]),N))
 end
-function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
-    strt = start(mesh)
-    stp = stop(mesh)
-    wdth = width(mesh)
-    for ind in CartesianIndices(res)
-        val = res[ind]
-        if val < strt || val >= stp
-            res[ind] = strt + mod(val - strt, wdth)
-        end
-    end
+function traitmodend!(lg::T2, f::Array{T2,N}) where {N, T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
+    f .= mod.(f, lg)
 end
-
-stdtomesh(mesh::UniformMesh{T}, v) where{T}=mesh.step*v .+ mesh.points[1]
-meshtostd(mesh::UniformMesh{T}, v) where{T}=(v .- mesh.points[1]) / mesh.step
-
-function traitmodend!(lg::T, res::Array{T,N}) where {T,N}
-    res .= mod.(res, lg)
-end
-function traitmodbegin!(lg::T, f::Array{T,N}) where {T,N}
+function traitmodbegin!(lg::T2, f::Array{T2,N}) where {N, T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
     sz = size(f)
     borne = lg / 2
     flagmod = false
@@ -194,6 +151,58 @@ function traitmodbegin!(lg::T, f::Array{T,N}) where {T,N}
     end
     return flagmod
 end
+
+traimodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N} = traitmobegin!(width(mesh),f)
+traimodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmobegin!(OpTuple(width.(mesh)),f)
+
+
+# function traitmodbegin!(mesh::Union{NTuple{N,UniformMesh{T}},UniformMesh{T}}, f::Array{T,N}) where {T,N}
+#     sz = size(f)
+#     wdth = width.(mesh)
+#     borne = wdth ./ 2
+#     flagmod = false
+#     list = [ones(Int, N)]
+#     flagfait = zeros(Bool, sz)
+#     incr = map(x -> map(y -> y == x, 1:N), 1:N)
+#     while !isempty(list)
+#         indice = popfirst!(list)
+# #        @show indice
+#         valref = f[indice...]
+#         for i = 1:N
+#             newindice = indice + incr[i]
+#             if newindice[i] <= sz[i]
+#                 if !flagfait[newindice...]
+#                     val = f[newindice...]
+#                     nval = newval(valref, val, borne, wdth)
+#                     if nval != val
+#                         f[newindice...] = nval
+#                         flagmod = true
+#                     end
+#                     flagfait[newindice...] = true
+#                     push!(list, newindice)
+#                 end
+#             end
+#         end
+#     end
+#     return flagmod
+# end
+function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
+    strt = start(mesh)
+    res .-= strt
+    traitmodend!(width(mesh), res)
+    res .+= strt
+end
+function traitmodend!(t_mesh::NTuple{N, UniformMesh{T}}, res::Array{OpTuple{N,T},N}) where {T,N}
+    strt = OpTuple(start.(t_mesh))
+    res .-= strt
+    traitmodend!(OpTuple(width.(t_mesh)), res)
+    res .+= strt
+end
+
+stdtomesh(mesh::UniformMesh{T}, v) where{T}=mesh.step*v .+ mesh.points[1]
+meshtostd(mesh::UniformMesh{T}, v) where{T}=(v .- mesh.points[1]) / mesh.step
+
+
 function gettuple_x(t_mesh::NTuple{N,UniformMesh{T}}) where {T,N}
     sz = length.(t_mesh)
     ret = ntuple(x -> zeros(T, sz), N)

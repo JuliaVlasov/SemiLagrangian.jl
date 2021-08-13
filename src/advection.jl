@@ -1,6 +1,6 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
-@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg = 2
+@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3
 
 struct StateAdv{N}
     ind::Int          # indice
@@ -426,7 +426,7 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
         tab_coef::Vector{T} = strangsplit(dt_base),
         timeopt::TimeOptimization = NoTimeOpt,
         timealg::TimeAlgorithm = NoTimeAlg,
-        ordalg::Int = timealg == ABTimeAlg ? 4 : 0,
+        ordalg::Int = timealg != NoTimeAlg ? 4 : 0,
     ) where {T,N,N2,I<:AbstractInterpolation{T}}
         length(t_interp) == N ||
             throw(ArgumentError("size of vector of Interpolation must be equal to N=$N"))
@@ -712,11 +712,11 @@ function copydata!(advd::AdvectionData{T,N,timeopt,timealg}, f) where {T,N,timeo
     end
     permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
-function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I <: AbstractInterpolation}
+function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I<:AbstractInterpolation}
     indice = length(t_trv)
     for i = 1:indice-1
         buf = t_cal[end]
-        autointerp!(buf, copy(buf), indice-1, t_interp)
+        autointerp!(buf, copy(buf), indice - 1, t_interp)
         interpbufc!(t_trv, buf, t_interp, i)
         deleteat!(t_cal, length(t_cal))
     end
@@ -726,7 +726,7 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
     isbegin = ismissing(self.bufcur)
     extdata::AbstractExtDataAdv = getext(self)
     initcoef!(extdata, self)
-    if timealg == ABTimeAlg
+    if timealg == ABTimeAlg_new
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
@@ -804,29 +804,38 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             self.bufcur .= svbufcur
             @show "6", length(t_trv)
             @show "6", length(self.t_bufc)
-
-            # old version that works at order 4 for poisson and order 2 for other
-            # for indice = 1:ordalg-1
-            #     pushfirst!(self.t_bufc, copy(self.bufcur))
-            #     fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
-            #     autointerp!(
-            #         fmrdec,
-            #         copy(fmrdec),
-            #         indice - 1,
-            #         adv.t_interp;
-            #         mpid = adv.mpid,
-            #         t_split = self.tt_split[1],
-            #     )
-            #     interpbufc!(
-            #         self.t_bufc,
-            #         fmrdec,
-            #         adv.t_interp;
-            #         mpid = adv.mpid,
-            #         t_split = self.tt_split[1],
-            #     )
-            # end
-            #            println("fin begin")
         end
+    end
+
+    # old version that works at order 4 for poisson and order 2 for other
+    if timealg == ABTimeAlg_ip
+        adv = self.adv
+        ordalg = getordalg(adv)
+        if isbegin
+
+            for indice = 1:ordalg-1
+                pushfirst!(self.t_bufc, copy(self.bufcur))
+                fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
+                autointerp!(
+                    fmrdec,
+                    copy(fmrdec),
+                    indice - 1,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+                interpbufc!(
+                    self.t_bufc,
+                    fmrdec,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+            end
+            println("fin begin")
+        end
+    end
+    if timealg == ABTimeAlg_ip || timealg == ABTimeAlg_new
         @show "7", length(self.t_bufc)
 
         pushfirst!(self.t_bufc, copy(self.bufcur))

@@ -45,7 +45,7 @@ function initcoef!(
 end
 function initcoef!(
     pv::RotationVar{T,2},
-    self::AdvectionData{T,2,timeopt,ABTimeAlg},
+    self::Union{AdvectionData{T,2,timeopt,ABTimeAlg_ip},AdvectionData{T,2,timeopt,ABTimeAlg_new}},
 ) where {T, timeopt}
     adv = self.adv
     sz = sizeall(adv)

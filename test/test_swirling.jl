@@ -23,7 +23,7 @@ using SemiLagrangian:
     OpTuple,
     TimeAlgorithm,
     NoTimeAlg,
-    ABTimeAlg
+    ABTimeAlg_ip
 
 import SemiLagrangian: initcoef!, getalpha
 # """
@@ -230,7 +230,7 @@ end
     @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 15
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 15
 
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_ip, ordalg=4) < 15
 #    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_ip, ordalg=4) < 15
 end

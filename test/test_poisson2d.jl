@@ -29,7 +29,8 @@ using SemiLagrangian:
     stdtomesh,
     TimeAlgorithm,
     NoTimeAlg,
-    ABTimeAlg
+    ABTimeAlg_ip,
+    ABTimeAlg_new
 
 # """
 
@@ -340,20 +341,20 @@ end
 
 
 T = Double64
-@time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 2)
-@time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 2)
+@time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_ip, 2)
+@time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_ip, 2)
 @test ret2 < (ret*1.25)/4
 @show ret, ret2, ret/ret2
 
   T = Double64
-   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 3)
-   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 3)
+   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_ip, 3)
+   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_ip, 3)
    @test ret2 < (ret*1.1)/8
   @show ret, ret2, ret/ret2
 
   T = Double64
-   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 4)
-   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 4)
+   @time ret, data5 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_ip, 4)
+   @time ret2, data10 = test_poisson2dadv((128, 100), [Lagrange(11, T),Lagrange(11, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_ip, 4)
    @test ret2 < (ret*1.1)/16
   @show ret, ret2, ret/ret2
 

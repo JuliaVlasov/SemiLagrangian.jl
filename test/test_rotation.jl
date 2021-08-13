@@ -18,7 +18,7 @@ using SemiLagrangian:
     B_SplineFFT,
     interpolate!,
     NoTimeAlg,
-    ABTimeAlg
+    ABTimeAlg_ip
 """
 
    exact(tf, mesh1, mesh2)

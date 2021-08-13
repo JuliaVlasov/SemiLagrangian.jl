@@ -152,8 +152,8 @@ function traitmodbegin!(lg::T2, f::Array{T2,N}) where {N, T2<:Union{OpTuple{N,<:
     return flagmod
 end
 
-traimodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N} = traitmobegin!(width(mesh),f)
-traimodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmobegin!(OpTuple(width.(mesh)),f)
+traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N} = traitmodbegin!(width(mesh),f)
+traitmodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmodbegin!(OpTuple(width.(mesh)),f)
 
 
 # function traitmodbegin!(mesh::Union{NTuple{N,UniformMesh{T}},UniformMesh{T}}, f::Array{T,N}) where {T,N}

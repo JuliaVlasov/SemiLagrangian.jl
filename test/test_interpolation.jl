@@ -19,7 +19,6 @@ using SemiLagrangian:
     interpolatemod!,
     calinverse!,
     getinverse,
-    interpolate2!,
     OpTuple
 
 function test_interp(

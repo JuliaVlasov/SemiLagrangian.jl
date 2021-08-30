@@ -133,138 +133,138 @@ function get_allprecal(
     indend = indbeg + order
     return [getprecal(interp, decfloat + i) for i = indbeg:indend]
 end
-# struct ValInv{T}
-#     a::Int
-#     b::T
-#     val::Complex{T}
-#     ind::CartesianIndex{2}
-#     function ValInv(ind::CartesianIndex{2}, val::Complex{T}) where {T}
-#         return new{T}(round(Int, real(val)), imag(val), val, ind)
-#     end
-# end
-# function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
-#     return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
-# end
-# #aroundindices()=CartesianIndex.([(1,0),(1,1),(0,1),(-1,1),(-1,0),(-1,-1),(0,-1),(1,-1)])
-# #aroundcmplx()=[  ]
+struct ValInv{T}
+    a::Int
+    b::T
+    val::Complex{T}
+    ind::CartesianIndex{2}
+    function ValInv(ind::CartesianIndex{2}, val::Complex{T}) where {T}
+        return new{T}(round(Int, real(val)), imag(val), val, ind)
+    end
+end
+function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
+    return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
+end
+#aroundindices()=CartesianIndex.([(1,0),(1,1),(0,1),(-1,1),(-1,0),(-1,-1),(0,-1),(1,-1)])
+#aroundcmplx()=[  ]
 
-# function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tuple{Int,Int})
-#     return CartesianIndex(modone.(indref.I .- indorigin.I, sz))
-# end
-# cmplxtoindex(v) = CartesianIndex(Int(real(v)), Int(imag(v)))
-# indextocmplx(ind) = ind.I[1] + ind.I[2] * im
+function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tuple{Int,Int})
+    return CartesianIndex(modone.(indref.I .- indorigin.I, sz))
+end
+cmplxtoindex(v) = CartesianIndex(Int(real(v)), Int(imag(v)))
+indextocmplx(ind) = ind.I[1] + ind.I[2] * im
 
-# function roundcomplex(v::Complex, sz::Tuple{Int,Int})
-#     b = div.(sz, (2,))
-#     return mod(real(v)+b[1],sz[1])-b[1] +im*(mod(imag(v)+b[2],sz[2])-b[2])
-# end
+function roundcomplex(v::Complex, sz::Tuple{Int,Int})
+    b = div.(sz, (2,))
+    return mod(real(v)+b[1],sz[1])-b[1] +im*(mod(imag(v)+b[2],sz[2])-b[2])
+end
 
-# function calinverse!(
-#     out::NTuple{N,Array{T,2}},
-#     tabin::NTuple{N,Array{T,2}},
-#     order::Int=4
-# ) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+function calinverse!(
+    out::NTuple{N,Array{T,2}},
+    tabin::NTuple{N,Array{T,2}},
+    order::Int=4
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
 
-#     @assert order % 2 == 0 "order=$order must be even"
+    @assert order % 2 == 0 "order=$order must be even"
 
-#     lginterp = order + 1
-#     origin = div(order, 2)
-#     sz = size(tabin[1])
-#     indorigin = CartesianIndex(origin, origin)
-#     indmiddle = CartesianIndex(origin + 1, origin + 1)
-#     indlg = CartesianIndex(lginterp,lginterp)
+    lginterp = order + 1
+    origin = div(order, 2)
+    sz = size(tabin[1])
+    indorigin = CartesianIndex(origin, origin)
+    indmiddle = CartesianIndex(origin + 1, origin + 1)
+    indlg = CartesianIndex(lginterp,lginterp)
 
-#     tab1 = getextarray(tabin[1], (origin, origin), (origin, origin))
-#     tab2 = getextarray(tabin[2], (origin, origin), (origin, origin))
+    tab1 = getextarray(tabin[1], (origin, origin), (origin, origin))
+    tab2 = getextarray(tabin[2], (origin, origin), (origin, origin))
 
-#     largesz = size(tab1)
+    largesz = size(tab1)
 
-#     traitmodbegin!(T(sz[1]), tab1)
-#     traitmodbegin!(T(sz[2]), tab2)
+    traitmodbegin!(T(sz[1]), tab1)
+    traitmodbegin!(T(sz[2]), tab2)
 
-#     minreal, maxreal = extrema(tab1)
-#     minimag, maximag = extrema(tab2)
-#     imagit(v::Int) = minimag+mod(v - minimag, sz[2]):sz[2]:maximag-mod(maximag - v, sz[2])
+    minreal, maxreal = extrema(tab1)
+    minimag, maximag = extrema(tab2)
+    imagit(v::Int) = minimag+mod(v - minimag, sz[2]):sz[2]:maximag-mod(maximag - v, sz[2])
 
-#     @show minreal, maxreal, minimag, maximag
+    @show minreal, maxreal, minimag, maximag
 
-#     minintreal = round(Int, minreal)
-#     maxintreal = round(Int, maxreal)
-#     realit(v::Int) =
-#         minintreal+mod(v - minintreal, sz[1]):sz[1]:maxintreal-mod(maxintreal - v, sz[1])
+    minintreal = round(Int, minreal)
+    maxintreal = round(Int, maxreal)
+    realit(v::Int) =
+        minintreal+mod(v - minintreal, sz[1]):sz[1]:maxintreal-mod(maxintreal - v, sz[1])
 
-#     taball = tab1 + im * tab2
-#     taballbig = big.(taball)
+    taball = tab1 + im * tab2
+    taballbig = big.(taball)
 
-#     # tabinvall est le tableau qui donne à partir de quel indice on va interpoler
-#     tabvalind = Vector{ValInv}(undef, largesz[1] * largesz[2])
-#     for ind in CartesianIndices(taball)
-#         tabvalind[(ind.I[2]-1)*largesz[1]+ind.I[1]] = ValInv(ind, taball[ind])
-#     end
-#     sort!(tabvalind)
+    # tabinvall est le tableau qui donne à partir de quel indice on va interpoler
+    tabvalind = Vector{ValInv}(undef, largesz[1] * largesz[2])
+    for ind in CartesianIndices(taball)
+        tabvalind[(ind.I[2]-1)*largesz[1]+ind.I[1]] = ValInv(ind, taball[ind])
+    end
+    sort!(tabvalind)
 
-#     rreal = extrema([p.ind.I[1] for p in tabvalind])
-#     rimag = extrema([p.ind.I[2] for p in tabvalind])
+    rreal = extrema([p.ind.I[1] for p in tabvalind])
+    rimag = extrema([p.ind.I[2] for p in tabvalind])
 
-#     @show rreal, rimag
+    @show rreal, rimag
 
-#     tabresult = [CartesianIndex{2}[] for i in CartesianIndices(sz)]
+    tabresult = [CartesianIndex{2}[] for i in CartesianIndices(sz)]
 
-#     nullind = CartesianIndex(0, 0)
+    nullind = CartesianIndex(0, 0)
 
-#     srch(val) = searchsorted(tabvalind, ValInv(nullind, val))
-#     dist(ind::Int, valsearch) = abs(valsearch - tabvalind[ind].val)
-#     indend = length(tabvalind) + 1
-#     for ind in CartesianIndices(sz)
-#         distmin = Inf
-#         dec = 0
-#         indmin::Int = 0
-#         while distmin >= dec + 0.5
-#             itdec = dec == 0 ? [0] : [-dec, dec]
-#             for decdec in itdec
-#                 for i in realit(ind.I[1] + decdec), j in imagit(ind.I[2])
-#                     valsrch = T(i - decdec) + im * j
-#                     r = srch(valsrch)
-#                     for v in [r.start, r.stop]
-#                         if 0 < v < indend
-#                             d = dist(v, valsrch)
-#                             if d < distmin
-#                                 indmin = v
-#                                 distmin = d
-#                             end
-#                         end
-#                     end
-#                 end
-#             end
-#             dec += 1
-#         end
-#         #        push!(tabresult[tabvalind[indmin].ind-indorigin], ind)
-#         push!(tabresult[corind(tabvalind[indmin].ind, indorigin, sz)], ind)
-#     end
+    srch(val) = searchsorted(tabvalind, ValInv(nullind, val))
+    dist(ind::Int, valsearch) = abs(valsearch - tabvalind[ind].val)
+    indend = length(tabvalind) + 1
+    for ind in CartesianIndices(sz)
+        distmin = Inf
+        dec = 0
+        indmin::Int = 0
+        while distmin >= dec + 0.5
+            itdec = dec == 0 ? [0] : [-dec, dec]
+            for decdec in itdec
+                for i in realit(ind.I[1] + decdec), j in imagit(ind.I[2])
+                    valsrch = T(i - decdec) + im * j
+                    r = srch(valsrch)
+                    for v in [r.start, r.stop]
+                        if 0 < v < indend
+                            d = dist(v, valsrch)
+                            if d < distmin
+                                indmin = v
+                                distmin = d
+                            end
+                        end
+                    end
+                end
+            end
+            dec += 1
+        end
+        #        push!(tabresult[tabvalind[indmin].ind-indorigin], ind)
+        push!(tabresult[corind(tabvalind[indmin].ind, indorigin, sz)], ind)
+    end
 
-#     for ind in CartesianIndices(sz)
-#         p = missing
-#         moyint = missing
-#         corind = missing
-#         for indind in tabresult[ind]
-#              if ismissing(p)
-#                 tab = taballbig[ind.I[1]:ind.I[1]+2origin, ind.I[2]:ind.I[2]+2origin]
-#                 moyint = round(tab[indmiddle])
-#                 tab .-= moyint
-#                 minre,maxre = extrema(real.(tab))
-#                 minim,maxim = extrema(imag.(tab))
-# #                @show minre,maxre,minim,maxim
-#                 p = getpoly(tab)
-#                 corind = indextocmplx(ind-indlg)
-#             end
-#             v = p(roundcomplex(indextocmplx(indind) - moyint, sz)) + corind
-# #            @show indind, taballbig[ind+indorigin]
-# #            @show indind, ind, moyint, corind, v
-#             out[1][indind] = mod(real(v), sz[1])
-#             out[2][indind] = mod(imag(v), sz[2])
-#         end
-#     end
-# end
+    for ind in CartesianIndices(sz)
+        p = missing
+        moyint = missing
+        corind = missing
+        for indind in tabresult[ind]
+             if ismissing(p)
+                tab = taballbig[ind.I[1]:ind.I[1]+2origin, ind.I[2]:ind.I[2]+2origin]
+                moyint = round(tab[indmiddle])
+                tab .-= moyint
+                minre,maxre = extrema(real.(tab))
+                minim,maxim = extrema(imag.(tab))
+#                @show minre,maxre,minim,maxim
+                p = getpoly(tab)
+                corind = indextocmplx(ind-indlg)
+            end
+            v = p(roundcomplex(indextocmplx(indind) - moyint, sz)) + corind
+#            @show indind, taballbig[ind+indorigin]
+#            @show indind, ind, moyint, corind, v
+            out[1][indind] = mod(real(v), sz[1])
+            out[2][indind] = mod(imag(v), sz[2])
+        end
+    end
+end
 
 """
     interpolate!( fp::AbstractVector{T}, 

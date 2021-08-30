@@ -462,7 +462,7 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
             tab_coef,
             nbsplit,
             mpid,
-            ABcoef(ordalg),
+            ABcoef(ordalg+1),
         )
     end
 end
@@ -723,6 +723,7 @@ function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I<:AbstractInterpol
 end
 
 function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,timealg}
+    nbtours = 3
     isbegin = ismissing(self.bufcur)
     extdata::AbstractExtDataAdv = getext(self)
     initcoef!(extdata, self)
@@ -736,25 +737,27 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             push!(t_ref, copy(self.bufcur))
             svdata = copy(self.data)
             svbufcur = copy(self.bufcur)
-            sens = ordalg % 2 == 1 ? 1 : -1
+            sens = ordalg*nbtours % 2 == 1 ? 1 : -1
             f = zeros(T, sizeall(adv))
-            for indice = 1:ordalg-1
+            for indice = 1:ordalg, nb=1:(indice == ordalg ? nbtours-1 : nbtours)
                 t_ref = reverse(t_ref)
                 t_trv = sens * copy.(t_ref)
 
-                @show "1", length(t_trv)
+                @show "1", length(t_trv),length(t_cal)
 
                 decbegin!(t_trv, t_cal, adv.t_interp)
-                @show "2", length(t_trv)
+                @show "2", length(t_trv),length(t_cal)
 
                 t_cal = []
                 copy!(self.data, svdata)
                 for i = 1:indice
-                    @show "3", length(t_trv)
+                    @show "3", length(t_trv), indice
 
                     fmrdec = sum(map(k -> c(adv.abcoef, k, indice) * t_trv[k], 1:indice))
-                    if i != 1
+                    if i != 1 
                         push!(t_cal, -fmrdec)
+                    end
+                    if i != 1 || nb != 1
                         deleteat!(t_trv, length(t_trv))
                         deleteat!(t_ref, length(t_ref))
                     end
@@ -788,9 +791,11 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                     @show "4", length(t_trv)
 
                 end
+
                 fmrdec = -sum(map(i -> c(adv.abcoef, i, indice + 1) * t_trv[i], 1:indice+1))
                 push!(t_cal, fmrdec)
-                sens = -sens
+                
+               sens = -sens
             end
             @assert sens == 1 "sens must be positive at this place"
             @show "5", length(t_trv)

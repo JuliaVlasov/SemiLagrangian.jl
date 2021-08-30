@@ -324,18 +324,18 @@ end
 @testset "test poisson2d" begin
 
 # T = Double64
-# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 2)
-# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 2)
+# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_new, 2)
+# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_new, 2)
 # @test ret2 < (ret*1.25)/4
 # @show ret, ret2, ret/ret2
 # T = Double64
-# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 3)
-# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 3)
+# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_new, 3)
+# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_new, 3)
 # @test ret2 < (ret*1.1)/8
 # @show ret, ret2, ret/ret2
 # T = Double64
-# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg, 4)
-# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg, 4)
+# @time ret, data5 = test_poisson2dadv((128, 100), [B_SplineLU(11, 128, T),B_SplineLU(11, 100, T)] , T(big"0.1"), 5, StdPoisson2d, 0, ABTimeAlg_new, 4)
+# @time ret2, data10 = test_poisson2dadv((128, 100), [B_SplineLU(11,128,  T),B_SplineLU(11, 100, T)] , T(big"0.1"), 10, StdPoisson2d, 0, ABTimeAlg_new, 4)
 # @test ret2 < (ret*1.1)/16
 # @show ret, ret2, ret/ret2
 

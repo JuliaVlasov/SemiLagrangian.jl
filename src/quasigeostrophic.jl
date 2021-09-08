@@ -16,11 +16,12 @@ struct GeoConst{T,N}
         adv::Advection{T,N};
         #        rho::T = 1e3,
         #        g::T = 9.81,
-        #        buoyancy_freq_n::T = T(3),
+        buoyancy_freq_n::T = 3*2*T(2pi)/(24*3600)*sin(T(pi)/4),
         odg_b::T = T(1e-3),
         #        hv_order::Int = 8,
         #        hv_val::T = T(0),
     ) where {T,N}
+        @assert N == 2 "the number of dimension must be 2"
         sz = sizeall(adv)
         coefrsqk = ntuple(x -> zeros(Complex{T}, sz), N)
         pfftbig = if T != Float64
@@ -28,16 +29,17 @@ struct GeoConst{T,N}
         else
             missing
         end
+        veck = vec_k_fft.(adv.t_mesh)
         for ind in CartesianIndices(sz)
-            tp = ntuple(i -> adv.t_mesh[i].points[ind.I[i]], N)
+            tp = ntuple(i -> veck[i][ind.I[i]], N)
             k = sqrt(sum(tp .^ 2))
             v = k == 0 ? 0 : 1 / k
             for d = 1:N
-                coefrsqk[d][ind] = v .* tp[d]
+                coefrsqk[d][ind] = v .* tp[d%2+1]
             end
         end
-        coefrsqk[1] .*= -im
-        coefrsqk[2] .*= im
+        coefrsqk[1] .*= im # /buoyancy_freq_n
+        coefrsqk[2] .*= -im # /buoyancy_freq_n
 
         return new{T,N}(
             adv,
@@ -98,5 +100,14 @@ function initcoef!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
 
     advd.bufcur .=
         dt * OpTuple.(zip(ntuple(x -> real(ifftgenall(pfft, geoc.gc.coefrsqk[x] .* buf)), N)...))
+end
+@inline function getalpha(
+    ::GeoVar{T,N},
+    self::AdvectionData{T},
+    indext::CartesianIndex, indbuf::CartesianIndex
+) where {T,N,Nsp,Nv}
+    st = getst(self)
+    ind = CartesianIndex((indbuf.I...,indext.I...)[st.invp])
+    return ntuple( x -> self.bufcur[ind][st.invp[x]], st.ndims)
 end
 

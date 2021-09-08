@@ -4,6 +4,7 @@ using DoubleFloats
 
 using SemiLagrangian:
     UniformMesh,
+    AbstractInterpolation,
     points,
     dotprod,
     compute_ee,
@@ -22,7 +23,14 @@ using SemiLagrangian:
     NoTimeOpt,
     SimpleThreadsOpt,
     SplitThreadsOpt,
-    PrepareFftBig
+    PrepareFftBig,
+    standardsplit,
+    strangsplit,
+    triplejumpsplit,
+    order6split,
+    hamsplit_3_11,
+    getenergyall
+
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
@@ -165,7 +173,58 @@ function test_poisson_real(T::DataType, timeopt)
 
     return elenergy, kinenergy
 end
+function test_poisson_split(
+    sz::NTuple{2,Int},
+    interp::Vector{I},
+    dt::T,
+    nbdt::Int,
+    tcoef::Vector{T},
+) where {T,I<:AbstractInterpolation{T}}
+    t_max = dt*nbdt
+    epsilon=0.5
+    spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
+    vmin, vmax, nv = -T(10), T(10), sz[2]
 
+    mesh_sp = UniformMesh(spmin, spmax, nsp)
+    mesh_v = UniformMesh(vmin, vmax, nv)
+
+    tabst = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
+
+ 
+    adv = Advection(
+        (mesh_sp,mesh_v,), 
+        interp, 
+        dt,
+        tabst;
+        tab_coef=tcoef)
+
+    fct_sp(x) = epsilon * cos(x / 2) + 1
+    fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
+
+    lgn_sp = fct_sp.(mesh_sp.points)
+    lgn_v = fct_v.(mesh_v.points)
+
+    data = dotprod((lgn_sp, lgn_v))
+
+    pvar = getpoissonvar(adv)
+
+    advd = AdvectionData(adv, data, pvar)
+
+    enall = getenergyall(advd)
+    minen = maxen = enall
+    for i = 1:nbdt
+        while advection!(advd)
+        end
+        enall = getenergyall(advd)
+        minen = min(enall,minen)
+        maxen = max(enall,maxen)
+        diff = maxen - minen
+        @show advd.time_cur, diff
+    end
+
+
+    return maxen-minen
+end
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
     test_poisson(Float64, false)
@@ -185,3 +244,25 @@ end
     @test res == test_poisson_real(Float64, SimpleThreadsOpt)
     @test res == test_poisson_real(Float64, SplitThreadsOpt)
 end
+
+function test_split(T, nbdt, split, order)
+    lag = Lagrange(19,T)
+    dt = one(T)/nbdt
+    sz = (64,50)
+    res1 = test_poisson_split(sz, [lag,lag], dt, nbdt, split(dt))
+    nbdt *= 2
+    dt = one(T)/nbdt
+    res2 = test_poisson_split(sz, [lag,lag], dt, nbdt, split(dt))
+
+    @show order, res1,res2,res1/res2
+    @test (1.05*res1)/res2 > 2 ^ order
+end
+
+@testset "Poisson split" begin
+    @time test_split(Float64, 5,  standardsplit, 1)
+    @time test_split(Float64, 5, strangsplit, 2)
+    @time test_split(Double64, 10, triplejumpsplit, 4)
+    @time test_split(Double64, 5, order6split, 6)
+    @time test_split(Double64, 5, hamsplit_3_11, 6)
+end
+

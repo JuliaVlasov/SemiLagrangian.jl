@@ -195,12 +195,14 @@ function run_mesure(
 # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
 tabsplit = [standardsplit, strangsplit, hamsplit_3_11]
 # tabtype = [StdPoisson2d, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB, StdAB]
-tabtype = [NoTimeAlg, ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,]
-#tabtype = [StdRK4,]
+# tabtype = [NoTimeAlg, ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,ABTimeAlg,]
+# tabtype = [StdRK4,]
+tabtype=[]
 tabtypeadd = [0, 2, 3, 4, 5, 6]
 # tabtxtsplit = ["stdsplit", "strangsplit", "triplejumpsplit", "order6split", "fernandosplit"]
-tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB_2", "stdAB_3", "stdAB_4", "stdAB_5", "stdAB_6",]
+# tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "std2d", "stdAB_2", "stdAB_3", "stdAB_4", "stdAB_5", "stdAB_6",]
 # tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "stdRK4",]
+tabtxt = ["stdsplit", "strangsplit", "fernandosplit"]
 tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000]
 
     res = zeros(Float64, length(tabtxt)+1, length(tabnbdt))

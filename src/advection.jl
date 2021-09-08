@@ -1,6 +1,6 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
-@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3
+@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4
 
 struct StateAdv{N}
     ind::Int          # indice
@@ -462,7 +462,7 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
             tab_coef,
             nbsplit,
             mpid,
-            ABcoef(ordalg+1),
+            ABcoef(ordalg + 1),
         )
     end
 end
@@ -565,10 +565,12 @@ mutable struct AdvectionData{T,N,timeopt,timealg}
     clobs::AbstractClockObs
     bufcur::Union{Array{OpTuple{N,T},N},Missing}
     t_bufc::Vector{Array{OpTuple{N,T},N}}
+    initdatas::Union{Vector{Array{T,N}},Missing}
     function AdvectionData(
         adv::Advection{T,N,I,timeopt,timealg},
         data::Array{T,N},
         parext::AbstractExtDataAdv;
+        initdatas::Union{Vector{Array{T,N}},Missing} = missing,
         clockobs = false,
     ) where {T,N,I,timeopt,timealg}
         s = size(data)
@@ -613,6 +615,7 @@ mutable struct AdvectionData{T,N,timeopt,timealg}
         end
         t_cache =
             map(x -> map(i -> CachePrecal(getinterp(adv, x), zero(T)), 1:nbthr), 1:nbst)
+
         return new{T,N,timeopt,timealg}(
             adv,
             1,
@@ -629,6 +632,7 @@ mutable struct AdvectionData{T,N,timeopt,timealg}
             clockobs ? ClockObs(10) : NoClockObs(),
             missing,
             [],
+            initdatas,
         )
     end
 end
@@ -681,7 +685,7 @@ function nextstate!(self::AdvectionData)
     else
         self.state_gen = 1
         printall(self.clobs)
-        self.time_cur += getcur_t(self)
+        self.time_cur += self.adv.dt_base
         return retns(self, self.parext)
     end
 end
@@ -737,16 +741,16 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             push!(t_ref, copy(self.bufcur))
             svdata = copy(self.data)
             svbufcur = copy(self.bufcur)
-            sens = ordalg*nbtours % 2 == 1 ? 1 : -1
+            sens = ordalg * nbtours % 2 == 1 ? 1 : -1
             f = zeros(T, sizeall(adv))
-            for indice = 1:ordalg, nb=1:(indice == ordalg ? nbtours-1 : nbtours)
+            for indice = 1:ordalg, nb = 1:(indice == ordalg ? nbtours - 1 : nbtours)
                 t_ref = reverse(t_ref)
                 t_trv = sens * copy.(t_ref)
 
-                @show "1", length(t_trv),length(t_cal)
+#                @show "1", length(t_trv), length(t_cal)
 
                 decbegin!(t_trv, t_cal, adv.t_interp)
-                @show "2", length(t_trv),length(t_cal)
+#                @show "2", length(t_trv), length(t_cal)
 
                 t_cal = []
                 copy!(self.data, svdata)
@@ -754,7 +758,7 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                     @show "3", length(t_trv), indice
 
                     fmrdec = sum(map(k -> c(adv.abcoef, k, indice) * t_trv[k], 1:indice))
-                    if i != 1 
+                    if i != 1
                         push!(t_cal, -fmrdec)
                     end
                     if i != 1 || nb != 1
@@ -789,16 +793,15 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                     pushfirst!(t_trv, copy(self.bufcur))
                     pushfirst!(t_ref, copy(self.bufcur))
                     @show "4", length(t_trv)
-
                 end
 
                 fmrdec = -sum(map(i -> c(adv.abcoef, i, indice + 1) * t_trv[i], 1:indice+1))
                 push!(t_cal, fmrdec)
-                
-               sens = -sens
+
+                sens = -sens
             end
             @assert sens == 1 "sens must be positive at this place"
-            @show "5", length(t_trv)
+#            @show "5", length(t_trv)
 
             t_ref = reverse(t_ref)
             t_trv = sens * copy.(t_ref)
@@ -807,8 +810,8 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             self.t_bufc = t_trv
             self.data .= svdata
             self.bufcur .= svbufcur
-            @show "6", length(t_trv)
-            @show "6", length(self.t_bufc)
+#            @show "6", length(t_trv)
+#            @show "6", length(self.t_bufc)
         end
     end
 
@@ -840,12 +843,40 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             println("fin begin")
         end
     end
-    if timealg == ABTimeAlg_ip || timealg == ABTimeAlg_new
-        @show "7", length(self.t_bufc)
+    if timealg == ABTimeAlg_init
+        adv = self.adv
+        ordalg = getordalg(adv)
+        if isbegin
+            for indice = 1:ordalg-1
+                pushfirst!(self.t_bufc, copy(self.bufcur))
+                fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
+                autointerp!(
+                    fmrdec,
+                    copy(fmrdec),
+                    ordalg-1,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+                interpbufc!(
+                    self.t_bufc,
+                    fmrdec,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+                copy!(self.data, self.initdatas[indice])
+                self.time_cur += getcur_t(self)
+                initcoef!(extdata, self)
+            end
+        end
+    end
+    if timealg == ABTimeAlg_ip || timealg == ABTimeAlg_new || timealg == ABTimeAlg_init
+#        @show "7", length(self.t_bufc)
 
         pushfirst!(self.t_bufc, copy(self.bufcur))
 
-        @show "8", length(self.t_bufc)
+ #       @show "8", length(self.t_bufc)
 
 
         bufc = sum(map(i -> c(adv.abcoef, i, ordalg) * self.t_bufc[i], 1:ordalg))
@@ -853,7 +884,7 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         autointerp!(
             self.bufcur,
             bufc,
-            ordalg - 1,
+            ordalg-1,
             adv.t_interp;
             mpid = adv.mpid,
             t_split = self.tt_split[1],

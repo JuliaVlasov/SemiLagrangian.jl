@@ -407,7 +407,7 @@ function test_timealg(interp::Vector{I},nbdt, timealg,ordalg) where {T,I<:Abstra
     
     @show ret1,ret2, ret1/ret2
 
-    @test 1.2*ret1/ret2 > 2 ^ ordalg
+    @test 1.25*ret1/ret2 > 2 ^ ordalg
 end
 
 @testset "test poisson2d ABTimeAlg_new" begin

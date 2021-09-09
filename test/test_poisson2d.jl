@@ -434,7 +434,6 @@ end
     @time test_timealg(interp,5,ABTimeAlg_init,2)
     @time test_timealg(interp,5,ABTimeAlg_init,3)
     @time test_timealg(interp,5,ABTimeAlg_init,4)
-    @time test_timealg(interp,5,ABTimeAlg_init,5)
 end
 
 # @testset "test poisson2d exactitude" begin

@@ -50,7 +50,7 @@ function test_poisson(T::DataType, isfft = true)
     base_dt = one(T) / 80
     Nv = 3
 
-    N = Nsp+Nv
+    N = Nsp + Nv
 
     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
@@ -60,7 +60,7 @@ function test_poisson(T::DataType, isfft = true)
         (t_meshsp..., t_meshv...),
         map(x -> interp, 1:6),
         base_dt,
-        [([1, 2, 3, 4, 5, 6], 3, 1, false, false), ([4, 5, 6, 1, 2, 3], 3, 2, false, true)]
+        [([1, 2, 3, 4, 5, 6], 3, 1, false, false), ([4, 5, 6, 1, 2, 3], 3, 2, false, true)],
     )
 
     tab = rand(T, t_szsp..., t_szv...)
@@ -87,7 +87,7 @@ function test_poisson(T::DataType, isfft = true)
     @test compute_ke(advdata) == compute_ke(totuple(t_meshsp), totuple(t_meshv), tab)
 
 
-    advdata.state_gen =2
+    advdata.state_gen = 2
     initcoef!(pvar, advdata)
     rhoref = zeros(T, t_szsp)
     compute_charge!(rhoref, t_meshv, tab)
@@ -132,25 +132,20 @@ end
 end
 
 function test_poisson_real(T::DataType, timeopt)
-    dt = T(1//10)
-    nbdt=10
-    epsilon=0.5
+    dt = T(1 // 10)
+    nbdt = 10
+    epsilon = 0.5
     spmin, spmax, nsp = T(0), T(4big(pi)), 128
     vmin, vmax, nv = -T(10), T(10), 128
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [( [1,2], 1, 1, true, false),( [2,1], 1, 2, true, true) ]
+    tabst = [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, true)]
 
-    interp=Lagrange(9,T)
+    interp = Lagrange(9, T)
 
-    adv = Advection(
-        (mesh_sp,mesh_v,), 
-        [interp,interp], 
-        dt,
-        tabst,
-        timeopt = timeopt)
+    adv = Advection((mesh_sp, mesh_v), [interp, interp], dt, tabst, timeopt = timeopt)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -180,23 +175,18 @@ function test_poisson_split(
     nbdt::Int,
     tcoef::Vector{T},
 ) where {T,I<:AbstractInterpolation{T}}
-    t_max = dt*nbdt
-    epsilon=0.5
+    t_max = dt * nbdt
+    epsilon = 0.5
     spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
     vmin, vmax, nv = -T(10), T(10), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
+    tabst = [([2, 1], 1, 1, true, true), ([1, 2], 1, 2, true, false)]
 
- 
-    adv = Advection(
-        (mesh_sp,mesh_v,), 
-        interp, 
-        dt,
-        tabst;
-        tab_coef=tcoef)
+
+    adv = Advection((mesh_sp, mesh_v), interp, dt, tabst; tab_coef = tcoef)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -216,14 +206,14 @@ function test_poisson_split(
         while advection!(advd)
         end
         enall = getenergyall(advd)
-        minen = min(enall,minen)
-        maxen = max(enall,maxen)
+        minen = min(enall, minen)
+        maxen = max(enall, maxen)
         diff = maxen - minen
         @show advd.time_cur, diff
     end
 
 
-    return maxen-minen
+    return maxen - minen
 end
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
@@ -246,20 +236,20 @@ end
 end
 
 function test_split(T, nbdt, split, order)
-    lag = Lagrange(19,T)
-    dt = one(T)/nbdt
-    sz = (64,50)
-    res1 = test_poisson_split(sz, [lag,lag], dt, nbdt, split(dt))
+    lag = Lagrange(19, T)
+    dt = one(T) / nbdt
+    sz = (64, 50)
+    res1 = test_poisson_split(sz, [lag, lag], dt, nbdt, split(dt))
     nbdt *= 2
-    dt = one(T)/nbdt
-    res2 = test_poisson_split(sz, [lag,lag], dt, nbdt, split(dt))
+    dt = one(T) / nbdt
+    res2 = test_poisson_split(sz, [lag, lag], dt, nbdt, split(dt))
 
-    @show order, res1,res2,res1/res2
-    @test (1.05*res1)/res2 > 2 ^ order
+    @show order, res1, res2, res1 / res2
+    @test (1.05 * res1) / res2 > 2^order
 end
 
 @testset "Poisson split" begin
-    @time test_split(Float64, 5,  standardsplit, 1)
+    @time test_split(Float64, 5, standardsplit, 1)
     @time test_split(Float64, 5, strangsplit, 2)
     @time test_split(Double64, 10, triplejumpsplit, 4)
     @time test_split(Double64, 5, order6split, 6)

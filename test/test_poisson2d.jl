@@ -444,7 +444,7 @@ end
     @time test_timealg(interp,20,ABTimeAlg_init2,2)
     @time test_timealg(interp,20,ABTimeAlg_init2,3)
     @time test_timealg(interp,20,ABTimeAlg_init2,4)
-    @time test_timealg(interp,20,ABTimeAlg_init2,5)
+    @time test_timealg(interp,40,ABTimeAlg_init2,5)
 
 end
 

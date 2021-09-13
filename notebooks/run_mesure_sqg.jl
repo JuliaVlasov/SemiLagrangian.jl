@@ -114,7 +114,7 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
     resdata = [zeros(T, sz) for i in CartesianIndices((length(tabnbdt), length(tabtxt)))]
 
     lastind = zeros(Int, length(tabtxt))
-
+    t_loc = time_ns()
     for inbdt = 1:length(tabnbdt), itc = 1:length(tabtxt)
         lastind[itc] = inbdt
         tabres = sqg2(
@@ -128,10 +128,14 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
         )
         resdata[inbdt, itc] .= tabres[end]
         if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+            nb = MPI.Comm_size(MPI.COMM_WORLD)
+            t_now = time_ns()
+            t = (t_now - t_loc)*1e-9
+            t_loc = t_now
             for k = 1:length(tabtxt)
                 if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
                     println(
-                        "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) k=$k $(lastind[k])\n# t",
+                        "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) nb=$nb t=$t\n# t",
                     )
                     for txt in tabtxt
                         print("\t$txt")

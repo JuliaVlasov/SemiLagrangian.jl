@@ -1,5 +1,6 @@
 
 using MPI
+using DoubleFloats
 
 struct MPIData
     comm::Any
@@ -19,11 +20,23 @@ end
 function mpibroadcast(mpid, t_split, data::Array{T,N}) where {T,N}
 
     MPI.Barrier(mpid.comm)
-        for i = 1:mpid.nb
-            vbcast = view(data, t_split[i])
-            MPI.Bcast!(vbcast, i - 1, mpid.comm)
+        if T == Float64
+            # for Float64 or Double64 ... for example
+            for i = 1:mpid.nb
+                vbcast = view(data, t_split[i])
+                MPI.Bcast!(vbcast, i - 1, mpid.comm)
+            end
+        else
+            # for BigFloat ... for example
+            for i = 1:mpid.nb
+                vbcast = view(data, t_split[i])
+                bufr = MPI.bcast(vbcast, i - 1, mpid.comm)
+                if i != mpid.ind
+                    copy!(vbcast, bufr)
+                end
+            end
         end
-
+     
     MPI.Barrier(mpid.comm)
 end
 function splititr(nb, lgtot)
@@ -38,7 +51,7 @@ function splitvec(nb, v)
     return map(x -> v[x], splititr(nb, length(v)))
 end
 
-function run_main(T, sz::NTuple{2,Int})
+function fct(T, sz::NTuple{2,Int})
     mpid = MPIData()
     nbsplit = mpid.nb
 
@@ -54,6 +67,7 @@ function run_main(T, sz::NTuple{2,Int})
 
     data = zeros(T,sz)
     cpt = 1
+    loc_t = ref_t = time_ns()
     while true
         dec1 = rand()-0.5
         dec2 = rand()-0.5
@@ -63,10 +77,27 @@ function run_main(T, sz::NTuple{2,Int})
             data[i] = (data[i] + dec1*a + dec2*b)/(a+b)
         end
         mpibroadcast(mpid, tt_split, data)
-        @show mpid.ind, cpt, sum(data)
+        if mpid.ind == 1
+                if cpt % 80 == 0
+                    n_t = time_ns()
+                    loc = (n_t - loc_t)*1e-9
+                    gen = (n_t - ref_t)*1e-9
+                    moy = gen *80 / cpt
+                    loc_t = n_t
+                    println(". $(sum(data)) $cpt $moy $loc $gen")
+                else
+                    if cpt % 1 == 0
+                        print(".")
+                    end
+                end
+        end
+        flush(stdout)
         cpt += 1
     end
 
 end
+function run_main(T,sz)
+    fct(T,sz)   
+end
 
-run_main(Float64, (128,128) )
+run_main(Float64, (512,512) )

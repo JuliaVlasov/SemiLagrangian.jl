@@ -32,6 +32,7 @@ using SemiLagrangian:
     ABTimeAlg_ip,
     ABTimeAlg_new,
     ABTimeAlg_init,
+    ABTimeAlg_init2,
     hamsplit_3_11
 
 # """
@@ -281,6 +282,8 @@ function test_poisson2dadv(
 
     if timealg == ABTimeAlg_init
         advd.initdatas = get_init(advd, ordalg-1)
+    elseif timealg == ABTimeAlg_init2
+        advd.initdatas = get_init(advd, 3ordalg-1)
     end
 
 
@@ -434,6 +437,15 @@ end
     @time test_timealg(interp,5,ABTimeAlg_init,2)
     @time test_timealg(interp,5,ABTimeAlg_init,3)
     @time test_timealg(interp,5,ABTimeAlg_init,4)
+end
+@testset "test poisson2d ABTimeAlg_init2" begin
+    T = Double64
+    interp = [Lagrange(9,T),Lagrange(9,T)]
+    @time test_timealg(interp,20,ABTimeAlg_init2,2)
+    @time test_timealg(interp,20,ABTimeAlg_init2,3)
+    @time test_timealg(interp,20,ABTimeAlg_init2,4)
+    @time test_timealg(interp,20,ABTimeAlg_init2,5)
+
 end
 
 # @testset "test poisson2d exactitude" begin

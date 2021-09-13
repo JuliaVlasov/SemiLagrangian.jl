@@ -47,11 +47,11 @@ function sqg2(
 
     result = Array{T,2}[]
     initdatas = missing
-    if typealg == ABTimeAlg_init
+    if typealg == ABTimeAlg_init2
         nbfordt = Int(floor(sqrt(nbdt))) + ordalg + 2
-        newnb = nbfordt * (ordalg - 1)
+        newnb = nbfordt * (3ordalg - 1)
         newdt = dt / nbfordt
-        newt_max = dt * (ordalg - 1)
+        newt_max = dt * (3ordalg - 1)
         newtypealg = ordalg == 2 ? NoTimeAlg : typealg
         newordalg = ordalg == 2 ? 0 : (ordalg - 1)
         res = sqg2(newt_max, timeopt, newdt, sz, interp, newtypealg, newordalg)
@@ -79,10 +79,10 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
     tabtypealg = [
         NoTimeAlg,
         ABTimeAlg_ip,
-        ABTimeAlg_init,
-        ABTimeAlg_init,
-        ABTimeAlg_init,
-        ABTimeAlg_init,
+        ABTimeAlg_init2,
+        ABTimeAlg_init2,
+        ABTimeAlg_init2,
+        ABTimeAlg_init2,
     ]
     # ta
 

@@ -1,6 +1,6 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
-@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4
+@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4 ABTimeAlg_init2 = 5
 
 struct StateAdv{N}
     ind::Int          # indice
@@ -871,7 +871,43 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             end
         end
     end
-    if timealg == ABTimeAlg_ip || timealg == ABTimeAlg_new || timealg == ABTimeAlg_init
+    if timealg == ABTimeAlg_init2
+        adv = self.adv
+        ordalg = getordalg(adv)
+        if isbegin
+
+            for indice = 1:length(self.initdatas)
+                pushfirst!(self.t_bufc, copy(self.bufcur))
+                ord = min(indice, ordalg)
+                fmrdec = sum(map(i -> c(adv.abcoef, i, ord) * self.t_bufc[i], 1:ord))
+                if ord == ordalg
+                    deleteat!(self.t_bufc, length(self.t_bufc))
+                end
+                autointerp!(
+                    fmrdec,
+                    copy(fmrdec),
+                    ordalg-1,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+                interpbufc!(
+                    self.t_bufc,
+                    fmrdec,
+                    adv.t_interp;
+                    mpid = adv.mpid,
+                    t_split = self.tt_split[1],
+                )
+                copy!(self.data, self.initdatas[indice])
+                self.time_cur += getcur_t(self)
+                initcoef!(extdata, self)
+            end
+
+
+        end
+    end
+
+    if timealg == ABTimeAlg_ip || timealg == ABTimeAlg_new || timealg == ABTimeAlg_init|| timealg == ABTimeAlg_init2
 #        @show "7", length(self.t_bufc)
 
         pushfirst!(self.t_bufc, copy(self.bufcur))

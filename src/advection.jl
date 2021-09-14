@@ -701,7 +701,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-            self.time_cur -= getcur_t(self)*length(self.initdatas)
             for indice = 1:ordalg-1
                 pushfirst!(self.t_bufc, copy(self.bufcur))
                 fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
@@ -730,7 +729,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-            self.time_cur -= getcur_t(self)*length(self.initdatas)
             for indice = 1:length(self.initdatas)
                 pushfirst!(self.t_bufc, copy(self.bufcur))
                 ord = min(indice, ordalg)

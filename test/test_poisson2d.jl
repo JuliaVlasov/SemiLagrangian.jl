@@ -281,8 +281,10 @@ function test_poisson2dadv(
     advd = AdvectionData(adv, data, pvar)
 
     if timealg == ABTimeAlg_init
+        advd.time_cur -= dt*(ordalg-1)
         advd.initdatas = get_init(advd, ordalg-1)
     elseif timealg == ABTimeAlg_init2
+        advd.time_cur -= dt*(3ordalg-1)
         advd.initdatas = get_init(advd, 3ordalg-1)
     end
 
@@ -444,7 +446,7 @@ end
     @time test_timealg(interp,5,ABTimeAlg_init2,2)
     @time test_timealg(interp,5,ABTimeAlg_init2,3)
     @time test_timealg(interp,5,ABTimeAlg_init2,4)
-    @time test_timealg(interp,5,ABTimeAlg_init2,5)
+    @time test_timealg(interp,10,ABTimeAlg_init2,5)
 
 end
 

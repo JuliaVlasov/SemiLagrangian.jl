@@ -107,8 +107,6 @@ function run_mesure(t_max::T, timeopt, sz, interp, epsilon::T) where {T}
     # tabtxt = ["stdsplit", "strangsplit", "fernandosplit", "stdRK4",]
     tabtxt = ["NO", "AB_ip2", "AB_init2", "AB_init3", "AB_init4", "AB_init5"]
     tabnbdt = [
-        10,
-        20,
         50,
         100,
         200,

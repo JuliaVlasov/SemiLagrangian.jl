@@ -292,9 +292,6 @@ function test_poisson2dadv(
 
     elenergy, kinenergy, energyall = getenergy(advd)
 
-    if timealg == ABTimeAlg_init
-        advd.time_cur -= advd.adv.dt_base * (ordalg - 1)
-    end
 
     verif(pvar, advd)
 
@@ -303,7 +300,10 @@ function test_poisson2dadv(
 
     diff = 0
     diffprec = 0
-    while advd.time_cur < t_max
+
+    borne_t = t_max - dt/2
+
+    while advd.time_cur < borne_t
         while advection!(advd)
         end
         elenergy, kinenergy, energyall = getenergy(advd)
@@ -441,40 +441,10 @@ end
 @testset "test poisson2d ABTimeAlg_init2" begin
     T = Double64
     interp = [Lagrange(9,T),Lagrange(9,T)]
-    @time test_timealg(interp,20,ABTimeAlg_init2,2)
-    @time test_timealg(interp,20,ABTimeAlg_init2,3)
-    @time test_timealg(interp,20,ABTimeAlg_init2,4)
-    @time test_timealg(interp,40,ABTimeAlg_init2,5)
+    @time test_timealg(interp,5,ABTimeAlg_init2,2)
+    @time test_timealg(interp,5,ABTimeAlg_init2,3)
+    @time test_timealg(interp,5,ABTimeAlg_init2,4)
+    @time test_timealg(interp,5,ABTimeAlg_init2,5)
 
 end
 
-# @testset "test poisson2d exactitude" begin
-#     T = Double64
-#     global data10
-#     ret, datanorm10 = test_poisson2dadv(
-#         (128, 100),
-#         [Lagrange(11, T), Lagrange(11, T)],
-#         T(big"0.1"),
-#         10,
-#         StdPoisson2d,
-#         0,
-#     )
-#     ret2, datanorm20 = test_poisson2dadv(
-#         (128, 100),
-#         [Lagrange(11, T), Lagrange(11, T)],
-#         T(big"0.1"),
-#         20,
-#         StdPoisson2d,
-#         0,
-#     )
-#     @show ret, ret2
-
-#     ret10 = norm(datanorm10 - data10)
-#     ret20 = norm(datanorm20 - data10)
-#     @test isapprox(2ret10, ret20, atol = 1e-2)
-#     @show ret10, ret20
-#     normnorm = norm(datanorm10 - datanorm20)
-#     norm1020 = norm(data10 - datanorm10)
-#     @show normnorm, norm1020
-
-# end

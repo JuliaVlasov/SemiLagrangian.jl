@@ -40,6 +40,6 @@ export compute_charge!,
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar
 export TimeOptimization, NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt, MPIOpt, TimeAlgorithm, NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init2, ABTimeAlg_new
 export TypePoisson, StdPoisson, StdPoisson2d, StdOrder2_1, StdOrder2_2, StdAB, StdAB2, StdRK4, StdABinit, StdABp
-export get_type, sizeall, getdata, OpTuple, getgeovar, initdata!
+export get_type, sizeall, getdata, OpTuple, getgeovar, initdata!, getenergyall
 
 end

@@ -286,6 +286,7 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
         sizeall = length.(t_mesh)
 
         newstates = map(i -> StateAdv(i, states[i]...), 1:length(states))
+#        newstates = map(i -> StateAdv(i, states[i]..., zeros(sizeall[states[i][1]][states[2]])), 1:length(states))
 
         maxcoef = maximum(x -> x.stcoef, newstates)
 

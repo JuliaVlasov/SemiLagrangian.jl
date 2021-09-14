@@ -20,6 +20,7 @@ using SemiLagrangian:
     compute_elfield!,
     compute_ee,
     compute_ke,
+    getenergy,
     dotprod,
     PoissonVar,
     getpoissonvar,
@@ -91,14 +92,7 @@ using SemiLagrangian:
 
 # end
 
-function getenergy(advd::AdvectionData)
-    compute_charge!(advd)
-    compute_elfield!(advd)
-    elenergy = compute_ee(advd)
-    kinenergy = compute_ke(advd)
-    energyall = elenergy + kinenergy
-    return elenergy, kinenergy, energyall
-end
+
 
 function test_poisson2d(
     sz::NTuple{2,Int},

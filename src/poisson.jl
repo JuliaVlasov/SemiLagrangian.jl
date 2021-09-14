@@ -108,7 +108,7 @@ end
 
 getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
 """
-    compute_charge!( self::AdvectionData)
+    compute_charge!( self::PoissonVar, advd::AdvectionData)
 
  Compute charge density
 
@@ -117,30 +117,25 @@ getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
  # Argument
  - `self::AdvectionData` : mutable structure of variables data.
 """
-function compute_charge!(self::AdvectionData{T,N}) where {T,N}
-    pvar = getext(self)
-    Nsp, Nv = getNspNv(pvar)
-    compute_charge!(pvar.rho, self.adv.t_mesh[end-Nv+1:end], self.data)
+function compute_charge!(self::PoissonVar{T,N, Nsp,Nv}, advd::AdvectionData) where {T,N, Nsp,Nv}
+    compute_charge!(self.rho, self.pc.adv.t_mesh[end-Nv+1:end], advd.data)
     missing
 end
 
 """
-    compute_elfield!( self:AdvectionData)
+    compute_elfield!( self:PoissonVar)
 
 computation of electric field
     ∇.e = - ρ
 
 # Argument
- - `self::AdvectionData` : mutable structure of variables data.
+ - `self::PoissonVar` : mutable structure of variables data.
 
 """
-function compute_elfield!(self::AdvectionData{T,N}) where {T,N}
-    pv = getext(self)
-    Nsp, Nv = getNspNv(pv)
-    sz = size(pv.rho)
-    pfft = pv.pc.pfftbig
-    buf = fftgenall(pfft, pv.rho)
-    pv.t_elfield = ntuple(x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf)), Nsp)
+function compute_elfield!(self::PoissonVar{T,N, Nsp,Nv}) where {T,N, Nsp,Nv}
+    pfft = self.pc.pfftbig
+    buf = fftgenall(pfft, self.rho)
+    self.t_elfield = ntuple(x -> real(ifftgenall(pfft, self.pc.fctv_k[x] .* buf)), Nsp)
     missing
 end
 
@@ -156,18 +151,18 @@ Implementation of the interface function that is called at the begining of each 
 
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson},
-    self::AdvectionData{T,N},
+    advd::AdvectionData{T,N},
 ) where {T,N,Nsp,Nv}
-    st = getst(self)
-    adv = self.adv
-    if isvelocity(self)
+    st = getst(advd)
+    adv = advd.adv
+    if isvelocity(advd)
         if (Nsp + 1) in st.perm[1:st.ndims]
-            compute_charge!(self)
-            compute_elfield!(self)
+            compute_charge!(pv, advd)
+            compute_elfield!(pv)
         end
         bc_v = ntuple(
             x ->
-                (getcur_t(self) / step(adv.t_mesh[st.perm[x]])) *
+                (getcur_t(advd) / step(adv.t_mesh[st.perm[x]])) *
                 pv.t_elfield[st.perm[x]-Nsp],
             st.ndims,
         )
@@ -183,7 +178,7 @@ function initcoef!(
         pv.tupleind = ntuple(x -> st.perm[st.invp[x]+Nsp] - st.ndims, st.ndims)
         bc_sp = ntuple(
             x ->
-                (-getcur_t(self) / step(adv.t_mesh[st.invp[x]])) *
+                (-getcur_t(advd) / step(adv.t_mesh[st.invp[x]])) *
                 adv.t_mesh[st.invp[x]+Nsp].points,
             st.ndims,
         )
@@ -198,11 +193,11 @@ function initcoef!(
 end
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson},
-    self::AdvectionData{T},
+    advd::AdvectionData{T},
     ind,
 ) where {T,N,Nsp,Nv}
-    st = getst(self)
-    return if isvelocity(self)
+    st = getst(advd)
+    return if isvelocity(advd)
         ntuple(
             x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])],
             size(pv.bufcur_v, 1),
@@ -214,20 +209,20 @@ end
 
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    self::AdvectionData{T,N, timeopt},
+    advd::AdvectionData{T,N, timeopt},
 ) where {T,N,Nsp,Nv, timeopt}
     #    st = getst(self)
-    adv = self.adv
-    compute_charge!(self)
-    compute_elfield!(self)
+    adv = advd.adv
+    compute_charge!(pv, advd)
+    compute_elfield!(pv)
 
-    bufc_v = (getcur_t(self) / step(adv.t_mesh[2])) * pv.t_elfield[1]
-    bufc_sp = (-getcur_t(self) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
+    bufc_v = (getcur_t(advd) / step(adv.t_mesh[2])) * pv.t_elfield[1]
+    bufc_sp = (-getcur_t(advd) / step(adv.t_mesh[1])) * adv.t_mesh[2].points
 
-    if ismissing(self.bufcur)
-        self.bufcur = zeros(OpTuple{N,T}, sizeall(adv))
+    if ismissing(advd.bufcur)
+        advd.bufcur = zeros(OpTuple{N,T}, sizeall(adv))
     end
     for ind in CartesianIndices(sizeall(adv))
-        self.bufcur[ind] = OpTuple((bufc_sp[ind.I[2]], bufc_v[ind.I[1]]))
+        advd.bufcur[ind] = OpTuple((bufc_sp[ind.I[2]], bufc_v[ind.I[1]]))
     end
 end

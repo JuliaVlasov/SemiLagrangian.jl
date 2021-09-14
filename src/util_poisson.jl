@@ -160,11 +160,16 @@ function compute_ee(self::AdvectionData)
     dx = prod(step, adv.t_mesh[1:Nsp])
     return dx * sum(map(x -> sum(x .^ 2), pvar.t_elfield))
 end
-function getenergyall(advd::AdvectionData)
-    compute_charge!(advd)
-    compute_elfield!(advd)
+function getenergy(advd::AdvectionData)
+    pv::PoissonVar = getext(advd)
+    compute_charge!(pv, advd)
+    compute_elfield!(pv)
     elenergy = compute_ee(advd)
     kinenergy = compute_ke(advd)
     energyall = elenergy + kinenergy
+    return elenergy, kinenergy, energyall
+end
+function getenergyall(advd::AdvectionData)
+    _, _, energyall = getenergy(advd)
     return energyall
 end

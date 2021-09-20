@@ -12,7 +12,6 @@ using SemiLagrangian:
     CircEdge,
     AbstractInterpolation,
     gettuple_x,
-    calinverse!,
     interpolatemod!
 
 @testset "split util" begin

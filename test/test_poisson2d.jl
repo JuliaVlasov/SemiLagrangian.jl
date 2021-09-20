@@ -34,63 +34,11 @@ using SemiLagrangian:
     ABTimeAlg_new,
     ABTimeAlg_init,
     ABTimeAlg_init2,
-    hamsplit_3_11
-
-# """
-
-#    exact(tf, mesh1, mesh2)
-
-#    Julia function to compute exact solution "
-
-# ```math
-# \frac{d f}{dt} +  (y \frac{df}{delta1} - x \frac{df}{delta2}) = 0 
-# ```
-
-# """
-# function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T}
-#     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
-#         s, c = sincos(tf)
-#         xn, yn = c * x - s * y, + s * x + c * y
-#         f[i,j] = exp(-5*((xn)^2+(yn+T(6//5))^2))
-#     end
-# end
-
-# function test_rotation(
-#     sz::NTuple{2,Int}, 
-#     interp_sp::AbstractInterpolation{T}, 
-#     interp_v::AbstractInterpolation{T},
-#     nbdt::Int
-# ) where {T}
-#     spmin, spmax, nsp =  T(-5), T(5),  sz[1]
-#     vmin, vmax, nv = -T(12//2), T(9//2), sz[2]
-
-#     mesh_sp = UniformMesh( spmin, spmax, nsp)
-#     mesh_v = UniformMesh( vmin, vmax, nv)
-
-#     dt = T(2big(pi)/nbdt)
-#     adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_fct=[tan, sin, tan])
-# #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
-#     sz = sizeall(adv)
-#     tabref = zeros(T,sz)
-#     exact!(tabref, mesh_sp, mesh_v, T(0))
-
-#     pvar = getrotationvar(adv)
-
-#     advdata = Advection1dData(adv, tabref, pvar)
-
-#     diffmax = 0
-#     data = getdata(advdata)
-#     for ind=1:nbdt
-#         while advection!(advdata) end
-#         exact!(tabref, mesh_sp, mesh_v, dt*ind)
-#         diff = norm(data .- tabref, Inf)
-#         diffmax = max(diffmax, diff)
-#         @show ind, diff
-#     end
-#     println("test_rotation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
-#     return diffmax
-
-# end
+    hamsplit_3_11,
+    TimeOptimization,
+    NoTimeOpt,
+    SimpleThreadsOpt,
+    SplitThreadsOpt
 
 
 
@@ -238,7 +186,8 @@ function test_poisson2dadv(
     type::TypePoisson = StdPoisson2d,
     typeadd = 0,
     timealg::TimeAlgorithm = NoTimeAlg,
-    ordalg = 0,
+    ordalg = 0;
+    timeopt::TimeOptimization=NoTimeOpt,
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-9), T(9), sz[2]
@@ -258,6 +207,7 @@ function test_poisson2dadv(
         tab_coef = nosplit(dt),
         timealg = timealg,
         ordalg = ordalg,
+        timeopt=timeopt,
     )
 
     tabref = initdata(adv)
@@ -432,6 +382,7 @@ end
     interp = [Lagrange(7,T),Lagrange(7,T)]
     @time test_timealg(interp,5,ABTimeAlg_init,2)
     @time test_timealg(interp,5,ABTimeAlg_init,3)
+    @time test_timealg(interp,5,ABTimeAlg_init,3)
     @time test_timealg(interp,5,ABTimeAlg_init,4)
 end
 @testset "test poisson2d ABTimeAlg_init2" begin
@@ -441,6 +392,32 @@ end
     @time test_timealg(interp,5,ABTimeAlg_init2,3)
     @time test_timealg(interp,5,ABTimeAlg_init2,4)
     @time test_timealg(interp,10,ABTimeAlg_init2,5)
-
 end
+
+@testset "test poisson2d thread" begin
+    T = Float64
+    interp = [Lagrange(5,T),Lagrange(5,T)]
+    sz = (64,64)
+    for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init2,)
+        res = []
+        for t_opt in (NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt)
+            @show t_alg, t_opt
+            ordalg = t_alg == NoTimeAlg ? 0 : 2
+            _, d1 = test_poisson2dadv(
+                sz,
+                interp,
+                T(0.01),
+                5,
+                StdPoisson2d,
+                0,
+                t_alg, ordalg,
+                timeopt=t_opt)
+            push!(res, d1)
+            if length(res) >= 2
+                @test res[end-1] == res[end]
+            end
+        end
+    end
+end
+
 

@@ -23,7 +23,8 @@ using SemiLagrangian:
     OpTuple,
     TimeAlgorithm,
     NoTimeAlg,
-    ABTimeAlg_ip
+    ABTimeAlg_ip,
+    ABTimeAlg_init2
 
 import SemiLagrangian: initcoef!, getalpha
 # """
@@ -194,12 +195,22 @@ function test_swirling_adv(
             cos(T(pi) * y)^2 * sin(2T(pi) * x) / step(mesh_v),
         )
         dec[i, j] = OpTuple(v)
-        tabref[i, j] = ((1 - x)^2 + (1 - y)^2 < 0.8) ? 1 : 0
+        tabref[i, j] = exp(-10*((T(1)/4 - x)^2 + (T(1)/2 - y)^2))
     end
 
     adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,], timealg=timealg, ordalg=ordalg)
 
-    advd = AdvectionData(adv, tabref, Swirling(dec))
+    initdatas = missing
+    if timealg == ABTimeAlg_init2
+        initdatas = [copy(tabref) for i=1:(3ordalg-1)]
+    end
+
+
+    advd = AdvectionData(adv, tabref, Swirling(dec),initdatas=initdatas)
+
+    if timealg == ABTimeAlg_init2
+        advd.time_cur -=  length(initdatas)*dt
+    end
 
     f(v,x) = v.v[x]
     @show extrema(f.(dec,(1,)))
@@ -226,11 +237,13 @@ end
 end
 @testset "test swirling_adv" begin
     T = Float64
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 50) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 500) < 15
     @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 15
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 15
 
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_ip, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 500, timealg=ABTimeAlg_init2, ordalg=4) < 15
 #    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_ip, ordalg=4) < 15
 end

@@ -74,30 +74,7 @@ function compute_charge!(
     nothing
 end
 
-"""
-    compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
 
-Computation of electric field.
-    ∇.e = - ρ
-
-# Argument
- - `self::Advection1dData`: mutable structure of variables data.
-"""
-# function compute_elfield!( self::Advection1dData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
-#     pv::PoissonVar{T, Nsp, Nv} = getext(self)
-
-#     sz = size(pv.rho)
-#     pfft = pv.pc.pfftbig
-#     buf = fftgenall(pfft, pv.rho)
-#     # for i=1:Nsp
-#     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
-#     # end
-#     pv.t_elfield = ntuple(
-#     x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
-#     Nsp
-# )
-#     missing
-# end
 function compute_elfield(
     t_mesh_x::NTuple{N,UniformMesh{T}},
     rho::Array{T,N},
@@ -117,6 +94,17 @@ function compute_elfield(
         N,
     )
 end
+"""
+    compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
+
+Computation of electric field of one dimension.
+    ∇.e = - ρ
+
+# Argument
+ - `elf::Array{T,1}`: output Vector.
+ - `mesh::UniformMesh{T}` : mesh of the vector
+ - `rho::Array{T,1}` : rho computed before
+"""
 function compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where {T}
     elf .= compute_elfield((mesh,), rho, PrepareFftBig(size(rho), zero(T); numdims = 1))[1]
 end

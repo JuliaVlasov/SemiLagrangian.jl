@@ -237,13 +237,11 @@ end
 end
 @testset "test swirling_adv" begin
     T = Float64
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 50) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 500) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 5
+    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 5
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 5
 
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(19,T),Lagrange(19,T)] , 500, timealg=ABTimeAlg_init2, ordalg=4) < 15
-#    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg, ordalg=4) < 15
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_ip, ordalg=4) < 15
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
+#    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
 end

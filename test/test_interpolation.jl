@@ -17,7 +17,6 @@ using SemiLagrangian:
     CircEdge,
     gettuple_x,
     interpolatemod!,
-    calinverse!,
     getinverse,
     OpTuple
 

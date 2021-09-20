@@ -1,4 +1,3 @@
-using Plots
 using SemiLagrangian:
     getgeovar,
     AbstractInterpolation,
@@ -98,23 +97,24 @@ function test_quasigeostrophic(
     end
     #    contourf(advd.data)
 
-    println("trace1")
-    if retdata
-        @show typeof(tabret)
-        ret = ismissing(ctrldatas) ? tabret : (tabret, diffmax)
-        @show typeof(ret)
-        return ret
-    else
-        return diffmax
-    end
+    return copy(advd.data)
+    # println("trace1")
+    # if retdata
+    #     @show typeof(tabret)
+    #     ret = ismissing(ctrldatas) ? tabret : (tabret, diffmax)
+    #     @show typeof(ret)
+    #     return ret
+    # else
+    #     return diffmax
+    # end
 end
 
 
 function test_order(T, nbdt, split, str)
     m1ref, m2ref, dref = test_quasigeostrophic(
         (128, 128),
-        [Lagrange(29, T), Lagrange(29, T)],
-        T(100000),
+        [Lagrange(9, T), Lagrange(9, T)],
+        T(10000),
         nbdt * 4,
         NoTimeAlg,
         0,
@@ -122,8 +122,8 @@ function test_order(T, nbdt, split, str)
     )
     m11, m21, d1 = test_quasigeostrophic(
         (128, 128),
-        [Lagrange(29, T), Lagrange(29, T)],
-        T(100000),
+        [Lagrange(9, T), Lagrange(9, T)],
+        T(10000),
         nbdt,
         NoTimeAlg,
         0,
@@ -131,8 +131,8 @@ function test_order(T, nbdt, split, str)
     )
     m12, m22, d2 = test_quasigeostrophic(
         (128, 128),
-        [Lagrange(29, T), Lagrange(29, T)],
-        T(100000),
+        [Lagrange(9, T), Lagrange(9, T)],
+        T(10000),
         nbdt * 2,
         NoTimeAlg,
         0,
@@ -147,52 +147,42 @@ function test_order(T, nbdt, split, str)
     @show str, ret1, ret2, ret1 / ret2
     @show retm1, retm2
 end
-function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str; initdatas = missing, ctrldatas=missing)
+function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str)
 
-    if ismissing(ctrldatas)
-#        initd = ismissing(initdatas) ? missing : initdatas[2:2:(ordalg-1)*2]
-#        ctrld = ctrldatas[2:2:end]
-        ctrldatas, diff4 = test_quasigeostrophic(
-            sz,
-            interps,
-            T(100000),
-            nbdt*4,
-            timealg,
-            ordalg,
-#            initdatas = initd,
-#            ctrldatas= ctrldatas,
-            retdata=true,
-        )
-#       ctrldatas = ctrldatas[2:2:end]
-    end
 
-    initd = ismissing(initdatas) ? missing : initdatas[2:2:(ordalg-1)*2]
-    ctrld = ctrldatas[2:2:end]
-    ret1 = test_quasigeostrophic(
+    data4 = test_quasigeostrophic(
+        sz,
+        interps,
+        T(100000),
+        nbdt*4,
+        timealg,
+        ordalg,
+    )
+    data1 = test_quasigeostrophic(
         sz,
         interps,
         T(100000),
         nbdt,
         timealg,
         ordalg,
-        initdatas = initd,
-        ctrldatas= ctrld
     )
-    initd = ismissing(initdatas) ? missing : initdatas[1:(ordalg-1)]
-    ctrld =  ctrldatas
 
-    ret2 = test_quasigeostrophic(
+    data2 = test_quasigeostrophic(
         sz,
         interps,
         T(100000),
         nbdt * 2,
         timealg,
         ordalg,
-        initdatas = initd,
-        ctrldatas= ctrld
     )
+    ret1 = norm(data4-data1)
+    ret2 = norm(data4-data2)
 
     @show str, ret1, ret2, ret1 / ret2
+
+    ord = ordalg == 0 ? 1 : ordalg
+
+    @test ret1*1.2/ret2 > 2^ord
 end
 T = Double64
 # _,_, data = test_quasigeostrophic((128, 128), [Lagrange(9, T), Lagrange(9, T)], T(100000), 100)
@@ -216,76 +206,67 @@ nbprec = 32
 #     retdata = true,
 # )
 
-dref = deserialize("ABTimeAlg_ip2_32.sqg")
+# dref = deserialize("ABTimeAlg_ip2_32.sqg")
 
-dref128 = deserialize("NoTimeAlg_128.sqg")
+# dref128 = deserialize("NoTimeAlg_128.sqg")
 
-diffip2_No = norm(norm.(dref .- dref128[4:4:end]), Inf)
+# diffip2_No = norm(norm.(dref .- dref128[4:4:end]), Inf)
 
-@show diffip2_No
+# @show diffip2_No
 
 
-dr = dref[nbprec:nbprec:end]
-dr2 = dref128[128:128:end]
+# dr = dref[nbprec:nbprec:end]
+# dr2 = dref128[128:128:end]
 
-# @time test_orderno(T, sz, interps, 16*nbdt, NoTimeAlg, 0, "NoTimeAlg dref", ctrldatas=dref[2:2:end])
+# # @time test_orderno(T, sz, interps, 16*nbdt, NoTimeAlg, 0, "NoTimeAlg dref", ctrldatas=dref[2:2:end])
 
-tabres = Array{T,2}[]
-for i=0:6
-    coef = 2 ^ i
-    @time ref = test_quasigeostrophic(
-        sz,
-        interps,
-        T(100000),
-        nbdt*coef,
-        ABTimeAlg_ip,
-        2,
-        retdata=true,
-    )
-    @show coef, typeof(ref)
-    push!(tabres, ref[end])
-end
-tabresip = deserialize("res6ip.sgq")
+# tabres = Array{T,2}[]
+# for i=0:6
+#     coef = 2 ^ i
+#     @time ref = test_quasigeostrophic(
+#         sz,
+#         interps,
+#         T(100000),
+#         nbdt*coef,
+#         ABTimeAlg_ip,
+#         2,
+#         retdata=true,
+#     )
+#     @show coef, typeof(ref)
+#     push!(tabres, ref[end])
+# end
+# tabresip = deserialize("res6ip.sgq")
 
-tabres = deserialize("res6.sgq")
-for i = 1:7
-    for j=1:7
-        print(" $(norm(tabres[i]-tabresip[j]))")
-    end
-    println("")
-end
-for i = 1:7
-    for j=1:7
-        print(" $(log2(norm(tabres[i]-tabresip[j])))")
-    end
-    println("")
-end
-for i = 1:7
-    for j=1:7
-        print(" $(norm(tabresip[i]-tabresip[j]))")
-    end
-    println("")
-end
-for i = 1:7
-    for j=1:7
-        print(" $(log2(norm(tabresip[i]-tabresip[j])))")
-    end
-    println("")
-end
+# tabres = deserialize("res6.sgq")
+# for i = 1:7
+#     for j=1:7
+#         print(" $(norm(tabres[i]-tabresip[j]))")
+#     end
+#     println("")
+# end
+# for i = 1:7
+#     for j=1:7
+#         print(" $(log2(norm(tabres[i]-tabresip[j])))")
+#     end
+#     println("")
+# end
+# for i = 1:7
+#     for j=1:7
+#         print(" $(norm(tabresip[i]-tabresip[j]))")
+#     end
+#     println("")
+# end
+# for i = 1:7
+#     for j=1:7
+#         print(" $(log2(norm(tabresip[i]-tabresip[j])))")
+#     end
+#     println("")
+# end
+nbdt = 50
 
-#@time test_orderno(T, sz, interps, nbdt*4, NoTimeAlg, 0, "NoTimeAlg dref128", ctrldatas=dref128[16:16:end])
-
-#=
-@time test_orderno(T, sz, interps, nbdt, NoTimeAlg, 0, "NoTimeAlg", ctrldatas=dr)
-@time test_orderno(T, sz, interps, nbdt, NoTimeAlg, 0, "NoTimeAlg2", ctrldatas=dr2)
-
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_init, 2, "ABTimeAlg_init 2", initdatas=dr[1:2], ctrldatas=dr)
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_init, 2, "ABTimeAlg_init 2", initdatas=dr2[1:2], ctrldatas=dr2)
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_init, 3, "ABTimeAlg_init 3", initdatas=dref[1:2*2], ctrldatas=dr)
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_init, 4, "ABTimeAlg_init 4", initdatas=dref[1:2*3], ctrldatas=dr)
-
-@time test_orderno(T, sz, interps, nbdt, ABTimeAlg_ip, 2, "ABTimeAlg_ip 2", ctrldatas=dr)
-@time test_orderno(T, sz, interps, nbdt, ABTimeAlg_ip, 3, "ABTimeAlg_ip 3", ctrldatas=dr)
+@time test_orderno(T, sz, interps, nbdt, NoTimeAlg, 0, "NoTimeAlg")
+@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_ip, 2, "ABTimeAlg_ip")
+@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_ip, 3, "ABTimeAlg_ip")
 
 # @time test_order(T, 10, standardsplit, "standardsplit")
 
@@ -373,4 +354,4 @@ end
 
 
 
-=#
+

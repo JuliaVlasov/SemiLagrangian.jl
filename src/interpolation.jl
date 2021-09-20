@@ -596,7 +596,7 @@ end
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
-    bufdec::AbstractArray{OpTuple{N,T},N},
+    bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}} ,
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     mpid::Union{MPIData,Missing} = missing,

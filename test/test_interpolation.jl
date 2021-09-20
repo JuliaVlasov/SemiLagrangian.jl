@@ -83,68 +83,7 @@ function test_interp(interp, sz)
         test_interp(interp, big"1235" // 10240 + i, sz)
     end
 end
-# function test_interpolation2(T::DataType, order, edge::EdgeType, number,  nb, tol, islu=true)
 
-#     n = number
-#     sp = if (islu)
-#         B_SplineLU(order, n, zero(T); edge=edge)
-#     else
-#         B_SplineFFT(order, n, zero(T))
-#     end
-#  #   fct(v,n) = exp( -cos(2big(pi)*coef*v/n)^2)
-#  #    fct(v,n) = exp( -(50*(v-n/2)/n)^2)
-#     fct1(v,n) = exp( -(2*cos(2T(big(pi)*v/n)))^2)
-#     fct2(v,n)=cos(2T(big(pi)*v/n))
-#     tabfct = [fct1, fct2]
-
-#     tabv = T.([            big"0.186666659416191876155241320011187619",
-#                     -big"1.58561390114441619187615524132001118762519",
-#     -big"1.28561390114441619187615524132001118762519",
-#     -big"0.885901390114441619187615524132001118762519",
-#             -big"0.3859416191876155241320011187619",
-#            big"0.590999232323232323232365566787878898898",
-#             big"1.231098015934444444444444788888888878878"
-#         ])
-#     ifct=0
-#     for fct in tabfct
-#         ifct += 1
-#         fi = zeros(T, number)
-#         fp = zeros(T, number)
-#         @show typeof(fp), ifct
-#         ival=0
-#         for valuebig in tabv
-#             ival += 1
-#             decint = convert(Int,floor(valuebig))
-#             value = valuebig-decint
-#             if order%2 == 0
-#                 if value < 0.5
-#                     value -= 1
-#                     decint += 2
-#                 else
-#                     value -= 0
-#                     decint += 1
-#                 end
-#             end
-#             precal = getprecal(sp, value)
-#             nmax=0
-#             fp .= fct.(T.(collect(1:n)),n)
-# #            @show typeof(fp), ifct, ival
-#             for i=1:nb
-#                 fi .= fp
-#                 fpref = fct.(T.(collect(1:n)) .+ i*valuebig, n)
-# #                @show typeof(fp), ifct, ival, i
-#                 interpolate!(fp, fi, decint, precal, sp)
-
-#                 nmax = max(nmax,norm(fpref-fp))
-#                 if order%2 == 0
-#                     @show i, nmax, ival
-#                 end
-# #                @test isapprox(fpref, fp, atol=tol)
-#             end
-#             println("order = $order value=$valuebig,nmax=$nmax ifct=$ifct")
-#         end
-#     end
-# end
 function test_inv0(
     t_interp::Vector{I},
     dec::NTuple{N,T},
@@ -169,12 +108,6 @@ function test_inv0(
     calinverse!(resinv, res2)
     calinverse!(resinv2, resinv)
 
-    # @show Float32.(res[1]) + im * Float32.(res[2])
-    # @show Float32.(res2[1]) + im * Float32.(res2[2])
-    # @show Float32.(dec[1]) + im * Float32.(dec[2])
-    # @show Float32.(resinv[1]) + im * Float32.(resinv[2])
-
-    #    note = resinv .- (res .+ dec)
     note = resinv .- res
 
     note[1] .= mod.(note[1] .+ (sz[1] / 2 + dec[1]), sz[1]) .- sz[1] / 2
@@ -184,13 +117,17 @@ function test_inv0(
 
     for i = 1:N
         @test norm(note[i]) < 1e-12
-        @test norm(res2[i]-resinv2[i]) < 1e-12
+        @test norm(res2[i] - resinv2[i]) < 1e-12
     end
 
 end
 
-function test_interp2d(t_interp::Vector{I}, coeff::T, sz::Tuple{Int,Int}) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
-    prec = 1000*eps(T)
+function test_interp2d(
+    t_interp::Vector{I},
+    coeff::T,
+    sz::Tuple{Int,Int},
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+    prec = 1000 * eps(T)
     @show prec
     ref = zeros(T, sz)
     ref2 = zeros(T, sz)
@@ -209,22 +146,20 @@ function test_interp2d(t_interp::Vector{I}, coeff::T, sz::Tuple{Int,Int}) where 
 
 
     for ind in CartesianIndices(sz)
-        x =  2T(pi)*sum(ind.I ./ sz)
-        bufdec[ind] = coeff * (cos(x +1)+im*cos( x +2))
-        opbufdec[ind] = coeff * OpTuple((cos(x +1), cos( x +2)))
-        ref[ind] = sin( x +3) +cos(x-1)
-        ref2[ind] = sin(x+1) +3cos(-x+2)/5
-        cmplxref[ind] = coeff * (sin( x +4)+im*cos(x +5))
-        opref[ind] = coeff * OpTuple((sin( x +4), cos(x +5)))
+        x = 2T(pi) * sum(ind.I ./ sz)
+        bufdec[ind] = coeff * (cos(x + 1) + im * cos(x + 2))
+        opbufdec[ind] = coeff * OpTuple((cos(x + 1), cos(x + 2)))
+        ref[ind] = sin(x + 3) + cos(x - 1)
+        ref2[ind] = sin(x + 1) + 3cos(-x + 2) / 5
+        cmplxref[ind] = coeff * (sin(x + 4) + im * cos(x + 5))
+        opref[ind] = coeff * OpTuple((sin(x + 4), cos(x + 5)))
     end
 
-#    @time interpolate2!(res1, ref, bufdec, t_interp)
     @time interpolate!(res1, ref, opbufdec, t_interp)
     @time interpolate!(res2, ref, bufdec, t_interp)
     @time interpolate!(res3, ref, ind -> reim(bufdec[ind]), t_interp)
     @time interpolate!(res4, ref2, bufdec, t_interp)
 
-#    norm1 = norm(res1-res3)
     norm2 = norm(res2 - res3)
     norm1 = norm(res1 - res3)
 
@@ -235,19 +170,19 @@ function test_interp2d(t_interp::Vector{I}, coeff::T, sz::Tuple{Int,Int}) where 
     @time interpolate!(opres1, opref, opbufdec, t_interp)
     @time interpolate!(cmplxres2, cmplxref, bufdec, t_interp)
     @time interpolate!(cmplxres3, cmplxref, ind -> reim(bufdec[ind]), t_interp)
-    @time interpolate!(cmplxres4, ref + im*ref2, bufdec, t_interp)
+    @time interpolate!(cmplxres4, ref + im * ref2, bufdec, t_interp)
 
-    optocmplx(v::OpTuple{2,T}) where T=v.v[1] +im*v.v[2]
+    optocmplx(v::OpTuple{2,T}) where {T} = v.v[1] + im * v.v[2]
 
-    norm1 = norm(optocmplx.(opres1)-cmplxres3)
+    norm1 = norm(optocmplx.(opres1) - cmplxres3)
     norm2 = norm(cmplxres2 - cmplxres3)
 
-    norm4 = norm(res2 + im*res4 - cmplxres4)
+    norm4 = norm(res2 + im * res4 - cmplxres4)
 
     @test norm1 < prec
     @test norm2 < prec
     @test norm4 < prec
-    @show norm1, norm2,norm4
+    @show norm1, norm2, norm4
 
 
 end
@@ -308,21 +243,15 @@ function test_inv(
     @show Float32.(resinv2[1]) + im * Float32.(resinv2[2])
     @show Float32.(dec[1]) + im * Float32.(dec[2])
     @show Float32.(resinv[1]) + im * Float32.(resinv[2])
-    @show Float32.(resinv[1][CartesianIndex(10,10):CartesianIndex(12,12)]) + im * Float32.(resinv[2][CartesianIndex(10,10):CartesianIndex(12,12)])
+    @show Float32.(resinv[1][CartesianIndex(10, 10):CartesianIndex(12, 12)]) +
+          im * Float32.(resinv[2][CartesianIndex(10, 10):CartesianIndex(12, 12)])
 
-    #    note = resinv .- (res .+ dec)
-    # note =
-    #     ntuple(x -> mod.(resinv[x] - res[x] + dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
-
-    # @show norm.(note)
-
-    #    resfmr = res2 .- dec .- res
     resfmr =
         ntuple(x -> mod.(res2[x] - res[x] - dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
     resfmr2 =
         ntuple(x -> mod.(res3[x] - res2[x] - dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
-        @show norm(resfmr)
-        @show norm(resfmr2)
+    @show norm(resfmr)
+    @show norm(resfmr2)
 
     decnew = ntuple(x -> resinv[x] - res[x], 2)
     extr = extrema.(decnew)
@@ -339,41 +268,13 @@ function test_inv(
             decend,
         )
     end
-
     @show resnew
 
-    for i=1:N
-        @test norm(res2[i]-resinv2[i]) < 1e-12
+    for i = 1:N
+        @test norm(res2[i] - resinv2[i]) < 1e-12
     end
 
 
-
-
-    # extr = extrema.(ntuple(x -> -dec[x], 2))
-    # decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
-    # decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-
-    # for i = 1:N
-    #     interpolatemod!(
-    #         res3[i],
-    #         res2[i],
-    #         ind -> ntuple(x -> -dec[x][ind], N),
-    #         t_interp,
-    #         T(sz[i]),
-    #         decbegin,
-    #         decend,
-    #     )
-    # end
-
-    # resfmr2 = ntuple(x -> mod.(res3[x] - res2[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
-
-    # @show norm(resfmr2)
-
-    # #    @show Float32.(resfmr[1]) + im*Float32.(resfmr[2])
-
-    # # for i=1:N
-    # #     @test norm(note[i]) < 1e-12
-    # # end
 
 end
 function test_invfmr(
@@ -409,13 +310,13 @@ function test_invfmr(
     end
     @show res
     @show res2
-    extr = extrema.( ntuple(x-> -dec[x], N))
+    extr = extrema.(ntuple(x -> -dec[x], N))
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-     for i = 1:N
+    for i = 1:N
         interpolatemod!(
             dec2[i],
-            - dec[i],
+            -dec[i],
             ind -> ntuple(x -> dec[x][ind], N),
             t_interp,
             T(sz[i]),
@@ -423,8 +324,8 @@ function test_invfmr(
             decend,
         )
     end
-    for i=1:N
-        dec2[i] .= mod.(dec2[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+    for i = 1:N
+        dec2[i] .= mod.(dec2[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
     end
     @show dec
     @show dec2
@@ -445,29 +346,29 @@ function test_invfmr(
     end
 
     @show res2
-    @show res3 
+    @show res3
 
 
-    
 
-    res4 = ntuple(x-> res[x] - res3[x], N)
-    for i=1:N
-        res4[i] .= mod.(res4[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+
+    res4 = ntuple(x -> res[x] - res3[x], N)
+    for i = 1:N
+        res4[i] .= mod.(res4[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
     end
 
     @show res4
 
     @show norm(res4)
-    res5 =  ntuple(x -> zeros(T, sz), N)
+    res5 = ntuple(x -> zeros(T, sz), N)
     ind = 1
-    while norm(res4) > eps(Double64)*length(res4[1])
+    while norm(res4) > eps(Double64) * length(res4[1])
         if norm(res4) > 1
-            res4 = ntuple( x -> res4[x]/2,N)
-        end 
+            res4 = ntuple(x -> res4[x] / 2, N)
+        end
         extr = extrema.(res4)
         decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
         decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-            for i = 1:N
+        for i = 1:N
             interpolatemod!(
                 res5[i],
                 res3[i],
@@ -478,9 +379,9 @@ function test_invfmr(
                 decend,
             )
         end
-        res4 = ntuple(x-> res[x] - res5[x], N)
-        for i=1:N
-            res4[i] .= mod.(res4[i] .+ sz[i]/2, sz[i]) .- sz[i]/2
+        res4 = ntuple(x -> res[x] - res5[x], N)
+        for i = 1:N
+            res4[i] .= mod.(res4[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
             res3[i] .= res5[i]
         end
 
@@ -490,7 +391,7 @@ function test_invfmr(
 
         ind += 1
 
-        
+
     end
 
 
@@ -501,7 +402,7 @@ function test_getinv(
     t_interp::Vector{I},
     coeff::T,
     sz::NTuple{N,Int},
-) where {T,N, I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -515,23 +416,23 @@ function test_getinv(
         end
     end
 
-    sz_2 = div.(sz,2)
+    sz_2 = div.(sz, 2)
 
-    for i=1:N
+    for i = 1:N
         interpolatemod!(res2[i], res[i], dec, t_interp, T(sz[i]))
     end
 
     dec2 = getinverse(dec, t_interp)
 
-    for i=1:N
+    for i = 1:N
         interpolatemod!(res3[i], res2[i], dec2, t_interp, T(sz[i]))
 
         res2[i] .= mod.(res[i] .- res3[i] .+ sz_2[i], sz[i]) .- sz_2[i]
     end
 
-    note = norm( res2)
+    note = norm(res2)
     @show note, sqrt(eps(T))
-    @test  note< sqrt(eps(T))
+    @test note < sqrt(eps(T))
 
 end
 
@@ -606,7 +507,7 @@ function test_interpfloat(
     end
 end
 T = Double64
-test_interp2d([Lagrange(11,T),Lagrange(11,T)], T(1.25), (128,100) )
+test_interp2d([Lagrange(11, T), Lagrange(11, T)], T(1.25), (128, 100))
 
 test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
 

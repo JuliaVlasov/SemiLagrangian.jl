@@ -15,7 +15,6 @@ using SemiLagrangian:
     EdgeType,
     InsideEdge,
     CircEdge,
-    gettuple_x,
     interpolatemod!,
     getinverse,
     OpTuple

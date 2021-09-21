@@ -150,10 +150,13 @@ end
 function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str)
 
 
+    t_max = T(10000)
+
+
     data4 = test_quasigeostrophic(
         sz,
         interps,
-        T(100000),
+        t_max,
         nbdt*4,
         timealg,
         ordalg,
@@ -161,7 +164,7 @@ function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str)
     data1 = test_quasigeostrophic(
         sz,
         interps,
-        T(100000),
+        t_max,
         nbdt,
         timealg,
         ordalg,
@@ -170,7 +173,7 @@ function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str)
     data2 = test_quasigeostrophic(
         sz,
         interps,
-        T(100000),
+        t_max,
         nbdt * 2,
         timealg,
         ordalg,
@@ -262,7 +265,7 @@ nbprec = 32
 #     end
 #     println("")
 # end
-nbdt = 50
+nbdt = 10
 
 @time test_orderno(T, sz, interps, nbdt, NoTimeAlg, 0, "NoTimeAlg")
 @time test_orderno(T, sz, interps,nbdt, ABTimeAlg_ip, 2, "ABTimeAlg_ip")

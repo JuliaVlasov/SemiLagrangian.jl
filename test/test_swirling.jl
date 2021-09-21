@@ -24,7 +24,7 @@ using SemiLagrangian:
     TimeAlgorithm,
     NoTimeAlg,
     ABTimeAlg_ip,
-    ABTimeAlg_init2
+    ABTimeAlg_init
 
 import SemiLagrangian: initcoef!, getalpha
 # """
@@ -201,14 +201,14 @@ function test_swirling_adv(
     adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,], timealg=timealg, ordalg=ordalg)
 
     initdatas = missing
-    if timealg == ABTimeAlg_init2
+    if timealg == ABTimeAlg_init
         initdatas = [copy(tabref) for i=1:(3ordalg-1)]
     end
 
 
     advd = AdvectionData(adv, tabref, Swirling(dec),initdatas=initdatas)
 
-    if timealg == ABTimeAlg_init2
+    if timealg == ABTimeAlg_init
         advd.time_cur -=  length(initdatas)*dt
     end
 
@@ -241,7 +241,6 @@ end
     @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 5
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 5
 
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
-#    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_init2, ordalg=4) < 2
+    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_init, ordalg=4) < 2
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_init, ordalg=4) < 2
 end

@@ -33,7 +33,6 @@ using SemiLagrangian:
     ABTimeAlg_ip,
     ABTimeAlg_new,
     ABTimeAlg_init,
-    ABTimeAlg_init2,
     hamsplit_3_11,
     TimeOptimization,
     NoTimeOpt,
@@ -187,7 +186,8 @@ function test_poisson2dadv(
     typeadd = 0,
     timealg::TimeAlgorithm = NoTimeAlg,
     ordalg = 0;
-    timeopt::TimeOptimization=NoTimeOpt,
+    timeopt::TimeOptimization=NoTimeOpt;
+    flbiginit::Bool=false,
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-9), T(9), sz[2]
@@ -225,19 +225,12 @@ function test_poisson2dadv(
     advd = AdvectionData(adv, data, pvar)
 
     if timealg == ABTimeAlg_init
-        advd.time_cur -= dt*(ordalg-1)
-        advd.initdatas = get_init(advd, ordalg-1)
-    elseif timealg == ABTimeAlg_init2
-        advd.time_cur -= dt*(3ordalg-1)
-        advd.initdatas = get_init(advd, 3ordalg-1)
+        nb = flbiginit ? 3ordalg-1 : ordalg-1
+        advd.time_cur -= dt*nb
+        advd.initdatas = get_init(advd, nb)
     end
 
-
-
-
-
     elenergy, kinenergy, energyall = getenergy(advd)
-
 
     verif(pvar, advd)
 
@@ -276,6 +269,7 @@ function test_poisson2d2d_adv(
     interp::Vector{I},
     t_max::T,
     nbdt::Int,
+    split=nosplit()
 ) where {T,I<:AbstractInterpolation{T}}
     spmin1, spmax1, nsp1 = T(0), 4T(pi), sz[1]
     spmin2, spmax2, nsp2 = T(0), 4T(pi), sz[2]
@@ -385,20 +379,21 @@ end
     @time test_timealg(interp,5,ABTimeAlg_init,3)
     @time test_timealg(interp,5,ABTimeAlg_init,4)
 end
-@testset "test poisson2d ABTimeAlg_init2" begin
+@testset "test poisson2d ABTimeAlg_init 2" begin
     T = Double64
     interp = [Lagrange(9,T),Lagrange(9,T)]
-    @time test_timealg(interp,5,ABTimeAlg_init2,2)
-    @time test_timealg(interp,5,ABTimeAlg_init2,3)
-    @time test_timealg(interp,5,ABTimeAlg_init2,4)
-    @time test_timealg(interp,10,ABTimeAlg_init2,5)
+    @time test_timealg(interp,5,ABTimeAlg_init,2, flbiginit=true)
+    @time test_timealg(interp,5,ABTimeAlg_init,3, flbiginit=true)
+    @time test_timealg(interp,5,ABTimeAlg_init,4, flbiginit=true)
+    @time test_timealg(interp,10,ABTimeAlg_init,5, flbiginit=true)
 end
 
 @testset "test poisson2d thread" begin
     T = Float64
     interp = [Lagrange(5,T),Lagrange(5,T)]
     sz = (64,64)
-    for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init2,)
+    flag=false
+    for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init)
         res = []
         for t_opt in (NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt)
             @show t_alg, t_opt
@@ -411,11 +406,13 @@ end
                 StdPoisson2d,
                 0,
                 t_alg, ordalg,
-                timeopt=t_opt)
+                timeopt=t_opt,
+                flbiginit=flag)
             push!(res, d1)
             if length(res) >= 2
                 @test res[end-1] == res[end]
             end
+            flag = t_alg == ABTimeAlg_init
         end
     end
 end

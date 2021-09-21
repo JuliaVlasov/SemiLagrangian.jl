@@ -11,7 +11,6 @@ using SemiLagrangian:
     getextarray,
     CircEdge,
     AbstractInterpolation,
-    gettuple_x,
     interpolatemod!
 
 @testset "split util" begin

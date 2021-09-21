@@ -1,7 +1,6 @@
 
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
-@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4 ABTimeAlg_init2 =
-    5
+@enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4
 
 struct StateAdv{N}
     ind::Int          # indice
@@ -105,86 +104,7 @@ function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
     return result
 
 end
-# function hamsplit_3_11(dt::T) where {T<: Number}
-#     a = [big"0.168735950563437422448195173400884809990898960535052167820406",
-#         big"0.377851589220928303880768408101213978086828975884075336276904",
-#         big"-0.093175079568731452657927163004197576155455872838255008194621",
-# ]
-#     b = [
-#         big"0.049086460976116245491441126327891629034401134948561362353776",
-#         big"0.264177609888976700200146195420764624729303307466109303375304",
-#         big"0.186735929134907054308412678251343746236295557585329334270919",
-# ]
-#     c = [
-#         big"-0.0000697287150553050840997049705543302201654369851434306789330",
-#         big"-0.000625704827430047189169785837050053054170994982227957762075",
-#         big"-0.00221308512404532556162738103226349162177713815465419673226",
-# ]
-#     d = [
-#         0,
-#         big"-2.91660045768984781641978316974322113103756038016905421426e-6",
-#         big"0.0000304848026170003878867997783299987163079240932335253763140",
-# ]
-#     e = [
-#         0,
-#         0,
-#         big"4.98554938787506812157863826561771683774617978763837906638e-7",
-# ]
 
-#     result = zeros(T,11)
-
-#     for j=1:6
-#         i = div(j+1,2)
-#         result[j] = if j%2 == 1
-#             dt*(b[i] + 2c[i]*dt^2 + 4d[i]*dt^4 - 8e[i]*dt^6)
-#         else
-#             dt*a[i]
-#         end
-#         result[12-j] = result[j]
-#     end  
-
-#     return result
-
-# end
-
-function ymsplit(dt::T) where {T}
-
-    a = [
-        big"0.8139829195555458104979098217648888051316552486421891906867407724812089860641628",
-        big"-0.106933886322235993755568450182305412663747576359129385173643275216256114240612",
-        big"-0.4140980664666196334846827431651667849358153445661196110261949945299057436470952",
-    ]
-    b = [
-        big"0.04651752139132499278432511686356549102152589365750173478400375255989245673028492",
-        big"0.2000550736145229026831469057101038052461456725280944909695615530345980120197072",
-        big"0.2534274049941521045325279774263307037323284338144037742464346944055095312500068",
-    ]
-    c = [
-        big"0.0924986134646854078099064345309143122365785083821688789750863120460165522562261",
-        big"-0.08143484956130759254568509461762997555036800516671930287457519290391707116535044",
-        big"-0.05385533864823584287518808566120055838047115883542750710993690749321147425126124",
-    ]
-    d = [
-        0,
-        big"-2.91660045768984781641978316974322113103756038016905421426e-6",
-        big"0.0000304848026170003878867997783299987163079240932335253763140",
-    ]
-    e = [0, 0, big"4.98554938787506812157863826561771683774617978763837906638e-7"]
-    result = zeros(T, 11)
-
-    for j = 1:6
-        i = div(j + 1, 2)
-        result[j] = if j % 2 == 1
-            dt * (b[i] + 2c[i] * dt^2 + 4d[i] * dt^4 - 8e[i] * dt^6)
-        else
-            dt * a[i]
-        end
-        result[12-j] = result[j]
-    end
-
-    return result
-
-end
 function table2split(dt::T) where {T}
     a = [big"1.079852426382430882456991", -big"0.579852426382430882456991", 0]
     b = [
@@ -708,36 +628,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-            for indice = 1:ordalg-1
-                pushfirst!(self.t_bufc, copy(self.bufcur))
-                fmrdec = sum(map(i -> c(adv.abcoef, i, indice) * self.t_bufc[i], 1:indice))
-                autointerp!(
-                    fmrdec,
-                    copy(fmrdec),
-                    ordalg - 1,
-                    adv.t_interp;
-                    mpid = adv.mpid,
-                    t_split = t_sp,
-                    cachethreads = cachethreads,
-                )
-                interpbufc!(
-                    self.t_bufc,
-                    fmrdec,
-                    adv.t_interp;
-                    mpid = adv.mpid,
-                    t_split = t_sp,
-                    cachethreads = cachethreads,
-                )
-                copy!(self.data, self.initdatas[indice])
-                self.time_cur += getcur_t(self)
-                initcoef!(extdata, self)
-            end
-        end
-    end
-    if timealg == ABTimeAlg_init2
-        adv = self.adv
-        ordalg = getordalg(adv)
-        if isbegin
             for indice = 1:length(self.initdatas)
                 pushfirst!(self.t_bufc, copy(self.bufcur))
                 ord = min(indice, ordalg)
@@ -771,7 +661,7 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         end
     end
 
-    if timealg in (ABTimeAlg_ip, ABTimeAlg_new, ABTimeAlg_init, ABTimeAlg_init2)
+    if timealg in (ABTimeAlg_ip, ABTimeAlg_new, ABTimeAlg_init)
 
         pushfirst!(self.t_bufc, copy(self.bufcur))
 

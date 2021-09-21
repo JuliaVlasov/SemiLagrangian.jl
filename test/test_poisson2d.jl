@@ -412,8 +412,8 @@ end
             if length(res) >= 2
                 @test res[end-1] == res[end]
             end
-            flag = t_alg == ABTimeAlg_init
         end
+        flag = t_alg == ABTimeAlg_init
     end
 end
 

@@ -327,7 +327,7 @@ function test_poisson2d2d_adv(
     @show enmax, enmin
     return enmax - enmin
 end
-function test_timealg(interp::Vector{I},nbdt, timealg,ordalg) where {T,I<:AbstractInterpolation{T}}
+function test_timealg(interp::Vector{I},nbdt, timealg,ordalg; flbiginit=false) where {T,I<:AbstractInterpolation{T}}
     sz = (128,100)
    t_max = T(big"0.1")
     ret1, _ = test_poisson2dadv(
@@ -337,7 +337,7 @@ function test_timealg(interp::Vector{I},nbdt, timealg,ordalg) where {T,I<:Abstra
         nbdt,
         StdPoisson2d,
         0,
-        timealg,ordalg)
+        timealg,ordalg, flbiginit=flbiginit)
     nbdt *= 2
     ret2, _ = test_poisson2dadv(
         sz,
@@ -346,7 +346,7 @@ function test_timealg(interp::Vector{I},nbdt, timealg,ordalg) where {T,I<:Abstra
         nbdt,
         StdPoisson2d,
         0,
-        timealg,ordalg)
+        timealg,ordalg, flbiginit=flbiginit)
     
     @show ret1,ret2, ret1/ret2
 

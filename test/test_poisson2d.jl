@@ -186,7 +186,7 @@ function test_poisson2dadv(
     typeadd = 0,
     timealg::TimeAlgorithm = NoTimeAlg,
     ordalg = 0;
-    timeopt::TimeOptimization=NoTimeOpt;
+    timeopt::TimeOptimization=NoTimeOpt,
     flbiginit::Bool=false,
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]

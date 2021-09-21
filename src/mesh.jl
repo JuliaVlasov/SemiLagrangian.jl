@@ -116,9 +116,9 @@ end
     diff = val - valref
     return abs(diff) >= borne ? valref + mod(diff +borne, width) - borne : val
 end
-@inline function newval(valref::OpTuple{N,T}, val::OpTuple{N,T}, borne::OpTuple{N,T}, width::OpTuple{N,T}) where{N,T}
-    return OpTuple(ntuple(x -> newval(valref[x],val[x],borne[x],width[x]),N))
-end
+# @inline function newval(valref::OpTuple{N,T}, val::OpTuple{N,T}, borne::OpTuple{N,T}, width::OpTuple{N,T}) where{N,T}
+#     return OpTuple(ntuple(x -> newval(valref[x],val[x],borne[x],width[x]),N))
+# end
 function traitmodend!(lg::T2, f::Array{T2,N}) where {N, T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
     f .= mod.(f, lg)
 end
@@ -153,7 +153,7 @@ function traitmodbegin!(lg::T2, f::Array{T2,N}) where {N, T2<:Union{OpTuple{N,<:
 end
 
 traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N} = traitmodbegin!(width(mesh),f)
-traitmodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmodbegin!(OpTuple(width.(mesh)),f)
+# traitmodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmodbegin!(OpTuple(width.(mesh)),f)
 
 
 # function traitmodbegin!(mesh::Union{NTuple{N,UniformMesh{T}},UniformMesh{T}}, f::Array{T,N}) where {T,N}
@@ -192,26 +192,26 @@ function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
     traitmodend!(width(mesh), res)
     res .+= strt
 end
-function traitmodend!(t_mesh::NTuple{N, UniformMesh{T}}, res::Array{OpTuple{N,T},N}) where {T,N}
-    strt = OpTuple(start.(t_mesh))
-    res .-= strt
-    traitmodend!(OpTuple(width.(t_mesh)), res)
-    res .+= strt
-end
+# function traitmodend!(t_mesh::NTuple{N, UniformMesh{T}}, res::Array{OpTuple{N,T},N}) where {T,N}
+#     strt = OpTuple(start.(t_mesh))
+#     res .-= strt
+#     traitmodend!(OpTuple(width.(t_mesh)), res)
+#     res .+= strt
+# end
 
 stdtomesh(mesh::UniformMesh{T}, v) where{T}=mesh.step*v .+ mesh.points[1]
 meshtostd(mesh::UniformMesh{T}, v) where{T}=(v .- mesh.points[1]) / mesh.step
 
 
-function gettuple_x(t_mesh::NTuple{N,UniformMesh{T}}) where {T,N}
-    sz = length.(t_mesh)
-    ret = ntuple(x -> zeros(T, sz), N)
-    for ind in CartesianIndices(sz)
-        for i = 1:N
-            ret[i][ind] = t_mesh[i].points[ind.I[i]]
-        end
-    end
-    return ret
-end
+# function gettuple_x(t_mesh::NTuple{N,UniformMesh{T}}) where {T,N}
+#     sz = length.(t_mesh)
+#     ret = ntuple(x -> zeros(T, sz), N)
+#     for ind in CartesianIndices(sz)
+#         for i = 1:N
+#             ret[i][ind] = t_mesh[i].points[ind.I[i]]
+#         end
+#     end
+#     return ret
+# end
 
 

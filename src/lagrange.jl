@@ -59,69 +59,7 @@ struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
         new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
     end
 end
-# struct LagrangeInt{T,edge,order,N} <: AbstractInterpolation{T,edge,order}
-#     fact_order::N
-#     tabfct::Vector{Polynomial{N}}
-#     function LagrangeInt(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
-#         origin = -div(order, 2)
-#         N = order <= 20 ? Int64 : BigInt
-#         fact_order = factorial(N(order))
-#         origin = -div(order,2)
-#         tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
-#         new{T,edge,order,N}(fact_order, convert.(Polynomial{N}, fact_order*tabfct_rat))
-#     end
-# end
 
-# @inline getprecal(lag::LagrangeInt{T}, decf::T) where {T}= @inbounds [T(fct(decf)) for fct in lag.tabfct]/lag.fact_order
-
-
-
-# struct Lagrange2d{T, edge, order} <: AbstractInterpolation2d{T, edge, order}
-#     l1d::Lagrange{T, edge, order}
-#     function Lagrange2d(order, T::DataType=Float64; edge::EdgeType=CircEdge)
-#         new{T, edge, order}(Lagrange(order, T, edge=edge))
-#     end
-# end
-
-# gettabfct(interp::Lagrange2d)=interp.l1d.tabfct
-
-function _getpolylagrange(tabv::AbstractVector{T}, k::Int, order::Int) where {T <: Number}
-    1 <= k <= order || throw(DomainError("the constant 1 <= k <= order is false"))
-    # the computed is made with big rational
-    result = Polynomials.Polynomial([one(T)])
-    for m = 1:order
-        if m != k
-            result *= Polynomials.Polynomial([-tabv[m], one(T)] ./ (tabv[k] - tabv[m]))
-        end
-    end
-    return result
-end
-function _c(dt, tabv, k, order)
-    p = integrate(_getpolylagrange(tabv, k, order))
-    return p(tabv[1]+dt)-p(tabv[1])
-end
-
-
-# struct ABCoefInit
-#     # indice lagrange, ordre, indice init
-#     tab::Array{Rational{Int}, 3}
-#     tabx::Vector{Rational{Int}}
-#     function ABCoefInit(ordermax)
-#         indx = 1
-#         pas = 1//factorial(ordermax)
-#         x = pas
-#         tabx = zeros(Rational{Int}, div(ordermax*(ordermax+1),2))
-#         for i=1:ordermax
-#             for j=1:i
-#                 tabx[indx] = x
-#                 x += pas
-#                 indx += 1
-#             end
-#             pas *= (i+1)
-#         end
-#     end
-
-# end
 function _c(k,n)
     p = integrate(_getpolylagrange(k,n,0))
     return p(0)-p(-1)

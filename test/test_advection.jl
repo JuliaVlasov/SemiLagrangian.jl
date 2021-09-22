@@ -11,7 +11,6 @@ using SemiLagrangian:
     getext,
     getdata,
     getcur_t,
-    isvelocity,
     getindsplit,
     _getcurrentindice,
     getprecal,
@@ -61,12 +60,12 @@ function test_adv(T::DataType)
         map(x -> Lagrange(3, T), 1:6),
         base_dt,
         [
-            ([1, 2, 3, 6, 5, 4], 1, 1, true, false),
-            ([2, 1, 3, 4, 6, 5], 1, 1, true, false),
-            ([3, 2, 1, 4, 5, 6], 1, 1, true, false), # space states
-            ([4, 5, 6, 1, 2, 3], 1, 2, true, true),
-            ([5, 4, 6, 1, 2, 3], 1, 2, true, true),
-            ([6, 5, 4, 1, 2, 3], 1, 2, true, true), # velocity states
+            ([1, 2, 3, 6, 5, 4], 1, 1, true),
+            ([2, 1, 3, 4, 6, 5], 1, 1, true),
+            ([3, 2, 1, 4, 5, 6], 1, 1, true), # space states
+            ([4, 5, 6, 1, 2, 3], 1, 2, true),
+            ([5, 4, 6, 1, 2, 3], 1, 2, true),
+            ([6, 5, 4, 1, 2, 3], 1, 2, true), # velocity states
         ]
     )
     println("trace2")
@@ -95,7 +94,6 @@ function test_adv(T::DataType)
     @test adv.tab_coef[2] == getcur_t(adv, 6)
 
  
-    @test !isvelocity(advd)
     @test getcur_t(advd) == advd.adv.tab_coef[1]
 
     println("trace3")
@@ -127,7 +125,7 @@ function test_adv(T::DataType)
         @test getstcoef(advd) == t_coef[i]
         @test advd.state_gen == (i-1)%9 + 1
         @test t_indice[i] == _getcurrentindice(advd)
-        @test isvelocity(advd) == t_v[i]
+
         @test getcur_t(advd) == adv.tab_coef[t_coef[i]]
         t = adv.t_interp
         @test t[t_indice[i]] == getinterp(advd)[1]

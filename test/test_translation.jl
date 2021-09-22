@@ -60,7 +60,7 @@ println("trace1")
         (mesh_sp, mesh_v),
         [interp_sp, interp_v],
         dt,
-        [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, false)],
+        [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)],
         tab_coef= tc
     )
 

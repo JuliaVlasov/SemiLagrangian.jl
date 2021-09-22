@@ -44,9 +44,9 @@ function test_quasigeostrophic(
     dt = t_max / nbdt
 
     if split == nosplit
-        tabst = [([1, 2], 2, 1, false, false)]
+        tabst = [([1, 2], 2, 1, false)]
     else
-        tabst = [([1, 2], 1, 1, false, false), ([2, 1], 1, 2, false, false)]
+        tabst = [([1, 2], 1, 1, false), ([2, 1], 1, 2, false)]
     end
 
     adv = Advection(

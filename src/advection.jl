@@ -9,9 +9,9 @@ struct StateAdv{N}
     ndims::Int        # count of dimension
     stcoef::Int   # state_coef
     isconstdec::Bool #true if constant dec
-    isvelocity::Bool
-    StateAdv(ind, p, ndims, stc, isconst, isvelocity = false) =
-        new{length(p)}(ind, p, invperm(p), ndims, stc, isconst, isvelocity)
+    StateAdv(ind, p, ndims, stc, isconst) =
+        new{length(p)}(ind, p, invperm(p), ndims, stc, isconst)
+
 end
 
 nosplit(dt::T) where {T} = dt * [1]
@@ -264,7 +264,6 @@ function getinterp(adv::Advection, x)
     st = getst(adv, x)
     return adv.t_interp[st.perm[1:st.ndims]]
 end
-isvelocity(adv::Advection, curid) = getst(adv, curid).isvelocity
 
 getordalg(
     adv::Advection{T,N,I,timeopt,timealg,ordalg},
@@ -419,7 +418,6 @@ getstcoef(self::AdvectionData) = getstcoef(self.adv, self.state_gen)
 getcur_t(self::AdvectionData, extdata::AbstractExtDataAdv) =
     getcur_t(self.adv, self.state_gen)
 getcur_t(self::AdvectionData) = getcur_t(self, self.parext)
-isvelocity(self::AdvectionData) = isvelocity(self.adv, self.state_gen)
 _getcurrentindice(self::AdvectionData) = getst(self).perm[1]
 function getindsplit(self::AdvectionData{T,N,timeopt}) where {T,N,timeopt}
     if self.adv.nbsplit != 1
@@ -740,16 +738,22 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
         local cache = self.t_cache[st.ind][1]
         local itr = getitr(self)
         if st.isconstdec
-            @inbounds for indext in itr
+            for indext in itr
                 local decint , precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
+                # if st.ndims == 2
+                #     @show typeof(cache)
+                #     @show typeof(precal)
+                #     @show typeof(decint)
+                #     @show indext
+                # end
                 interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
             end
         else
             for indext in itr
                 local slc = view(f, coltuple..., indext)
-                #           @show ind
+                # @show indext
                 interpolate!(
                     buf,
                     slc,

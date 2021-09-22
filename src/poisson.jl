@@ -148,21 +148,27 @@ Implementation of the interface function that is called at the begining of each 
     This is implementation for Vlasov-Poisson equation
 
 """
-
+function isvelocity(pv::PoissonVar{T,N,Nsp,Nv}, advd::AdvectionData{T,N}) where {T,N,Nsp,Nv}
+    st = getst(advd)
+    return st.perm[1] > Nsp
+end
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson},
     advd::AdvectionData{T,N},
 ) where {T,N,Nsp,Nv}
     st = getst(advd)
     adv = advd.adv
-    if isvelocity(advd)
+    dt = getcur_t(advd)
+    @show dt, isvelocity(pv, advd)
+    if isvelocity(pv, advd)
         if (Nsp + 1) in st.perm[1:st.ndims]
             compute_charge!(pv, advd)
             compute_elfield!(pv)
         end
+        @show dt
         bc_v = ntuple(
             x ->
-                (getcur_t(advd) / step(adv.t_mesh[st.perm[x]])) *
+                (dt / step(adv.t_mesh[st.perm[x]])) *
                 pv.t_elfield[st.perm[x]-Nsp],
             st.ndims,
         )
@@ -178,7 +184,7 @@ function initcoef!(
         pv.tupleind = ntuple(x -> st.perm[st.invp[x]+Nsp] - st.ndims, st.ndims)
         bc_sp = ntuple(
             x ->
-                (-getcur_t(advd) / step(adv.t_mesh[st.invp[x]])) *
+                (-dt / step(adv.t_mesh[st.invp[x]])) *
                 adv.t_mesh[st.invp[x]+Nsp].points,
             st.ndims,
         )
@@ -197,7 +203,7 @@ end
     ind,
 ) where {T,N,Nsp,Nv}
     st = getst(advd)
-    return if isvelocity(advd)
+    return if isvelocity(pv, advd)
         ntuple(
             x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])],
             size(pv.bufcur_v, 1),

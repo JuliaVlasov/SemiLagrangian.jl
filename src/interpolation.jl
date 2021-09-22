@@ -199,6 +199,29 @@ end
     return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1], clockobs = clockobs)
 end
 
+function interpolate!(
+    fp::AbstractArray{T,N},
+    fi::AbstractArray{T,N},
+    decint::NTuple{N,Int},
+    precal::Array{T,N},
+    interp::Vector{I},
+    tabmod = gettabmod.(size(fi));
+    clockobs::AbstractClockObs = NoClockObs(),
+) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
+    res = sol(interp, fi)
+    sz = size(fi)
+    order = get_order.(interp)
+    origin = -div.(order, (2,))
+    decall = (5 .* sz .+ origin) .% sz .+ sz
+    for ind in CartesianIndices(fi)
+        deb_i = decint .+ decall .+ ind.I
+        end_i = deb_i .+ order
+        fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* precal)
+    end
+    missing
+end
+
+
 """
     interpolate!( 
     fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 

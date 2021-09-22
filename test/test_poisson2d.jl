@@ -21,6 +21,7 @@ using SemiLagrangian:
     compute_ee,
     compute_ke,
     getenergy,
+    getenergyall,
     dotprod,
     PoissonVar,
     getpoissonvar,
@@ -37,7 +38,12 @@ using SemiLagrangian:
     TimeOptimization,
     NoTimeOpt,
     SimpleThreadsOpt,
-    SplitThreadsOpt
+    SplitThreadsOpt,
+    standardsplit,
+    strangsplit,
+    triplejumpsplit,
+    order6split,
+    hamsplit_3_11
 
 
 
@@ -155,7 +161,7 @@ function get_init(advdref::AdvectionData{T}, nb::Int) where {T}
 
     dt = advdref.adv.dt_base
 
-    tabst = [([2, 1], 1, 1, true, true), ([1, 2], 1, 2, true, false)]
+    tabst = [([2, 1], 1, 1, true), ([1, 2], 1, 2, true)]
 
     lag = Lagrange(19, T)
 
@@ -197,7 +203,7 @@ function test_poisson2dadv(
 
     dt = t_max / nbdt
 
-    tabst = [([1, 2], 2, 1, false, false)]
+    tabst = [([1, 2], 2, 1, false)]
 
     adv = Advection(
         (mesh_sp, mesh_v),
@@ -269,23 +275,26 @@ function test_poisson2d2d_adv(
     interp::Vector{I},
     t_max::T,
     nbdt::Int,
-    split=nosplit()
+    split=standardgsplit
 ) where {T,I<:AbstractInterpolation{T}}
-    spmin1, spmax1, nsp1 = T(0), 4T(pi), sz[1]
-    spmin2, spmax2, nsp2 = T(0), 4T(pi), sz[2]
-    vmin, vmax, nv = T(-6), T(6), sz[2]
-    vmin, vmax, nv = T(-6), T(6), sz[2]
 
     mesh_sp1 = UniformMesh(T(0), 4T(pi), sz[1])
     mesh_sp2 = UniformMesh(T(0), 4T(pi), sz[2])
-    mesh_v1 = UniformMesh(T(-6), T(6), sz[3])
-    mesh_v2 = UniformMesh(T(-6), T(6), sz[3])
+    mesh_v1 = UniformMesh(T(-10), T(10), sz[3])
+    mesh_v2 = UniformMesh(T(-10), T(10), sz[4])
 
     dt = t_max / nbdt
 
-    tabst = [([1, 2, 3, 4], 2, 1, true, false), ([3, 4, 1, 2], 2, 2, true, true)]
+    # tabst = [([1,2,3,4], 2, 1, true,), 
+    # ([3,4,1,2,], 2, 2, true,),]
+   tabst = [([3, 4, 1, 2], 2, 1, true,), 
+   ([1, 2, 3, 4], 2, 2, true,),]
+#    tabst = [([3, 4, 1, 2], 1, 1, true,), 
+#    ([4, 3, 1, 2], 1, 1, true,),
+#    ([1, 2, 3, 4], 1, 2, true,),
+#    ([2,1, 3, 4], 1, 2, true,),]
 
-    adv = Advection((mesh_sp1, mesh_sp2, mesh_v1, mesh_v2), interp, dt, tabst)
+    adv = Advection((mesh_sp1, mesh_sp2, mesh_v1, mesh_v2), interp, dt, tabst, tab_coef= split(dt))
     println("trace0")
 
     epsilon = T(0.5)
@@ -326,6 +335,20 @@ function test_poisson2d2d_adv(
     end
     @show enmax, enmin
     return enmax - enmin
+end
+function test_split4d(T, nbdt, split, order)
+    sz = (32,32,32,32)
+    lag = Lagrange(9,T)
+    t_max = T(0.1)
+    interp = [lag,lag,lag,lag]
+
+
+    ret1 = test_poisson2d2d_adv(sz, interp, t_max, nbdt, split)
+    ret2 = test_poisson2d2d_adv(sz, interp, t_max, 2nbdt, split)
+    @show split, ret1, ret2, ret1/ret2
+
+    @test 1.2ret1/ret2 > 2^order
+
 end
 function test_timealg(interp::Vector{I},nbdt, timealg,ordalg; flbiginit=false) where {T,I<:AbstractInterpolation{T}}
     sz = (128,100)
@@ -417,4 +440,11 @@ end
     end
 end
 
-
+@testset "test split 4d" begin
+    T = Float64
+    @time test_split4d(T, 5, standardsplit, 1)
+    # @time test_split4d(T, 5, strangsplit, 2)
+    # @time test_split4d(T, 5, triplejumpsplit, 4)
+    # @time test_split4d(T, 5, order6split, 6)
+    # @time test_split4d(T, 5, hamsplit_3_11, 6)
+end

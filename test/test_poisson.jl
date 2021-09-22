@@ -60,7 +60,7 @@ function test_poisson(T::DataType, isfft = true)
         (t_meshsp..., t_meshv...),
         map(x -> interp, 1:6),
         base_dt,
-        [([1, 2, 3, 4, 5, 6], 3, 1, false, false), ([4, 5, 6, 1, 2, 3], 3, 2, false, true)],
+        [([1, 2, 3, 4, 5, 6], 3, 1, false), ([4, 5, 6, 1, 2, 3], 3, 2, false)],
     )
 
     tab = rand(T, t_szsp..., t_szv...)
@@ -141,7 +141,7 @@ function test_poisson_real(T::DataType, timeopt)
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [([1, 2], 1, 1, true, false), ([2, 1], 1, 2, true, true)]
+    tabst = [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)]
 
     interp = Lagrange(9, T)
 
@@ -183,7 +183,7 @@ function test_poisson_split(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [([2, 1], 1, 1, true, true), ([1, 2], 1, 2, true, false)]
+    tabst = [([2, 1], 1, 1, true), ([1, 2], 1, 2, true)]
 
 
     adv = Advection((mesh_sp, mesh_v), interp, dt, tabst; tab_coef = tcoef)

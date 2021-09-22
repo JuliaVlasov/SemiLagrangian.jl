@@ -460,17 +460,7 @@ function nextstate!(self::AdvectionData)
         return retns(self, self.parext)
     end
 end
-# default function of the interface
-# initcoef!(parext::AbstractExtDataAdv, self::AdvectionData) = missing
 
-# # this interface function must always be defined
-# function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext)
-#     throw(error("getalpha undefined for $(typeof(parext))"))
-# end
-# # If not defined we try with only external index
-# function getalpha(parext::AbstractExtDataAdv, self::AdvectionData, indext::CartesianIndex, ind::CartesianIndex)
-#     return getalpha(parext, self, indext)
-# end
 
 
 # data formating

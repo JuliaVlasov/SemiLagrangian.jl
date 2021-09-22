@@ -143,15 +143,6 @@ end
 @testset "test translation" begin
     T = Float64
     dt = T(1)/11
-    # @time @test test_translation((150, 220), [Lagrange(9, T), Lagrange(9, T)], 11) < 1e-6
-    # @time @test test_translation((50, 30, 40), map(x -> Lagrange(5 + 2x, T), 1:3), 11) <
-    #             1e-4
-    # @time @test test_translation((100, 120), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-5
-    # @time @test test_translation(
-    #     (128, 64),
-    #     [B_SplineLU(9, 128, T), B_SplineLU(9, 64, T)],
-    #     11,
-    # ) < 1e-6
     @time @test test_translation(
         (200, 300),
         Lagrange(5, T),
@@ -208,7 +199,6 @@ end
     ) < 1e-6
     T = Double64
     dt = T(1)/11
-#    @time @test test_translation((100, 120), [Lagrange(15, T), Lagrange(15, T)], 11) < 1e-14
     @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
     @time @test test_translation(
         (128, 64),
@@ -216,25 +206,15 @@ end
         B_SplineLU(15, 64, T),
         dt,
     ) < 1e-18
-    # @time @test test_translation(
-    #     (128, 64),
-    #     [B_SplineLU(15, 128, T), B_SplineLU(15, 64, T)],
-    #     11,
-    # ) < 1e-17
     @time @test test_translation(
         (128, 64),
         B_SplineFFT(15, 128, T),
         B_SplineFFT(15, 64, T),
         dt,
     ) < 1e-17
-    # @time @test test_translation(
-    #     (128, 64),
-    #     [B_SplineFFT(15, 128, T), B_SplineFFT(15, 64, T)],
-    #     11,
-    # ) < 1e-17
+
     T = BigFloat
     dt = T(1)/11
-#    @time @test test_translation((100, 90), [Lagrange(21, T), Lagrange(21, T)], 11) < 1e-17
 @time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
 @time @test test_translation(
         (128, 64),
@@ -242,53 +222,11 @@ end
         B_SplineLU(25, 64, T),
         dt,
     ) < 1e-22
-    # @time @test test_translation(
-    #     (128, 64),
-    #     [B_SplineLU(21, 128, T), B_SplineLU(21, 64, T)],
-    #     11,
-    # ) < 1e-22
-    @time @test test_translation(
+   @time @test test_translation(
         (128, 64),
         B_SplineFFT(25, 128, T),
         B_SplineFFT(25, 64, T),
         dt,
     ) < 1e-22
-   # @time @test test_translation(
-    #     (128, 64),
-    #     [B_SplineFFT(21, 128, T), B_SplineFFT(21, 64, T)],
-    #     11,
-    # ) < 1e-22
-
-    # T = Float64
-    # @time @test test_translation(
-    #     (32, 38, 30),
-    #     [B_SplineLU(9, 32, T), Lagrange(9, T), Lagrange(9, T)],
-    #     11,
-    # ) < 1e-4
-    # @time @test test_translation(
-    #     (38, 32, 30),
-    #     [Lagrange(9, T), B_SplineLU(9, 32, T), Lagrange(9, T)],
-    #     11,
-    # ) < 1e-4
-    # @time @test test_translation(
-    #     (30, 38, 32),
-    #     [Lagrange(9, T), Lagrange(9, T), B_SplineLU(9, 32, T)],
-    #     11,
-    # ) < 1e-4
-    # @time @test test_translation(
-    #     (32, 64, 30),
-    #     [B_SplineLU(9, 32, T), B_SplineFFT(9, 64, T), Lagrange(9, T)],
-    #     11,
-    # ) < 1e-4
-    # @time @test test_translation(
-    #     (30, 32, 64),
-    #     [Lagrange(9, T), B_SplineLU(9, 32, T), B_SplineFFT(9, 64, T)],
-    #     11,
-    # ) < 1e-4
-    # @time @test test_translation(
-    #     (32, 30, 64),
-    #     [B_SplineLU(9, 32, T), Lagrange(9, T), B_SplineFFT(9, 64, T)],
-    #     11,
-    # ) < 1e-4
 
 end

@@ -159,9 +159,7 @@ end
     advd.bufcur .= coef * ext.ref
     missing
 end
-# @inline @inbounds function getalpha(ext::Swirling, advd::AdvectionData, indext::CartesianIndex, indbuf::CartesianIndex) 
-#     return (ext.dec1[indbuf], ext.dec2[indbuf])
-# end
+
 
 
 function test_swirling_adv(

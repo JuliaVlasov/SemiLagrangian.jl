@@ -259,4 +259,3 @@ sol!(X::AbstractVector{I}, bsp::B_SplineLU{T}, Y::AbstractVector{I}) where {T,I}
 sol(bsp::B_SplineLU{T}, b::AbstractVector{I}) where {T<:Number,I} = sol!(zeros(I, length(b)), bsp, copy(b))
 
 
-# get_n(bsp::B_SplineLU{T}) where{T}=get_n(bsp.ls)

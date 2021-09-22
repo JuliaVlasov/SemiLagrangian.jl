@@ -169,8 +169,7 @@ function interpolate!(
     decint::Int,
     precal::Vector{T},
     interp::AbstractInterpolation{T,CircEdge,order},
-    tabmod = gettabmod(length(fi));
-    clockobs::AbstractClockObs = NoClockObs(),
+    tabmod = gettabmod(length(fi))
 ) where {T,order}
     res = sol(interp, fi)
     # @show typeof(res)
@@ -178,13 +177,11 @@ function interpolate!(
     origin = -div(order, 2)
     lg = length(fi)
     decal = (origin + decint + 5lg) % lg
-    clockbegin(clockobs, 3)
     @inbounds for i = 1:lg
         indbeg = i + decal
         indend = indbeg + order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
-    clockend(clockobs, 3)
     missing
 end
 @inline function interpolate!(
@@ -193,10 +190,9 @@ end
     decint::Int,
     precal::Vector{T},
     tinterp::Vector{I},
-    tabmod = gettabmod(length(fi));
-    clockobs::AbstractClockObs = NoClockObs(),
+    tabmod = gettabmod(length(fi))
 ) where {T,I<:AbstractInterpolation{T,CircEdge}}
-    return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1], clockobs = clockobs)
+    return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1])
 end
 
 function interpolate!(
@@ -205,8 +201,7 @@ function interpolate!(
     decint::NTuple{N,Int},
     precal::Array{T,N},
     interp::Vector{I},
-    tabmod = gettabmod.(size(fi));
-    clockobs::AbstractClockObs = NoClockObs(),
+    tabmod = gettabmod.(size(fi)),
 ) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
     res = sol(interp, fi)
     sz = size(fi)

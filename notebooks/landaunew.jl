@@ -176,20 +176,23 @@ function landau(advd::AdvectionData, nbdt)
     # clockreset(cl_obs)
     maxdiff = 0
     dt = advd.adv.dt_base
-    refel = trace_energy(advd, 0.0)
+    refel = getenergyall(advd)
+    maxel =minel = refel
     #    printall(cl_obs)
     #    clockreset(cl_obs)
     for i = 1:nbdt
         while advection!(advd)
         end
-        el = trace_energy(advd, Float64(i * dt))
-        maxdiff = max(maxdiff,abs(refel - el))
+        el = getenergyall(advd)
+        maxel = max(maxel, el)
+        minel = min(minel,el)
+        println("$(maxel-minel)")
         # printall(cl_obs)
         # clockreset(cl_obs)
     end
     println("#  end")
     # printall(cl_obs)
-    return maxdiff
+    return maxel-minel
 end
 function landau1_1(
     T::DataType,
@@ -258,19 +261,8 @@ function landau2_2(
     sz = (32, 32, 32, 32),
     dt = big"0.1",
     interpall = ntuple(x -> Lagrange(19, T), 4),
-    tab_coef=[1//2, 1, 1//2],
-    tabst = map( 
-        x -> if x%4 == 1
-                ([1,2,4,3], 1, div(x+1, 2), true)
-            elseif x%4 == 2
-                ([2,1,3,4], 1,div(x+1, 2), true)
-            elseif x%4 == 3
-                ([3,4,1,2], 1,div(x+1,2), true)
-            else # x%4 == 0
-                ([4,3,1,2], 1,div(x+1,2), true)
-            end, 
-        1:6
-)
+    split=strangsplit,
+    tabst = [([3,4,1,2], 1,1, true), ([4,3,1,2], 1, 1, true),  ([1,2,4,3], 1, 2, true),([2,1,3,4], 1, 2, true)]
 )
     epsilon = T(0.5)
     dt = T(dt)
@@ -294,8 +286,8 @@ function landau2_2(
         [interpall...],
         dt,
         tabst,
-        tab_coef=tab_coef, 
-        timeopt = timeopt,
+        tab_coef=split(dt), 
+        timeopt = timeopt
     )
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -333,7 +325,7 @@ function landau2_2(
         "# v2 : from $(Float64(start(mesh2_v))) to $(Float64(stop(mesh2_v)))",
     )
     printout(advd, "# interpolation : $interpall")
-    printout(advd, "# tab_coef : $tab_coef")
+    printout(advd, "# tab_coef : $split")
     printout(advd, "# tabst : $tabst")
     printout(advd, "# type=$T precision = $(precision(T))")
     printout(advd, "# timeopt=$timeopt")
@@ -376,7 +368,9 @@ d1 = 1/(2-c)
 d2 = -c/(2-c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
 tc = [1, 1]
-# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1", interpall=ntuple(x->Hermite(9,T),4),
+T=Float64
+@time landau2_2(T, 5, NoTimeOpt, sz=(32,32,32,32), dt=T(0.01), interpall=ntuple(x->Lagrange(9,T),4),split=strangsplit)
+@time landau2_2(T, 10, NoTimeOpt, sz=(32,32,32,32), dt=T(0.005), interpall=ntuple(x->Lagrange(9,T),4),split=strangsplit)
 #  tabst = map( 
 #     x -> if x%2 != 1
 #             ([1,2,3,4], 2, 1, true)
@@ -387,7 +381,7 @@ tc = [1, 1]
 # ),
 # tab_coef=tc   
 # )
-@time landau1_1(T, 10000, MPIOpt, sz=(256,256), dt=big"0.01",tab_coef=order6split())
+# @time landau1_1(T, 10000, MPIOpt, sz=(256,256), dt=big"0.01",tab_coef=order6split())
 #  tabst = map( 
 #     x -> if x%2 == 1
 #             ([1,2,3,4], 2, x, true)

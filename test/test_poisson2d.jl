@@ -285,10 +285,10 @@ function test_poisson2d2d_adv(
 
     dt = t_max / nbdt
 
-    # tabst = [([1,2,3,4], 2, 1, true,), 
-    # ([3,4,1,2,], 2, 2, true,),]
-   tabst = [([3, 4, 1, 2], 2, 1, true,), 
-   ([1, 2, 3, 4], 2, 2, true,),]
+    tabst = [([1,2,3,4], 2, 1, true,), 
+    ([3,4,1,2,], 2, 2, true,),]
+#    tabst = [([3, 4, 1, 2], 2, 1, true,), 
+#    ([1, 2, 3, 4], 2, 2, true,),]
 #    tabst = [([3, 4, 1, 2], 1, 1, true,), 
 #    ([4, 3, 1, 2], 1, 1, true,),
 #    ([1, 2, 3, 4], 1, 2, true,),
@@ -443,7 +443,7 @@ end
 @testset "test split 4d" begin
     T = Float64
     @time test_split4d(T, 5, standardsplit, 1)
-    # @time test_split4d(T, 5, strangsplit, 2)
+    @time test_split4d(T, 5, strangsplit, 2)
     # @time test_split4d(T, 5, triplejumpsplit, 4)
     # @time test_split4d(T, 5, order6split, 6)
     # @time test_split4d(T, 5, hamsplit_3_11, 6)

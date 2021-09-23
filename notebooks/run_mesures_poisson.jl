@@ -14,22 +14,22 @@ function printout(
 end
 printout(str) = println(str)
 
-function trace_energy(
-    advd::AdvectionData{T,N,timeopt},
-    t,
-) where {T,N,timeopt}
-    compute_charge!(advd)
-    compute_elfield!(advd)
-    # clockend(cl_obs,6)
-    # clockbegin(cl_obs,7)
-    elenergy = compute_ee(advd)
-    # clockend(cl_obs,7)
-    # clockbegin(cl_obs,8)
-    kinenergy = compute_ke(advd)
-    # clockend(cl_obs,8)
-    energyall = elenergy + kinenergy
-    return energyall
-end
+# function trace_energy(
+#     advd::AdvectionData{T,N,timeopt},
+#     t,
+# ) where {T,N,timeopt}
+#     compute_charge!(advd)
+#     compute_elfield!(advd)
+#     # clockend(cl_obs,6)
+#     # clockbegin(cl_obs,7)
+#     elenergy = compute_ee(advd)
+#     # clockend(cl_obs,7)
+#     # clockbegin(cl_obs,8)
+#     kinenergy = compute_ke(advd)
+#     # clockend(cl_obs,8)
+#     energyall = elenergy + kinenergy
+#     return energyall
+# end
 
 function landau(advd::AdvectionData, nbdt)
 
@@ -37,7 +37,7 @@ function landau(advd::AdvectionData, nbdt)
     # clockreset(cl_obs)
     maxdiff = 0
     dt = advd.adv.dt_base
-    refel = trace_energy(advd, 0*dt)
+    refel = getenergyall(advd)
  #   @show typeof(refel)
     #    printall(cl_obs)
     #    clockreset(cl_obs)
@@ -46,7 +46,7 @@ function landau(advd::AdvectionData, nbdt)
     for i = 1:nbdt
         while advection!(advd)
         end
-        el = trace_energy(advd, i * dt)
+        el = getenergyall(advd)
  #       @show typeof(el)
         maxel = max(maxel ,el)
         minel = min(minel, el)
@@ -77,7 +77,7 @@ function landau2(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [( [1,2], 2, 1, false, false) ]
+    tabst = [( [1,2], 2, 1, false) ]
 
     adv = Advection(
         (mesh_sp,mesh_v,), 
@@ -153,8 +153,8 @@ function landau1_1(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [( [2,1], 1, 1, true, true),( [1,2], 1, 2, true, false) ]
-#    tabst = [( [1,2], 1, 1, true, false),( [2,1], 1, 2, true, true) ]
+    tabst = [( [2,1], 1, 1, true),( [1,2], 1, 2, true) ]
+#    tabst = [( [1,2], 1, 1, true),( [2,1], 1, 2, true) ]
 
     adv = Advection(
         (mesh_sp,mesh_v,), 
@@ -209,9 +209,6 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
 
     res[1,:] .= Float64(t_max) ./ tabnbdt 
 
-#        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
-#        end
-
     lenitc = length(tabsplit)
     for inbdt=1:length(tabnbdt), itc=1:length(tabtxt)
         tc = itc <= lenitc ? tabsplit[itc] : missing
@@ -224,7 +221,7 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
         else
             landau2(t_max, timeopt, dt, sz, interp, tp, epsilon, typadd)
         end
-        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
+        if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 1
             println("# sz=$sz t_max=$t_max interp=$interp")
             for txt in tabtxt
                 print("# $txt\t")
@@ -244,8 +241,15 @@ tabnbdt = [10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,5
         end
     end
 end
+    # to run with mpi here is the command for n process (n must be a number) from SemiLagrangian.jl :
+    # ./mpiexec.loc n notebooks/run_mesures_poisson.jl
+    # else run like this :
+    # julia --project=.  notebooks/run_mesures_poisson.jl
+
 T=Double64
-run_mesure(T(1), MPIOpt, (128,128), Lagrange(11,T), T(0.5))
+#run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(11,T), T(0.5))
+#run_mesure(T(1), MPIOpt, (128,128), Lagrange(11,T), T(0.5))
+run_mesure(T(1), SimpleThreadsOpt, (128,128), Lagrange(11,T), T(0.5))
 
 
 

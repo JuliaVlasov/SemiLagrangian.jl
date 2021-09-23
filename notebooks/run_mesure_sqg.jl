@@ -29,7 +29,7 @@ function sqg2(
     mesh_sp = UniformMesh(spmin, spmax, nsp)
     mesh_v = UniformMesh(vmin, vmax, nv)
 
-    tabst = [([1, 2], 2, 1, false, false)]
+    tabst = [([1, 2], 2, 1, false)]
 
     adv = Advection(
         (mesh_sp, mesh_v),
@@ -47,7 +47,7 @@ function sqg2(
 
     result = Array{T,2}[]
     initdatas = missing
-    if typealg == ABTimeAlg_init2
+    if typealg == ABTimeAlg_init
         nbfordt = Int(floor(sqrt(nbdt))) + ordalg + 2
         newnb = nbfordt * (3ordalg - 1)
         newdt = dt / nbfordt
@@ -79,10 +79,10 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
     tabtypealg = [
         NoTimeAlg,
         ABTimeAlg_ip,
-        ABTimeAlg_init2,
-        ABTimeAlg_init2,
-        ABTimeAlg_init2,
-        ABTimeAlg_init2,
+        ABTimeAlg_init,
+        ABTimeAlg_init,
+        ABTimeAlg_init,
+        ABTimeAlg_init,
     ]
     # ta
 
@@ -127,15 +127,20 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
             tabordalg[itc],
         )
         resdata[inbdt, itc] .= tabres[end]
-        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
-            nb = MPI.Comm_size(MPI.COMM_WORLD)
+        # to run with mpi here is the command for n process (n must be a number) from SemiLagrangian.jl :
+        # ./mpiexec.loc n notebooks/run_mesure_sqg.jl
+        # else run like this :
+        # julia --project=.  notebooks/run_mesure_sqg.jl
+
+        if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 1
+            nb = timeopt != MPIOpt ? (timeopt == NoTimeOpt ? 1 : Threads.nthreads()) : MPI.Comm_size(MPI.COMM_WORLD)
             t_now = time_ns()
             t = (t_now - t_loc)*1e-9
             t_loc = t_now
             for k = 1:length(tabtxt)
                 if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
                     println(
-                        "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) nb=$nb t=$t\n# t",
+                        "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) timeopt=$timeopt nb=$nb t=$t\n# t",
                     )
                     for txt in tabtxt
                         print("\t$txt")
@@ -166,7 +171,8 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
     end
 end
 T = Double64
-run_mesure(T(100000), MPIOpt, (128, 128), Lagrange(11, T))
+# run_mesure(T(100000), MPIOpt, (128, 128), Lagrange(11, T))
+run_mesure(T(100000), SimpleThreadsOpt, (128, 128), Lagrange(11, T))
 
 
 

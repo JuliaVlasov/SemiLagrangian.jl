@@ -159,13 +159,13 @@ function initcoef!(
     st = getst(advd)
     adv = advd.adv
     dt = getcur_t(advd)
-    @show dt, isvelocity(pv, advd)
+#    @show dt, isvelocity(pv, advd)
     if isvelocity(pv, advd)
         if (Nsp + 1) in st.perm[1:st.ndims]
             compute_charge!(pv, advd)
             compute_elfield!(pv)
         end
-        @show dt
+#        @show dt
         bc_v = ntuple(
             x ->
                 (dt / step(adv.t_mesh[st.perm[x]])) *

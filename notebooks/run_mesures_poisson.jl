@@ -246,6 +246,7 @@ end
     # else run like this :
     # julia --project=.  notebooks/run_mesures_poisson.jl
 
+
 T=Double64
 #run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(11,T), T(0.5))
 #run_mesure(T(1), MPIOpt, (128,128), Lagrange(11,T), T(0.5))

@@ -170,6 +170,8 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
         end
     end
 end
+
+
 T = Double64
 # run_mesure(T(100000), MPIOpt, (128, 128), Lagrange(11, T))
 run_mesure(T(100000), SimpleThreadsOpt, (128, 128), Lagrange(11, T))

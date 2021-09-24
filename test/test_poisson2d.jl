@@ -443,7 +443,7 @@ end
 @testset "test split 4d" begin
     T = Float64
     @time test_split4d(T, 5, standardsplit, 1)
-    @time test_split4d(T, 5, strangsplit, 2)
+    # @time test_split4d(T, 5, strangsplit, 2)
     # @time test_split4d(T, 5, triplejumpsplit, 4)
     # @time test_split4d(T, 5, order6split, 6)
     # @time test_split4d(T, 5, hamsplit_3_11, 6)

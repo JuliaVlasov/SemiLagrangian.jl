@@ -1,1 +1,0 @@
-/Users/ymocquar/.julia//packages/MPI/b7MVG/bin/mpiexecjl --project=. -n $1 julia $2

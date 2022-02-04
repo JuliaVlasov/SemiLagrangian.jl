@@ -11,8 +11,6 @@ function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
 end
 printout(str) = println(str)
 
-
-
 function pois2(
     t_max::T,
     timeopt,
@@ -21,7 +19,7 @@ function pois2(
     interp::AbstractInterpolation,
     typealg::TimeAlgorithm,
     ordalg::Int,
-    epsilon::T
+    epsilon::T,
 ) where {T}
     nbdt = Int(round(t_max / dt))
     spmin, spmax, nsp = T(0), T(4big(pi)), sz[1]
@@ -36,7 +34,7 @@ function pois2(
         (mesh_sp, mesh_v),
         [interp, interp],
         dt,
-        tabst,
+        tabst;
         tab_coef = nosplit(dt),
         timeopt = timeopt,
         timealg = typealg,
@@ -51,10 +49,10 @@ function pois2(
 
     data = dotprod((lgn_sp, lgn_v))
 
-    resint = sum(data)*(vmax-vmin)/length(data)
+    resint = sum(data) * (vmax - vmin) / length(data)
     data /= resint
-    
-    pvar = getpoissonvar(adv, type=StdPoisson2d)
+
+    pvar = getpoissonvar(adv; type = StdPoisson2d)
 
     result = Array{T,2}[]
     initdatas = missing
@@ -70,9 +68,7 @@ function pois2(
         append!(result, initdatas)
     end
 
-
-    advd = AdvectionData(adv, data, pvar, initdatas = initdatas)
-
+    advd = AdvectionData(adv, data, pvar; initdatas = initdatas)
 
     borne_t = t_max - dt / 2
 
@@ -83,14 +79,13 @@ function pois2(
         end
         push!(result, copy(advd.data))
         el = getenergyall(advd)
-        maxelall = max(el,maxelall)
-        minelall = min(el,minelall)
+        maxelall = max(el, maxelall)
+        minelall = min(el, minelall)
     end
-    return result, (maxelall-minelall)
+    return result, (maxelall - minelall)
 end
 
 function run_mesure(t_max::T, timeopt, sz, interp, epsilon::T) where {T}
-
     tabtypealg = [
         NoTimeAlg,
         ABTimeAlg_ip,
@@ -141,14 +136,14 @@ function run_mesure(t_max::T, timeopt, sz, interp, epsilon::T) where {T}
             interp,
             tabtypealg[itc],
             tabordalg[itc],
-            epsilon
+            epsilon,
         )
         resdata[inbdt, itc] .= tabres[end]
         resen[inbdt, itc] = en
         if MPI.Comm_rank(MPI.COMM_WORLD) == 1
             nb = MPI.Comm_size(MPI.COMM_WORLD)
             t_now = time_ns()
-            t = (t_now - t_loc)*1e-9
+            t = (t_now - t_loc) * 1e-9
             t_loc = t_now
             for k = 1:length(tabtxt)
                 if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
@@ -165,10 +160,13 @@ function run_mesure(t_max::T, timeopt, sz, interp, epsilon::T) where {T}
                             print("$res")
                         else
                             res = Float64(
-                                (j < lastind[k] || (j == lastind[k] && i < k)) ?
-                                norm(resdata[j, i] - resdata[lastind[k], k]) : 0,
+                                if (j < lastind[k] || (j == lastind[k] && i < k))
+                                    norm(resdata[j, i] - resdata[lastind[k], k])
+                                else
+                                    0
+                                end,
                             )
-                            en = resen[j,i]
+                            en = resen[j, i]
                             print("$res($en)")
                         end
                         if i == length(tabtxt)
@@ -187,7 +185,3 @@ function run_mesure(t_max::T, timeopt, sz, interp, epsilon::T) where {T}
 end
 T = Double64
 run_mesure(T(1), MPIOpt, (128, 128), Lagrange(11, T), T(0.5))
-
-
-
-

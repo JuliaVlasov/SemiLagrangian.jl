@@ -54,13 +54,12 @@ end
 
 """
 function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T}
-
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x - sin(tf) * y
         yn = sin(tf) * x + cos(tf) * y
         f[i, j] = exp(-13 * ((xn)^2 + (yn + T(6 // 5))^2))
     end
-    f
+    return f
 end
 
 function trace_diffrotation(
@@ -68,7 +67,6 @@ function trace_diffrotation(
     t::T,
     n,
 ) where {T,Nsp,Nv,Nsum,timeopt}
-
     if t == 0
         printout(advd, "#nt\ttime\tnorm_2\tnorm_inf")
     end
@@ -77,8 +75,7 @@ function trace_diffrotation(
     exact!(f, advd.adv.t_mesh_sp[1], advd.adv.t_mesh_v[1], t)
     n2 = Float64(norm(advd.data - f))
     ninf = Float64(norm(advd.data - f, Inf))
-    printout(advd, "$n\t$(Float32(t))\t$n2\t$ninf")
-
+    return printout(advd, "$n\t$(Float32(t))\t$n2\t$ninf")
 end
 
 function rotation(advd::Advection1dData, nbdt)
@@ -93,7 +90,7 @@ function rotation(advd::Advection1dData, nbdt)
         end
         trace_diffrotation(advd, i * dt, i)
     end
-    println("#  end")
+    return println("#  end")
     # printall(cl_obs)
 end
 function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrange(T, 21))
@@ -110,7 +107,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
         (mesh_v,),
         (interp,),
         (interp,),
-        dt,
+        dt;
         timeopt = timeopt,
         tab_fct = [tan, sin, tan],
     )
@@ -140,13 +137,12 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
 
     # advdata = Advection1dData(adv, data, pvar)
 
-    rotation(advd, nbdt)
+    return rotation(advd, nbdt)
 end
-
 
 T = Double64
 nbdt = 1000
 dt = T(2big(pi)) / nbdt
 # landau1_1(T, 50, NoTimeOpt, sz=(64,128))
 #rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 101))
-rotation1_1(T, nbdt, MPIOpt, sz = (256, 256), interp = Lagrange(T, 5))
+rotation1_1(T, nbdt, MPIOpt; sz = (256, 256), interp = Lagrange(T, 5))

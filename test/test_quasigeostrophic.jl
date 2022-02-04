@@ -22,7 +22,6 @@ using DoubleFloats
 using LinearAlgebra
 using Serialization
 
-
 function test_quasigeostrophic(
     sz::NTuple{2,Int},
     interp::Vector{I},
@@ -32,8 +31,8 @@ function test_quasigeostrophic(
     ordalg = 0;
     split = nosplit,
     retdata::Bool = false,
-    initdatas::Union{Missing,Vector{Array{T,2}}}=missing,
-    ctrldatas::Union{Missing,Vector{Array{T,2}}}=missing,
+    initdatas::Union{Missing,Vector{Array{T,2}}} = missing,
+    ctrldatas::Union{Missing,Vector{Array{T,2}}} = missing,
 ) where {T,I<:AbstractInterpolation{T}}
     xmin, xmax, nx = T(0), T(1e6), sz[1]
     ymin, ymax, ny = T(0), T(1e6), sz[2]
@@ -53,7 +52,7 @@ function test_quasigeostrophic(
         (mesh_x, mesh_y),
         interp,
         dt,
-        tabst,
+        tabst;
         tab_coef = split(dt),
         timealg = timealg,
         ordalg = ordalg,
@@ -63,8 +62,7 @@ function test_quasigeostrophic(
 
     pvar = getgeovar(adv)
 
-
-    advd = AdvectionData(adv, data, pvar, initdatas = initdatas)
+    advd = AdvectionData(adv, data, pvar; initdatas = initdatas)
 
     initdata!(pvar, advd)
 
@@ -74,23 +72,23 @@ function test_quasigeostrophic(
 
     tabret = Array{T,2}[]
 
-    cpt=ismissing(initdatas) ? 1 : length(initdatas)+1
-    if ! ismissing(initdatas)
-        @assert length(initdatas) == ordalg-1 "length(initdatas)=$(length(initdatas)) != ordalg-1  ordalg=$ordalg "
+    cpt = ismissing(initdatas) ? 1 : length(initdatas) + 1
+    if !ismissing(initdatas)
+        @assert length(initdatas) == ordalg - 1 "length(initdatas)=$(length(initdatas)) != ordalg-1  ordalg=$ordalg "
     end
     while advd.time_cur < borne_t
         while advection!(advd)
         end
-        if cpt%1 == 0
-            @show dt*cpt, advd.time_cur, borne_t, diffmax
+        if cpt % 1 == 0
+            @show dt * cpt, advd.time_cur, borne_t, diffmax
         end
         if retdata
-             push!(tabret, copy(advd.data))
+            push!(tabret, copy(advd.data))
         end
         if !ismissing(ctrldatas)
-            diff = norm(advd.data-ctrldatas[cpt])
-            diffmax = max(diff,diffmax)
-            @show cpt, dt*cpt, advd.time_cur, borne_t, diff, diffmax
+            diff = norm(advd.data - ctrldatas[cpt])
+            diffmax = max(diff, diffmax)
+            @show cpt, dt * cpt, advd.time_cur, borne_t, diff, diffmax
         end
         cpt += 1
         #        @show advd.time_cur, diff1, diff2
@@ -108,7 +106,6 @@ function test_quasigeostrophic(
     #     return diffmax
     # end
 end
-
 
 function test_order(T, nbdt, split, str)
     m1ref, m2ref, dref = test_quasigeostrophic(
@@ -148,57 +145,32 @@ function test_order(T, nbdt, split, str)
     @show retm1, retm2
 end
 function test_orderno(T, sz, interps, nbdt, timealg, ordalg, str)
-
-
     t_max = T(10000)
 
+    data4 = test_quasigeostrophic(sz, interps, t_max, nbdt * 4, timealg, ordalg)
+    data1 = test_quasigeostrophic(sz, interps, t_max, nbdt, timealg, ordalg)
 
-    data4 = test_quasigeostrophic(
-        sz,
-        interps,
-        t_max,
-        nbdt*4,
-        timealg,
-        ordalg,
-    )
-    data1 = test_quasigeostrophic(
-        sz,
-        interps,
-        t_max,
-        nbdt,
-        timealg,
-        ordalg,
-    )
-
-    data2 = test_quasigeostrophic(
-        sz,
-        interps,
-        t_max,
-        nbdt * 2,
-        timealg,
-        ordalg,
-    )
-    ret1 = norm(data4-data1)
-    ret2 = norm(data4-data2)
+    data2 = test_quasigeostrophic(sz, interps, t_max, nbdt * 2, timealg, ordalg)
+    ret1 = norm(data4 - data1)
+    ret2 = norm(data4 - data2)
 
     @show str, ret1, ret2, ret1 / ret2
 
     ord = ordalg == 0 ? 1 : ordalg
 
-    @test ret1*1.2/ret2 > 2^ord
+    @test ret1 * 1.2 / ret2 > 2^ord
 end
 T = Double64
 # _,_, data = test_quasigeostrophic((128, 128), [Lagrange(9, T), Lagrange(9, T)], T(100000), 100)
 ## old
 
 # @time _,_,data_ref = test_quasigeostrophic((128, 128), [Lagrange(9, T), Lagrange(9, T)], T(1), 320, ABTimeAlg_ip, 2)
-sz = (128,128)
-interps=[Lagrange(9,T),Lagrange(9,T)]
+sz = (128, 128)
+interps = [Lagrange(9, T), Lagrange(9, T)]
 nbdt = 20
 
 nbprec = 32
 @show nbprec, nbdt
-
 
 # @time dref = test_quasigeostrophic(
 #     sz, interps,
@@ -216,7 +188,6 @@ nbprec = 32
 # diffip2_No = norm(norm.(dref .- dref128[4:4:end]), Inf)
 
 # @show diffip2_No
-
 
 # dr = dref[nbprec:nbprec:end]
 # dr2 = dref128[128:128:end]
@@ -268,15 +239,13 @@ nbprec = 32
 nbdt = 10
 
 @time test_orderno(T, sz, interps, nbdt, NoTimeAlg, 0, "NoTimeAlg")
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_ip, 2, "ABTimeAlg_ip")
-@time test_orderno(T, sz, interps,nbdt, ABTimeAlg_ip, 3, "ABTimeAlg_ip")
+@time test_orderno(T, sz, interps, nbdt, ABTimeAlg_ip, 2, "ABTimeAlg_ip")
+@time test_orderno(T, sz, interps, nbdt, ABTimeAlg_ip, 3, "ABTimeAlg_ip")
 
 # @time test_order(T, 10, standardsplit, "standardsplit")
 
 # @time test_order(T, 10, strangsplit, "strangsplit")
 # @time test_order(T, 10, triplejumpsplit, "triplejumpsplit")
-
-
 
 # @time test_init(T, 20, ABTimeAlg_init, 2)
 
@@ -354,7 +323,3 @@ nbdt = 10
 # ret5_20 = norm(data_ref-data5_20)
 # @show ret5_10,ret5_20
 # @show ret5_10/ret5_20
-
-
-
-

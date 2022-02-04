@@ -1,5 +1,4 @@
 
-
 using DoubleFloats
 
 using SemiLagrangian:
@@ -31,15 +30,12 @@ using SemiLagrangian:
     hamsplit_3_11,
     getenergyall
 
-
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
     return totuple(UniformMesh.(t_deb, t_end, t_size)), t_step
 end
 
-
 function test_poisson(T::DataType, isfft = true)
-
     t_debsp = T.([-1 // 1, -10 // 1, -3 // 1])
     t_endsp = T.([3 // 1, 6 // 1, 5 // 1])
     t_szsp = (8, 4, 16)
@@ -67,8 +63,7 @@ function test_poisson(T::DataType, isfft = true)
 
     pc = PoissonConst(adv; isfftbig = isfft)
 
-    @test pc.v_square == dotprod(points.(adv.t_mesh[N-Nv+1:N])) .^ 2
-
+    @test pc.v_square == dotprod(points.(adv.t_mesh[(N-Nv+1):N])) .^ 2
 
     # #    println("t_perms=$(pc.t_perms)")
     # @test pc.t_perms == (
@@ -85,7 +80,6 @@ function test_poisson(T::DataType, isfft = true)
     advdata = AdvectionData(adv, tab, pvar)
 
     @test compute_ke(advdata) == compute_ke(totuple(t_meshsp), totuple(t_meshv), tab)
-
 
     advdata.state_gen = 2
     initcoef!(pvar, advdata)
@@ -111,9 +105,7 @@ function test_poisson(T::DataType, isfft = true)
 
     #    @test isapprox(compute_ee(t_meshsp, refelfield), compute_ee(advdata), atol=prec, rtol=prec)
     @test isapprox(compute_ee(t_meshsp, refelfield), compute_ee(advdata))
-
 end
-
 
 @testset "test compute_ee" begin
     t_deb = [big"-1" // 1, -10 // 1, -3 // 1, -1 // 1]
@@ -128,7 +120,6 @@ end
     resref = sum(map(x -> prod(step, t_mesh) * sum(x .^ 2), t))
 
     @test resref == compute_ee(t_mesh, t)
-
 end
 
 function test_poisson_real(T::DataType, timeopt)
@@ -145,7 +136,7 @@ function test_poisson_real(T::DataType, timeopt)
 
     interp = Lagrange(9, T)
 
-    adv = Advection((mesh_sp, mesh_v), [interp, interp], dt, tabst, timeopt = timeopt)
+    adv = Advection((mesh_sp, mesh_v), [interp, interp], dt, tabst; timeopt = timeopt)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -185,7 +176,6 @@ function test_poisson_split(
 
     tabst = [([2, 1], 1, 1, true), ([1, 2], 1, 2, true)]
 
-
     adv = Advection((mesh_sp, mesh_v), interp, dt, tabst; tab_coef = tcoef)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -212,14 +202,12 @@ function test_poisson_split(
         @show advd.time_cur, diff
     end
 
-
     return maxen - minen
 end
 @testset "Poisson Float64" begin
     test_poisson(Float64, true)
     test_poisson(Float64, false)
 end
-
 
 @testset "Poisson BigFloat" begin
     test_poisson(BigFloat)
@@ -255,4 +243,3 @@ end
     @time test_split(Double64, 5, order6split, 6)
     @time test_split(Double64, 5, hamsplit_3_11, 6)
 end
-

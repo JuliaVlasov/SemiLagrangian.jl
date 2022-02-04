@@ -15,7 +15,7 @@ function aff_graph(ind, fp)
         maxval = max(val, maxval)
     end
     println("minval=$minval maxval=$maxval")
-    println("ind=$ind end")
+    return println("ind=$ind end")
 end
 function test_dirac(bsp::InterpolationType, order, len, nb, modval)
     #        println("lag=$lag")
@@ -37,15 +37,15 @@ function test_dirac(bsp::InterpolationType, order, len, nb, modval)
 end
 function test_dirac_lagrange(order, len, nb, modval)
     lag = Lagrange(BigFloat, order; iscirc = true)
-    test_dirac(lag, order, len, nb, modval)
+    return test_dirac(lag, order, len, nb, modval)
 end
 function test_dirac_splu(order, len, nb, modval)
     bsp = B_SplineLU(order, len, BigFloat; iscirc = true)
-    test_dirac(bsp, order, len, nb, modval)
+    return test_dirac(bsp, order, len, nb, modval)
 end
 function test_dirac_spfft(order, len, nb, modval)
     bsp = B_SplineFFT(order, len, BigFloat)
-    test_dirac(bsp, order, len, nb, modval)
+    return test_dirac(bsp, order, len, nb, modval)
 end
 
 test_dirac_lagrange(31, 256, 500, 50)

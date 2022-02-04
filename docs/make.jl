@@ -6,7 +6,7 @@ using Plots
 
 ENV["GKSwstype"] = "100"
 
-makedocs(
+makedocs(;
     modules = [SemiLagrangian],
     sitename = "SemiLagrangian.jl",
     authors = "Yves Mocquard, Pierre Navaro and Nicolas Crouseilles",

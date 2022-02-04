@@ -27,19 +27,12 @@ using SemiLagrangian:
     points,
     dotprod
 
-
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
     return totuple(UniformMesh.(t_deb, t_end, t_size)), t_step
 end
 
-
-
-
-
 function test_adv(T::DataType)
-
-
     println("trace1")
     t_debsp = T.([-1, -10, -3])
     t_endsp = T.([3, 6, 5])
@@ -56,7 +49,7 @@ function test_adv(T::DataType)
 
     interp = Lagrange(3, T)
     adv = Advection(
-        (t_meshsp...,t_meshv...),
+        (t_meshsp..., t_meshv...),
         map(x -> Lagrange(3, T), 1:6),
         base_dt,
         [
@@ -66,18 +59,16 @@ function test_adv(T::DataType)
             ([4, 5, 6, 1, 2, 3], 1, 2, true),
             ([5, 4, 6, 1, 2, 3], 1, 2, true),
             ([6, 5, 4, 1, 2, 3], 1, 2, true), # velocity states
-        ]
+        ],
     )
     println("trace2")
 
     sref = (t_szsp..., t_szv...)
     @test sref == sizeall(adv)
 
-
     tab = rand(T, sizeall(adv))
 
     advd = AdvectionData(adv, tab, getpoissonvar(adv))
-
 
     @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
 
@@ -93,14 +84,12 @@ function test_adv(T::DataType)
     @test adv.tab_coef[2] == getcur_t(adv, 5)
     @test adv.tab_coef[2] == getcur_t(adv, 6)
 
- 
     @test getcur_t(advd) == advd.adv.tab_coef[1]
 
     println("trace3")
 
-
     t_coef = [1, 1, 1, 2, 2, 2, 3, 3, 3, 1]
-#    t_dim = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1]
+    #    t_dim = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1]
     t_indice = [1, 2, 3, 4, 5, 6, 1, 2, 3, 1]
     t_v = [false, false, false, true, true, true, false, false, false, false]
     t_result = [true, true, true, true, true, true, true, true, false, true]
@@ -118,12 +107,9 @@ function test_adv(T::DataType)
     #     (:, 3, 1, 4, 1, 1),
     # ]
 
-
-
-
     for i = 1:length(t_coef)
         @test getstcoef(advd) == t_coef[i]
-        @test advd.state_gen == (i-1)%9 + 1
+        @test advd.state_gen == (i - 1) % 9 + 1
         @test t_indice[i] == _getcurrentindice(advd)
 
         @test getcur_t(advd) == adv.tab_coef[t_coef[i]]
@@ -141,7 +127,7 @@ function test_adv(T::DataType)
 
         # @test ressecond[i] == res2
 
-#        x = t_indice[i]
+        #        x = t_indice[i]
         #    @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
 
         ret = nextstate!(advd)
@@ -193,7 +179,7 @@ function test_ke(T::DataType)
     dx = prod(step, t_meshsp)
     dv = prod(step, t_meshv)
     sum_sp = Array{T,Nv}(undef, szv)
-    sum_sp .= reshape(sum(fxv, dims = ntuple(x -> x, Nsp)), szv)
+    sum_sp .= reshape(sum(fxv; dims = ntuple(x -> x, Nsp)), szv)
     refres = (dx * dv) * sum(dotprod(points.(t_meshv)) .^ 2 .* sum_sp)
 
     @test refres == compute_ke(t_meshsp, t_meshv, fxv)
@@ -258,7 +244,6 @@ end
 #         CartesianIndex(6, 5, 2, 5, 1),
 #         CartesianIndex(6, 21, 1, 3, 1),
 #     ]
-
 
 #     for i = 1:length(resfirst)
 #         itr = getitr(advd)

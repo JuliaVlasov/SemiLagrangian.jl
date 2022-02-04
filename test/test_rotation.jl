@@ -44,40 +44,37 @@ function test_rotation(
     interp_v::AbstractInterpolation{T},
     nbdt::Int,
 ) where {T}
-@time begin
-    spmin, spmax, nsp = T(-5), T(5), sz[1]
-    vmin, vmax, nv = -T(12 // 2), T(9 // 2), sz[2]
+    @time begin
+        spmin, spmax, nsp = T(-5), T(5), sz[1]
+        vmin, vmax, nv = -T(12 // 2), T(9 // 2), sz[2]
 
-    mesh_sp = UniformMesh(spmin, spmax, nsp)
-    mesh_v = UniformMesh(vmin, vmax, nv)
-end
-@time begin
-    dt = T(2big(pi) / nbdt)
-    adv = Advection(
-        (mesh_sp,mesh_v,),
-        [interp_sp, interp_v,],
-        dt,
-        [([1,2], 1, 1, true),([2,1], 1, 2, true)];
-        tab_coef=magicsplit(dt)
-    )
-    #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
-end
+        mesh_sp = UniformMesh(spmin, spmax, nsp)
+        mesh_v = UniformMesh(vmin, vmax, nv)
+    end
+    @time begin
+        dt = T(2big(pi) / nbdt)
+        adv = Advection(
+            (mesh_sp, mesh_v),
+            [interp_sp, interp_v],
+            dt,
+            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)];
+            tab_coef = magicsplit(dt),
+        )
+        #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
+    end
 
-@time begin
+    @time begin
+        sz = sizeall(adv)
+        tabref = zeros(T, sz)
+        exact!(tabref, mesh_sp, mesh_v, T(0))
 
-    sz = sizeall(adv)
-    tabref = zeros(T, sz)
-    exact!(tabref, mesh_sp, mesh_v, T(0))
+        pvar = getrotationvar(adv)
 
-    pvar = getrotationvar(adv)
+        advdata = AdvectionData(adv, tabref, pvar)
 
-    advdata = AdvectionData(adv, tabref, pvar)
-
-    diffmax = 0
-    data = getdata(advdata)
-end
-
-
+        diffmax = 0
+        data = getdata(advdata)
+    end
 
     for ind = 1:nbdt
         while advection!(advdata)
@@ -89,11 +86,10 @@ end
     end
     println("test_rotation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax")
     return diffmax
-
 end
 function maxind(tab::Array{T,N}) where {T,N}
-    v=-Inf
-    res = CartesianIndex(0,0)
+    v = -Inf
+    res = CartesianIndex(0, 0)
     for ind in CartesianIndices(tab)
         if tab[ind] > v
             res = ind
@@ -108,8 +104,8 @@ function test_rotation2d(
     interp::Vector{I},
     nbdt::Int,
     timealg,
-    ordalg
-) where {T, I <: AbstractInterpolation{T} }
+    ordalg,
+) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(-5), T(5), sz[1]
     vmin, vmax, nv = -T(5), T(5), sz[2]
 
@@ -117,16 +113,15 @@ function test_rotation2d(
     mesh_v = UniformMesh(vmin, vmax, nv)
     dt = T(2big(pi) / nbdt)
     adv = Advection(
-        (mesh_sp,mesh_v,),
+        (mesh_sp, mesh_v),
         interp,
         dt,
-        [([1,2], 2, 1, false),];
-        tab_coef=nosplit(dt),
-        timealg=timealg,
-        ordalg=ordalg
+        [([1, 2], 2, 1, false)];
+        tab_coef = nosplit(dt),
+        timealg = timealg,
+        ordalg = ordalg,
     )
     #    adv = Advection1d((mesh_sp,), (mesh_v,), (interp_sp,), (interp_v,), dt; tab_coef=[1], tab_fct=[identity])
-
 
     sz = sizeall(adv)
     tabref = zeros(T, sz)
@@ -138,8 +133,6 @@ function test_rotation2d(
 
     diffmax = 0
     data = getdata(advdata)
-
-
 
     for ind = 1:nbdt
         while advection!(advdata)
@@ -155,13 +148,12 @@ function test_rotation2d(
     end
     println("test_rotation sz=$sz diffmax=$diffmax")
     return diffmax
-
 end
 function test_rotation(
     sz::NTuple{2,Int},
     interp::Vector{I},
     nbdt::Int,
-) where {T,edge,order, I <: AbstractInterpolation{T,edge,order}}
+) where {T,edge,order,I<:AbstractInterpolation{T,edge,order}}
     spmin, spmax, nsp = T(-4.5), T(5), sz[1]
     vmin, vmax, nv = -T(5.2), T(5), sz[2]
 
@@ -205,13 +197,12 @@ function test_rotation(
     buf = zeros(T, sz)
     diffmax = 0
     for ind = 1:nbdt
-        interpolate!(buf, data, (i,ind) -> (i==1) ? dec1[ind] : dec2[ind], interp)
+        interpolate!(buf, data, (i, ind) -> (i == 1) ? dec1[ind] : dec2[ind], interp)
         copyto!(data, buf)
         exact!(tabref, mesh_sp, mesh_v, dt * ind)
         diff = norm(data .- tabref, Inf)
         diffmax = max(diffmax, diff)
         @show ind, diff
-
     end
     println("test_rotation sz=$sz interp=$interp nbdt=$nbdt diffmax=$diffmax")
     return diffmax
@@ -219,34 +210,34 @@ end
 
 @testset "test rotation" begin
     T = Float64
-#    @time @test test_rotation((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
-# @time ret1 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 1)
-# @time ret2 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 1)
-# @show ret1, ret2, ret1/ret2
+    #    @time @test test_rotation((100, 122), [Lagrange(5, T), Lagrange(5, T)], 11) < 1e-3
+    # @time ret1 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 1)
+    # @time ret2 = test_rotation2d((1000, 1000), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 1)
+    # @show ret1, ret2, ret1/ret2
 
-# @test ret2 < (ret1*1.1)/2 
+    # @test ret2 < (ret1*1.1)/2 
 
-# @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 2)
-# @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 2)
-# @show ret1, ret2, ret1/ret2
+    # @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 2)
+    # @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 2)
+    # @show ret1, ret2, ret1/ret2
 
-# @test ret2 < (ret1*1.1)/4 
+    # @test ret2 < (ret1*1.1)/4 
 
-# @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 3)
-# @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 3)
-# @show ret1, ret2, ret1/ret2
+    # @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 3)
+    # @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 3)
+    # @show ret1, ret2, ret1/ret2
 
-# @test ret2 < (ret1*1.1)/8
+    # @test ret2 < (ret1*1.1)/8
 
-# @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 4)
-# @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 4)
-# @show ret1, ret2, ret1/ret2
+    # @time ret1 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 20, ABTimeAlg, 4)
+    # @time ret2 = test_rotation2d((200, 102), [Lagrange(9, T), Lagrange(9, T)], 40, ABTimeAlg, 4)
+    # @show ret1, ret2, ret1/ret2
 
-# @test ret2 < (ret1*1.1)/16
-@time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
-@time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
-@time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
-@time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
+    # @test ret2 < (ret1*1.1)/16
+    @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
+    @time @test test_rotation((2000, 1022), Lagrange(5, T), Lagrange(5, T), 11) < 1e-3
+    @time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
+    @time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
     @time @test test_rotation(
         (128, 256),
         B_SplineLU(5, 128, T),
@@ -260,7 +251,7 @@ end
         11,
     ) < 1e-3
     T = Double64
-#    @time @test test_rotation((100, 122), [Lagrange(15, T),Lagrange(15, T)], 11) < 1e-6
+    #    @time @test test_rotation((100, 122), [Lagrange(15, T),Lagrange(15, T)], 11) < 1e-6
     @time @test test_rotation((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-7
     @time @test test_rotation(
         (128, 256),
@@ -275,7 +266,7 @@ end
         11,
     ) < 1e-8
     T = BigFloat
-#    @time @test test_rotation((100, 122), [Lagrange(21, T),Lagrange(21, T)], 11) < 1e-7
+    #    @time @test test_rotation((100, 122), [Lagrange(21, T),Lagrange(21, T)], 11) < 1e-7
     @time @test test_rotation((200, 220), Lagrange(25, T), Lagrange(25, T), 11) < 1e-9
     @time @test test_rotation(
         (128, 256),

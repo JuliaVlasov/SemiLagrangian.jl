@@ -1,5 +1,5 @@
 
-@enum TypePoisson StdPoisson = 1 StdPoisson2d = 2  StdABp = 3
+@enum TypePoisson StdPoisson = 1 StdPoisson2d = 2 StdABp = 3
 
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
@@ -13,8 +13,6 @@ end
 
 # using SHA
 # cod(a::Array) = bytes2hex(sha256(reinterpret(UInt8, collect(Iterators.flatten(a)))))
-
-
 
 """
     PoissonConst{T, Nsp, Nv}
@@ -60,9 +58,6 @@ struct PoissonConst{T,N,Nsp,Nv,type,typeadd}
 end
 getNspNv(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
 
-
-
-
 """
     PoissonVar{T, N, Nsp, Nv} <: AbstractExtDataAdv{T}
     PoissonVar(pc::PoissonConst{T, N, Nsp, Nv})
@@ -90,19 +85,12 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
     ) where {T,N,Nsp,Nv,type,typeadd}
         sz = length.(pc.adv.t_mesh[1:Nsp])
         rho = Array{T,Nsp}(undef, sz)
-        
-        return new{T,N,Nsp,Nv,type,typeadd}(
-            pc,
-            rho,
-            missing,
-            missing,
-            missing,
-            missing
-        )
+
+        return new{T,N,Nsp,Nv,type,typeadd}(pc, rho, missing, missing, missing, missing)
     end
 end
 function getpoissonvar(adv::Advection; type::TypePoisson = StdPoisson, typeadd = 0)
-    pc = PoissonConst(adv, type = type, typeadd = typeadd)
+    pc = PoissonConst(adv; type = type, typeadd = typeadd)
     return PoissonVar(pc)
 end
 
@@ -117,9 +105,12 @@ getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
  # Argument
  - `self::AdvectionData` : mutable structure of variables data.
 """
-function compute_charge!(self::PoissonVar{T,N, Nsp,Nv}, advd::AdvectionData) where {T,N, Nsp,Nv}
-    compute_charge!(self.rho, self.pc.adv.t_mesh[end-Nv+1:end], advd.data)
-    missing
+function compute_charge!(
+    self::PoissonVar{T,N,Nsp,Nv},
+    advd::AdvectionData,
+) where {T,N,Nsp,Nv}
+    compute_charge!(self.rho, self.pc.adv.t_mesh[(end-Nv+1):end], advd.data)
+    return missing
 end
 
 """
@@ -132,14 +123,12 @@ computation of electric field
  - `self::PoissonVar` : mutable structure of variables data.
 
 """
-function compute_elfield!(self::PoissonVar{T,N, Nsp,Nv}) where {T,N, Nsp,Nv}
+function compute_elfield!(self::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv}
     pfft = self.pc.pfftbig
     buf = fftgenall(pfft, self.rho)
     self.t_elfield = ntuple(x -> real(ifftgenall(pfft, self.pc.fctv_k[x] .* buf)), Nsp)
-    missing
+    return missing
 end
-
-
 
 """
     initcoef!(pv::PoissonVar{T, N,Nsp, Nv}, self::AdvectionData{T, N})
@@ -161,15 +150,13 @@ function initcoef!(
     dt = getcur_t(advd)
     @show dt, isvelocity(pv, advd)
     if isvelocity(pv, advd)
-        if (Nsp + 1) in st.perm[1:st.ndims]
+        if (Nsp + 1) in st.perm[1:(st.ndims)]
             compute_charge!(pv, advd)
             compute_elfield!(pv)
         end
-#        @show dt
+        #        @show dt
         bc_v = ntuple(
-            x ->
-                (dt / step(adv.t_mesh[st.perm[x]])) *
-                pv.t_elfield[st.perm[x]-Nsp],
+            x -> (dt / step(adv.t_mesh[st.perm[x]])) * pv.t_elfield[st.perm[x]-Nsp],
             st.ndims,
         )
 
@@ -184,8 +171,7 @@ function initcoef!(
         pv.tupleind = ntuple(x -> st.perm[st.invp[x]+Nsp] - st.ndims, st.ndims)
         bc_sp = ntuple(
             x ->
-                (-dt / step(adv.t_mesh[st.invp[x]])) *
-                adv.t_mesh[st.invp[x]+Nsp].points,
+                (-dt / step(adv.t_mesh[st.invp[x]])) * adv.t_mesh[st.invp[x]+Nsp].points,
             st.ndims,
         )
         if ismissing(pv.bufcur_sp)
@@ -205,7 +191,7 @@ end
     st = getst(advd)
     return if isvelocity(pv, advd)
         ntuple(
-            x -> pv.bufcur_v[x][CartesianIndex(ind.I[end-Nsp+1:end])],
+            x -> pv.bufcur_v[x][CartesianIndex(ind.I[(end-Nsp+1):end])],
             size(pv.bufcur_v, 1),
         )
     else
@@ -215,8 +201,8 @@ end
 
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    advd::AdvectionData{T,N, timeopt},
-) where {T,N,Nsp,Nv, timeopt}
+    advd::AdvectionData{T,N,timeopt},
+) where {T,N,Nsp,Nv,timeopt}
     #    st = getst(self)
     adv = advd.adv
     compute_charge!(pv, advd)
@@ -232,4 +218,3 @@ function initcoef!(
         advd.bufcur[ind] = OpTuple((bufc_sp[ind.I[2]], bufc_v[ind.I[1]]))
     end
 end
-

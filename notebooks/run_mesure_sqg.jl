@@ -11,8 +11,6 @@ function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
 end
 printout(str) = println(str)
 
-
-
 function sqg2(
     t_max::T,
     timeopt,
@@ -35,13 +33,12 @@ function sqg2(
         (mesh_sp, mesh_v),
         [interp, interp],
         dt,
-        tabst,
+        tabst;
         tab_coef = nosplit(dt),
         timeopt = timeopt,
         timealg = typealg,
         ordalg = ordalg,
     )
-
 
     pvar = getgeovar(adv)
 
@@ -59,8 +56,7 @@ function sqg2(
         append!(result, initdatas)
     end
 
-
-    advd = AdvectionData(adv, zeros(T, sz), pvar, initdatas = initdatas)
+    advd = AdvectionData(adv, zeros(T, sz), pvar; initdatas = initdatas)
 
     initdata!(pvar, advd)
 
@@ -75,7 +71,6 @@ function sqg2(
 end
 
 function run_mesure(t_max::T, timeopt, sz, interp) where {T}
-
     tabtypealg = [
         NoTimeAlg,
         ABTimeAlg_ip,
@@ -133,9 +128,13 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
         # julia --project=.  notebooks/run_mesure_sqg.jl
 
         if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 1
-            nb = timeopt != MPIOpt ? (timeopt == NoTimeOpt ? 1 : Threads.nthreads()) : MPI.Comm_size(MPI.COMM_WORLD)
+            nb = if timeopt != MPIOpt
+                (timeopt == NoTimeOpt ? 1 : Threads.nthreads())
+            else
+                MPI.Comm_size(MPI.COMM_WORLD)
+            end
             t_now = time_ns()
-            t = (t_now - t_loc)*1e-9
+            t = (t_now - t_loc) * 1e-9
             t_loc = t_now
             for k = 1:length(tabtxt)
                 if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
@@ -151,8 +150,11 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
                             res = Float32(t_max / tabnbdt[j])
                         else
                             res = Float64(
-                                (j < lastind[k] || (j == lastind[k] && i < k)) ?
-                                norm(resdata[j, i] - resdata[lastind[k], k]) : 0,
+                                if (j < lastind[k] || (j == lastind[k] && i < k))
+                                    norm(resdata[j, i] - resdata[lastind[k], k])
+                                else
+                                    0
+                                end,
                             )
                         end
                         print("$res")
@@ -171,11 +173,6 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
     end
 end
 
-
 T = Double64
 # run_mesure(T(100000), MPIOpt, (128, 128), Lagrange(11, T))
 run_mesure(T(100000), SimpleThreadsOpt, (128, 128), Lagrange(11, T))
-
-
-
-

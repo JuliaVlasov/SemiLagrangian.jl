@@ -23,7 +23,6 @@ Return the order of interpolation implementation
 """
 get_order(_::AbstractInterpolation{T,edge,order}) where {T,edge,order} = order
 
-
 """
     sol(_::AbstractInterpolation, line::AbstractVector)
 
@@ -44,8 +43,6 @@ issolidentity(_::AbstractInterpolation) = true
 isbspline(_::AbstractInterpolation) = false
 
 Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
-
-
 
 function sol!(
     Y::AbstractArray{T2,N},
@@ -95,23 +92,22 @@ end
 end
 
 @inline function getprecal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where {T}
-    v .= getprecal(bsp, decf)
+    return v .= getprecal(bsp, decf)
 end
 @inline function getprecal!(
     v::Vector{T},
     bsp::Vector{I},
     decf::T,
 ) where {T,I<:AbstractInterpolation{T}}
-    getprecal!(v, bsp[1], decf)
+    return getprecal!(v, bsp[1], decf)
 end
 @inline function getprecal!(
     v::Array{T,N},
     bsp::Vector{I},
     decf::NTuple{N,T},
 ) where {T,N,I<:AbstractInterpolation{T}}
-    v .= dotprod(ntuple(x -> getprecal(bsp[x], decf[x]), N))
+    return v .= dotprod(ntuple(x -> getprecal(bsp[x], decf[x]), N))
 end
-
 
 function get_allprecal(
     interp::AbstractInterpolation{T,InsideEdge,order},
@@ -169,7 +165,7 @@ function interpolate!(
     decint::Int,
     precal::Vector{T},
     interp::AbstractInterpolation{T,CircEdge,order},
-    tabmod = gettabmod(length(fi))
+    tabmod = gettabmod(length(fi)),
 ) where {T,order}
     res = sol(interp, fi)
     # @show typeof(res)
@@ -182,7 +178,7 @@ function interpolate!(
         indend = indbeg + order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
     end
-    missing
+    return missing
 end
 @inline function interpolate!(
     fp::AbstractVector{T},
@@ -190,7 +186,7 @@ end
     decint::Int,
     precal::Vector{T},
     tinterp::Vector{I},
-    tabmod = gettabmod(length(fi))
+    tabmod = gettabmod(length(fi)),
 ) where {T,I<:AbstractInterpolation{T,CircEdge}}
     return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1])
 end
@@ -202,7 +198,7 @@ function interpolate!(
     precal::Array{T,N},
     interp::Vector{I},
     tabmod = gettabmod.(size(fi)),
-) where {T, N, I <: AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
     res = sol(interp, fi)
     sz = size(fi)
     order = get_order.(interp)
@@ -213,9 +209,8 @@ function interpolate!(
         end_i = deb_i .+ order
         fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* precal)
     end
-    missing
+    return missing
 end
-
 
 """
     interpolate!( 
@@ -260,21 +255,21 @@ function interpolate!(
         #        @show 1, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i = borne1+1:borne2
+    for i = (borne1+1):borne2
         indbeg = i - borne1
         indend = indbeg + order
         ind = borne1 + 1
         #        @show 2, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i = borne2+1:lg
+    for i = (borne2+1):lg
         indbeg = lg - order
         indend = lg
         ind = lgp - (lg - i)
         #        @show 3, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    missing
+    return missing
 end
 
 """
@@ -306,8 +301,6 @@ function interpolate!(
     end
 end
 
-
-
 mutable struct CachePrecal{T,N,I}
     interps::Vector{I}
     cache_alpha::Union{NTuple{N,T},T}
@@ -325,14 +318,18 @@ mutable struct CachePrecal{T,N,I}
         getprecal!(precal, interps, cache_alpha)
         return new{T,N,I}(interps, cache_alpha, cache_int, precal)
     end
-    CachePrecal(
+    function CachePrecal(
         interps::Vector{I},
         x::Complex{T},
-    ) where {T<:Real,I<:AbstractInterpolation{T}} = CachePrecal(interps, real(x))
-    CachePrecal(
+    ) where {T<:Real,I<:AbstractInterpolation{T}}
+        return CachePrecal(interps, real(x))
+    end
+    function CachePrecal(
         interps::Vector{I},
         x::OpTuple{N,T},
-    ) where {N,T<:Real,I<:AbstractInterpolation{T}} = CachePrecal(interps, x.v[1])
+    ) where {N,T<:Real,I<:AbstractInterpolation{T}}
+        return CachePrecal(interps, x.v[1])
+    end
 end
 @inline function getprecal(self::CachePrecal{T,N}, alpha::NTuple{N,T}) where {T,N}
     if alpha != self.cache_alpha
@@ -343,10 +340,12 @@ end
     end
     return self.cache_int, self.precal
 end
-@inline getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real} =
-    getprecal(self, reim(alpha))
-@inline getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real} =
-    getprecal(self, alpha.v)
+@inline function getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real}
+    return getprecal(self, reim(alpha))
+end
+@inline function getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real}
+    return getprecal(self, alpha.v)
+end
 @inline function getprecal(self::CachePrecal{T,1}, alpha::T) where {T}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
@@ -356,8 +355,9 @@ end
     end
     return self.cache_int, self.precal
 end
-@inline getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where {T} =
-    getprecal(self, alpha[1])
+@inline function getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where {T}
+    return getprecal(self, alpha[1])
+end
 
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{Complex{T},N}},
@@ -367,7 +367,6 @@ function interpolate!(
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp))),
 ) where {T,N,I<:AbstractInterpolation{T}}
-
     N == length(interp_t) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -381,7 +380,6 @@ function interpolate!(
     origin = -div.(order, (2,))
     decall = (5 .* sz .+ origin) .% sz .+ sz
 
-
     for ind in CartesianIndices(sz)
         dint, tab = getprecal(cache, dec(ind))
         deb_i = dint .+ decall .+ ind.I
@@ -394,7 +392,7 @@ end
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
-    bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}} ,
+    bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     mpid::Union{MPIData,Missing} = missing,
@@ -417,25 +415,25 @@ function interpolate!(
     origin = -div.(order, (2,))
     decall = (5 .* sz .+ origin) .% sz .+ sz
 
-
-
-    function fct(ind::CartesianIndex{N2}, cache::CachePrecal{T2,N2,I2}) where {N2,T2,I2 <: AbstractInterpolation{T2}}
+    function fct(
+        ind::CartesianIndex{N2},
+        cache::CachePrecal{T2,N2,I2},
+    ) where {N2,T2,I2<:AbstractInterpolation{T2}}
         dint, tab = getprecal(cache, bufdec[ind])
         deb_i = dint .+ decall .+ ind.I
         end_i = deb_i + order
-        fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N2)...] .* tab)
-
+        return fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N2)...] .* tab)
     end
     ci = CartesianIndices(sz)
     if isthreads
         if ismissing(t_split)
-#            println("SimpleThreads")
+            #            println("SimpleThreads")
             @threads for ind in ci
                 local cache = cachethreads[Threads.threadid()]
                 fct(ind, cache)
             end
         else
-#            println("SplitThreads")
+            #            println("SplitThreads")
             @threads for it in t_split
                 local cache = cachethreads[Threads.threadid()]
                 for ind in ci[it]
@@ -454,7 +452,7 @@ function interpolate!(
     if !ismissing(mpid)
         mpibroadcast(mpid, t_split, fp)
     end
-    true
+    return true
     #    @show "std2d", diffmax, decminmin, decmaxmax
 end
 function interpolatemod!(
@@ -464,7 +462,6 @@ function interpolatemod!(
     interp_t::AbstractVector{I},
     lgmesh::Union{T,UniformMesh{T}},
 ) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
-
     (N == 2 && N == length(interp_t)) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -521,7 +518,7 @@ function interpolatemod!(
     # @show fp[1:10,1:10]
     traitmodend!(lgmesh, fp)
     # @show fp[1:10,1:10]
-    missing
+    return missing
 end
 
 function getinverse(
@@ -547,12 +544,9 @@ function getinverse(
         res4[i] .= res2[i]
 
         res3[i] .= mod.(res2[i] .- res[i] .- dec[i] .+ sz_2[i], sz[i]) .- sz_2[i]
-
     end
 
     @show norm(res3)
-
-
 
     borne = log(eps(T) * prod(sz))
 
@@ -586,11 +580,9 @@ function getinverse(
                 res2[i] .= res4[i]
             end
         end
-
     end
     return decinv
 end
-
 
 function autointerp!(
     to::Array{OpTuple{N,T},N},
@@ -630,14 +622,13 @@ function interpbufc!(
     t_split::Union{Tuple,Missing} = missing,
     cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
 ) where {N,T,I<:AbstractInterpolation{T}}
-
-    for i = 0:nb-1
+    for i = 0:(nb-1)
         buf = t_buf[end-i]
         interpolate!(
             buf,
             copy(buf),
             bufdec,
-            interp_t,
+            interp_t;
             mpid = mpid,
             t_split = t_split,
             cachethreads = cachethreads,

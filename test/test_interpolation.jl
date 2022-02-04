@@ -24,7 +24,6 @@ function test_interp(
     dec,
     sz,
 ) where {edge}
-
     @time @testset "test interpolation  $interp dec=$dec" begin
         fct = if edge == CircEdge
             order = 3
@@ -72,7 +71,6 @@ function test_interp(
         else
             @test size(filter(x -> x == 0, res - ref), 1) == 120
         end
-
     end
 end
 function test_interp(interp, sz)
@@ -117,7 +115,6 @@ function test_inv0(
         @test norm(note[i]) < 1e-12
         @test norm(res2[i] - resinv2[i]) < 1e-12
     end
-
 end
 
 function test_interp2d(
@@ -141,7 +138,6 @@ function test_interp2d(
     cmplxres2 = zeros(Complex{T}, sz)
     cmplxres3 = zeros(Complex{T}, sz)
     cmplxres4 = zeros(Complex{T}, sz)
-
 
     for ind in CartesianIndices(sz)
         x = 2T(pi) * sum(ind.I ./ sz)
@@ -181,11 +177,7 @@ function test_interp2d(
     @test norm2 < prec
     @test norm4 < prec
     @show norm1, norm2, norm4
-
-
 end
-
-
 
 function test_inv(
     t_interp::Vector{I},
@@ -271,9 +263,6 @@ function test_inv(
     for i = 1:N
         @test norm(res2[i] - resinv2[i]) < 1e-12
     end
-
-
-
 end
 function test_invfmr(
     t_interp::Vector{I},
@@ -346,9 +335,6 @@ function test_invfmr(
     @show res2
     @show res3
 
-
-
-
     res4 = ntuple(x -> res[x] - res3[x], N)
     for i = 1:N
         res4[i] .= mod.(res4[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
@@ -388,13 +374,7 @@ function test_invfmr(
         @show ind, norm(res4)
 
         ind += 1
-
-
     end
-
-
-
-
 end
 function test_getinv(
     t_interp::Vector{I},
@@ -431,10 +411,7 @@ function test_getinv(
     note = norm(res2)
     @show note, sqrt(eps(T))
     @test note < sqrt(eps(T))
-
 end
-
-
 
 @testset "test inverse" begin
     T = Double64
@@ -450,7 +427,6 @@ function test_interpfloat(
     tol,
     nb = 100,
 ) where {T,edge}
-
     tabdec =
         T.([
             big"0.345141526199181716726626262655544",
@@ -486,9 +462,11 @@ function test_interpfloat(
             if edge != CircEdge && abs(decint) > 2
                 continue
             end
-            precal =
-                edge == CircEdge ? getprecal(interp, value) :
+            precal = if edge == CircEdge
+                getprecal(interp, value)
+            else
                 get_allprecal(interp, decint, value)
+            end
             for i = 1:nb
                 fi .= fp
                 ref = fct.(mesh .+ i * dec / sz)
@@ -513,20 +491,20 @@ test_interp(Lagrange(3, Rational{BigInt}; edge = CircEdge), 128)
 
 test_interp(B_SplineLU(3, 128, Rational{BigInt}), 128)
 
-test_interpfloat(Lagrange(3, BigFloat, edge = CircEdge), 128, 1e-3, 100)
-test_interpfloat(Lagrange(3, Float64, edge = CircEdge), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, BigFloat; edge = CircEdge), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, Float64; edge = CircEdge), 128, 1e-3, 100)
 
-test_interpfloat(Lagrange(7, BigFloat, edge = InsideEdge), 128, 1e-3, 3)
-test_interpfloat(Lagrange(7, Float64, edge = InsideEdge), 128, 1e-3, 3)
+test_interpfloat(Lagrange(7, BigFloat; edge = InsideEdge), 128, 1e-3, 3)
+test_interpfloat(Lagrange(7, Float64; edge = InsideEdge), 128, 1e-3, 3)
 
-test_interpfloat(Lagrange(21, BigFloat, edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(9, Float64, edge = CircEdge), 256, 1e-10)
+test_interpfloat(Lagrange(21, BigFloat; edge = CircEdge), 256, 1e-20)
+test_interpfloat(Lagrange(9, Float64; edge = CircEdge), 256, 1e-10)
 
-test_interpfloat(Lagrange(4, BigFloat, edge = CircEdge), 256, 1e-5)
-test_interpfloat(Lagrange(4, Float64, edge = CircEdge), 256, 1e-5)
+test_interpfloat(Lagrange(4, BigFloat; edge = CircEdge), 256, 1e-5)
+test_interpfloat(Lagrange(4, Float64; edge = CircEdge), 256, 1e-5)
 
-test_interpfloat(Lagrange(22, BigFloat, edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(12, Float64, edge = CircEdge), 256, 1e-10)
+test_interpfloat(Lagrange(22, BigFloat; edge = CircEdge), 256, 1e-20)
+test_interpfloat(Lagrange(12, Float64; edge = CircEdge), 256, 1e-10)
 
 test_interpfloat(B_SplineLU(3, 256, BigFloat), 256, 1e-5)
 test_interpfloat(B_SplineLU(3, 256, Float64), 256, 1e-5)
@@ -539,5 +517,3 @@ test_interpfloat(B_SplineFFT(3, 256, Float64), 256, 1e-5)
 
 test_interpfloat(B_SplineFFT(21, 256, BigFloat), 256, 1e-30)
 test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
-
-

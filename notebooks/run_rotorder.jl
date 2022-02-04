@@ -11,9 +11,7 @@ include("../src/interpolation.jl")
 using LinearAlgebra
 using Plots
 
-
 function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
-
     f = zeros(T, (mesh1.length, mesh2.length))
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x + sin(tf) * y
@@ -22,7 +20,6 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
     end
 
     return f
-
 end
 
 function fctadv(interp, mesh1, mesh2, v1, v2, refdeb, refend, dt)
@@ -40,11 +37,7 @@ function fctadv(interp, mesh1, mesh2, v1, v2, refdeb, refend, dt)
     return norm(f - refend, Inf)
 end
 
-
-
-
 function fctmain(sz, dt::T, ordmax) where {T}
-
     mesh1 = UniformMesh(T(-5), T(5), sz)
     mesh2 = UniformMesh(T(-5), T(5), sz)
 
@@ -80,13 +73,12 @@ function fctmain(sz, dt::T, ordmax) where {T}
 
         x[ind] = order
 
-
         ind += 1
     end
 
     p = Plots.plot(
         x,
-        log10.(y),
+        log10.(y);
         xlabel = "order",
         ylabel = "error",
         legend = :bottomleft,
@@ -95,11 +87,10 @@ function fctmain(sz, dt::T, ordmax) where {T}
     )
     prec = precision(BigFloat)
 
-    Plots.savefig(p, "out/result2_$(sz)_$(prec)_$(ordmax).pdf")
+    return Plots.savefig(p, "out/result2_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
 function fctinter(interp::InterpolationType, sz, dec)
-
     fct(x) = cos(2big(pi) * x)
     mesh = big.(1:sz) / sz
     deb = fct.(mesh)
@@ -109,9 +100,7 @@ function fctinter(interp::InterpolationType, sz, dec)
     return Float64(norm(ref - res, Inf))
 end
 
-
 function fctmain2(sz, ordmax)
-
     indmax = ordmax - 2
 
     y = ones(indmax, 2)
@@ -138,13 +127,12 @@ function fctmain2(sz, ordmax)
 
         x[ind] = order
 
-
         ind += 1
     end
 
     p = Plots.plot(
         x,
-        log10.(y),
+        log10.(y);
         xlabel = "order",
         ylabel = "error",
         legend = :bottomleft,
@@ -153,7 +141,7 @@ function fctmain2(sz, ordmax)
     )
     prec = precision(BigFloat)
 
-    Plots.savefig(p, "out/resinterp_$(sz)_$(prec)_$(ordmax).pdf")
+    return Plots.savefig(p, "out/resinterp_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
 function formule(order, sz, dec)
@@ -161,7 +149,6 @@ function formule(order, sz, dec)
         (big(pi) / sz)^(order + 1) * 4 * dec * (1 - dec) / sqrt(big(pi) * (order + 1) / 2),
     )
 end
-
 
 function fctmain_gnuplot(sz, ordmax)
     prec = precision(BigFloat)
@@ -179,7 +166,6 @@ function fctmain_gnuplot(sz, ordmax)
     end
 end
 function fctmainsize_gnuplot(szlist, orderlist)
-
     prec = precision(BigFloat)
     println("# begin gnuplot order=$orderlist julia precision=$prec")
     print("# size")

@@ -1,6 +1,4 @@
 
-
-
 using SemiLagrangian:
     splititr,
     splitvec,
@@ -28,11 +26,10 @@ using SemiLagrangian:
         (23, 7, 13, [23:24, 25:26, 27:28, 29:30, 31:32, 33:34, 35:35])
     ]
     for d in data2
-        @test d[4] == splitvec(d[2], collect(d[1]:d[1]+d[3]-1))
+        @test d[4] == splitvec(d[2], collect(d[1]:(d[1]+d[3]-1)))
     end
 end
 @testset "test tools" begin
-
     v = collect(1:53)
     t = splitvec(5, v)
     @test t[1] == collect(1:11)
@@ -43,8 +40,6 @@ end
 
     @test transposition(1, 2, 5) == [2, 1, 3, 4, 5]
     @test transposition(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
-
-
 end
 
 @testset "transposition" begin
@@ -69,8 +64,7 @@ function test_extarray(T, sz, decbeg, decend)
     tabor = rand(T, sz)
     tabext = getextarray(tabor, decbeg, decend)
     for ind in CartesianIndices(tabext)
-        @test tabext[ind] ==
-              tabor[CartesianIndex(mod.(ind.I .- decbeg .- 1, sz) .+ 1)]
+        @test tabext[ind] == tabor[CartesianIndex(mod.(ind.I .- decbeg .- 1, sz) .+ 1)]
     end
     @test size(tabext) == sz .+ decbeg .+ decend
 end
@@ -79,8 +73,3 @@ end
     test_extarray(Float64, (4, 10, 7), (2, 3, 5), (1, 2, 4))
     test_extarray(Float64, (20,), (3,), (7,))
 end
-
-
-
-
-

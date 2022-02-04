@@ -88,8 +88,8 @@ function test_swirling(
     ::T,
     interp::AbstractVector{I},
     nbdt::Int,
-) where {T, I <: AbstractInterpolation{T}}
-    spmin, spmax, nsp = T(0), T(1), sz[ 1]
+) where {T,I<:AbstractInterpolation{T}}
+    spmin, spmax, nsp = T(0), T(1), sz[1]
     vmin, vmax, nv = T(0), T(1), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
@@ -129,13 +129,20 @@ function test_swirling(
 
     @show 0, diff
 
-    tabmod=gettabmod.(sz)
-    cache=CachePrecal(interp, one(T))
+    tabmod = gettabmod.(sz)
+    cache = CachePrecal(interp, one(T))
 
     buf = zeros(T, sz)
     for ind = 1:nbdt
-        coef = dt * cos(T(pi) * (ind-1) / nbdt)
-        interpolate!(buf, data, x -> (coef * dec1[x], coef * dec2[x]), interp; tabmod=tabmod, cache=cache)
+        coef = dt * cos(T(pi) * (ind - 1) / nbdt)
+        interpolate!(
+            buf,
+            data,
+            x -> (coef * dec1[x], coef * dec2[x]),
+            interp;
+            tabmod = tabmod,
+            cache = cache,
+        )
         copyto!(data, buf)
         diff = norm(data .- tabref)
         @show ind, diff
@@ -148,29 +155,26 @@ mutable struct Swirling{T} <: AbstractExtDataAdv
     function Swirling(dec::Array{OpTuple{2,T},2}) where {T}
         return new{T}(copy(dec))
     end
-
 end
-@inbounds function initcoef!(ext::Swirling{T}, advd::AdvectionData{T}) where{T}
-    coef = advd.adv.dt_base * cos(T(pi) * advd.time_cur/T(1.5))
+@inbounds function initcoef!(ext::Swirling{T}, advd::AdvectionData{T}) where {T}
+    coef = advd.adv.dt_base * cos(T(pi) * advd.time_cur / T(1.5))
     sz = sizeall(advd.adv)
     if ismissing(advd.bufcur)
         advd.bufcur = zeros(OpTuple{2,T}, sz)
     end
     advd.bufcur .= coef * ext.ref
-    missing
+    return missing
 end
-
-
 
 function test_swirling_adv(
     sz::NTuple{2,Int},
     ::T,
     interp::AbstractVector{I},
     nbdt::Int;
-    timealg::TimeAlgorithm=NoTimeAlg,
-    ordalg=0
-) where {T, I <: AbstractInterpolation{T}}
-    spmin, spmax, nsp = T(0), T(1), sz[ 1]
+    timealg::TimeAlgorithm = NoTimeAlg,
+    ordalg = 0,
+) where {T,I<:AbstractInterpolation{T}}
+    spmin, spmax, nsp = T(0), T(1), sz[1]
     vmin, vmax, nv = T(0), T(1), sz[2]
 
     mesh_sp = UniformMesh(spmin, spmax, nsp)
@@ -193,26 +197,33 @@ function test_swirling_adv(
             cos(T(pi) * y)^2 * sin(2T(pi) * x) / step(mesh_v),
         )
         dec[i, j] = OpTuple(v)
-        tabref[i, j] = exp(-10*((T(1)/4 - x)^2 + (T(1)/2 - y)^2))
+        tabref[i, j] = exp(-10 * ((T(1) / 4 - x)^2 + (T(1) / 2 - y)^2))
     end
 
-    adv = Advection((mesh_sp,mesh_v),interp,dt,[([1,2], 2, 1, false),],tab_coef=[dt,], timealg=timealg, ordalg=ordalg)
+    adv = Advection(
+        (mesh_sp, mesh_v),
+        interp,
+        dt,
+        [([1, 2], 2, 1, false)];
+        tab_coef = [dt],
+        timealg = timealg,
+        ordalg = ordalg,
+    )
 
     initdatas = missing
     if timealg == ABTimeAlg_init
-        initdatas = [copy(tabref) for i=1:(3ordalg-1)]
+        initdatas = [copy(tabref) for i = 1:(3ordalg-1)]
     end
 
-
-    advd = AdvectionData(adv, tabref, Swirling(dec),initdatas=initdatas)
+    advd = AdvectionData(adv, tabref, Swirling(dec); initdatas = initdatas)
 
     if timealg == ABTimeAlg_init
-        advd.time_cur -=  length(initdatas)*dt
+        advd.time_cur -= length(initdatas) * dt
     end
 
-    f(v,x) = v.v[x]
-    @show extrema(f.(dec,(1,)))
-    @show extrema(f.(dec,(2,)))
+    f(v, x) = v.v[x]
+    @show extrema(f.(dec, (1,)))
+    @show extrema(f.(dec, (2,)))
 
     diff = norm(getdata(advd) .- tabref)
 
@@ -228,17 +239,41 @@ function test_swirling_adv(
     return diff
 end
 
-
 @testset "test swirling" begin
     T = Float64
-    @time @test test_swirling((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 15
+    @time @test test_swirling((100, 100), one(T), [Lagrange(9, T), Lagrange(9, T)], 50) < 15
 end
 @testset "test swirling_adv" begin
     T = Float64
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50) < 5
-    @time @test test_swirling_adv((100, 100), one(T), [B_SplineLU(9,100,T),B_SplineLU(9,100,T)] , 50) < 5
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50) < 5
+    @time @test test_swirling_adv(
+        (100, 100),
+        one(T),
+        [Lagrange(9, T), Lagrange(9, T)],
+        50,
+    ) < 5
+    @time @test test_swirling_adv(
+        (100, 100),
+        one(T),
+        [B_SplineLU(9, 100, T), B_SplineLU(9, 100, T)],
+        50,
+    ) < 5
+    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9, T), Hermite(9, T)], 50) <
+                5
 
-    @time @test test_swirling_adv((100, 100), one(T), [Lagrange(9,T),Lagrange(9,T)] , 50, timealg=ABTimeAlg_init, ordalg=4) < 2
-    @time @test test_swirling_adv((100, 100), one(T), [Hermite(9,T),Hermite(9,T)] , 50, timealg=ABTimeAlg_init, ordalg=4) < 2
+    @time @test test_swirling_adv(
+        (100, 100),
+        one(T),
+        [Lagrange(9, T), Lagrange(9, T)],
+        50;
+        timealg = ABTimeAlg_init,
+        ordalg = 4,
+    ) < 2
+    @time @test test_swirling_adv(
+        (100, 100),
+        one(T),
+        [Hermite(9, T), Hermite(9, T)],
+        50;
+        timealg = ABTimeAlg_init,
+        ordalg = 4,
+    ) < 2
 end

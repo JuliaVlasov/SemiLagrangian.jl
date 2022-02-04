@@ -45,8 +45,6 @@ using SemiLagrangian:
     order6split,
     hamsplit_3_11
 
-
-
 function test_poisson2d(
     sz::NTuple{2,Int},
     interp::Vector{I},
@@ -74,14 +72,12 @@ function test_poisson2d(
         tabref[i, j] = coef * exp(-0.5 * y^2) * (1 + 0.001 * cos(x / 2))
     end
 
-
     #    @show dec1, dec2
 
     cache = CachePrecal(interp, t_max)
 
     rho = zeros(T, sz[1])
     elf = zeros(T, sz[1])
-
 
     data = zeros(T, sz)
 
@@ -94,17 +90,16 @@ function test_poisson2d(
 
     println("0\t$ee\t$ke")
 
-
     buf = zeros(T, sz)
     diffmax = 0
     tabmod = gettabmod.(sz)
-    for ind = 1:2nbdt
+    for ind = 1:(2nbdt)
         dec2 = [dt / step(mesh_v) * elf[i] for i = 1:sz[1], j = 1:sz[2]]
         interpolate!(
             buf,
             data,
             ind -> (dec1[ind], dec2[ind]),
-            interp,
+            interp;
             tabmod = tabmod,
             cache = cache,
         )
@@ -156,9 +151,7 @@ function initdata(adv::Advection{T}) where {T}
     return tabref
 end
 
-
 function get_init(advdref::AdvectionData{T}, nb::Int) where {T}
-
     dt = advdref.adv.dt_base
 
     tabst = [([2, 1], 1, 1, true), ([1, 2], 1, 2, true)]
@@ -166,7 +159,6 @@ function get_init(advdref::AdvectionData{T}, nb::Int) where {T}
     lag = Lagrange(19, T)
 
     adv = Advection(advdref.adv.t_mesh, [lag, lag], dt, tabst; tab_coef = hamsplit_3_11(dt))
-
 
     pvar = getpoissonvar(adv)
 
@@ -178,7 +170,6 @@ function get_init(advdref::AdvectionData{T}, nb::Int) where {T}
         end
         push!(t_res, copy(advd.data))
     end
-
 
     return t_res
 end
@@ -192,8 +183,8 @@ function test_poisson2dadv(
     typeadd = 0,
     timealg::TimeAlgorithm = NoTimeAlg,
     ordalg = 0;
-    timeopt::TimeOptimization=NoTimeOpt,
-    flbiginit::Bool=false,
+    timeopt::TimeOptimization = NoTimeOpt,
+    flbiginit::Bool = false,
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
     vmin, vmax, nv = T(-9), T(9), sz[2]
@@ -209,11 +200,11 @@ function test_poisson2dadv(
         (mesh_sp, mesh_v),
         interp,
         dt,
-        tabst,
+        tabst;
         tab_coef = nosplit(dt),
         timealg = timealg,
         ordalg = ordalg,
-        timeopt=timeopt,
+        timeopt = timeopt,
     )
 
     tabref = initdata(adv)
@@ -221,8 +212,7 @@ function test_poisson2dadv(
     data = zeros(T, sz)
     copyto!(data, tabref)
 
-    pvar = getpoissonvar(adv, type = type, typeadd = typeadd)
-
+    pvar = getpoissonvar(adv; type = type, typeadd = typeadd)
 
     # initdatas = timealg == ABTimeAlg_init ? map(x -> tabref, 1:(ordalg-1)) : missing
 
@@ -231,8 +221,8 @@ function test_poisson2dadv(
     advd = AdvectionData(adv, data, pvar)
 
     if timealg == ABTimeAlg_init
-        nb = flbiginit ? 3ordalg-1 : ordalg-1
-        advd.time_cur -= dt*nb
+        nb = flbiginit ? 3ordalg - 1 : ordalg - 1
+        advd.time_cur -= dt * nb
         advd.initdatas = get_init(advd, nb)
     end
 
@@ -246,7 +236,7 @@ function test_poisson2dadv(
     diff = 0
     diffprec = 0
 
-    borne_t = t_max - dt/2
+    borne_t = t_max - dt / 2
 
     while advd.time_cur < borne_t
         while advection!(advd)
@@ -269,15 +259,13 @@ function test_poisson2dadv(
     return (enmax - enmin), advd.data
 end
 
-
 function test_poisson2d2d_adv(
     sz::NTuple{4,Int},
     interp::Vector{I},
     t_max::T,
     nbdt::Int,
-    split=standardgsplit
+    split = standardgsplit,
 ) where {T,I<:AbstractInterpolation{T}}
-
     mesh_sp1 = UniformMesh(T(0), 4T(pi), sz[1])
     mesh_sp2 = UniformMesh(T(0), 4T(pi), sz[2])
     mesh_v1 = UniformMesh(T(-10), T(10), sz[3])
@@ -285,16 +273,21 @@ function test_poisson2d2d_adv(
 
     dt = t_max / nbdt
 
-    tabst = [([1,2,3,4], 2, 1, true,), 
-    ([3,4,1,2,], 2, 2, true,),]
-#    tabst = [([3, 4, 1, 2], 2, 1, true,), 
-#    ([1, 2, 3, 4], 2, 2, true,),]
-#    tabst = [([3, 4, 1, 2], 1, 1, true,), 
-#    ([4, 3, 1, 2], 1, 1, true,),
-#    ([1, 2, 3, 4], 1, 2, true,),
-#    ([2,1, 3, 4], 1, 2, true,),]
+    tabst = [([1, 2, 3, 4], 2, 1, true), ([3, 4, 1, 2], 2, 2, true)]
+    #    tabst = [([3, 4, 1, 2], 2, 1, true,), 
+    #    ([1, 2, 3, 4], 2, 2, true,),]
+    #    tabst = [([3, 4, 1, 2], 1, 1, true,), 
+    #    ([4, 3, 1, 2], 1, 1, true,),
+    #    ([1, 2, 3, 4], 1, 2, true,),
+    #    ([2,1, 3, 4], 1, 2, true,),]
 
-    adv = Advection((mesh_sp1, mesh_sp2, mesh_v1, mesh_v2), interp, dt, tabst, tab_coef= split(dt))
+    adv = Advection(
+        (mesh_sp1, mesh_sp2, mesh_v1, mesh_v2),
+        interp,
+        dt,
+        tabst;
+        tab_coef = split(dt),
+    )
     println("trace0")
 
     epsilon = T(0.5)
@@ -337,22 +330,26 @@ function test_poisson2d2d_adv(
     return enmax - enmin
 end
 function test_split4d(T, nbdt, split, order)
-    sz = (32,32,32,32)
-    lag = Lagrange(9,T)
+    sz = (32, 32, 32, 32)
+    lag = Lagrange(9, T)
     t_max = T(0.1)
-    interp = [lag,lag,lag,lag]
-
+    interp = [lag, lag, lag, lag]
 
     ret1 = test_poisson2d2d_adv(sz, interp, t_max, nbdt, split)
     ret2 = test_poisson2d2d_adv(sz, interp, t_max, 2nbdt, split)
-    @show split, ret1, ret2, ret1/ret2
+    @show split, ret1, ret2, ret1 / ret2
 
-    @test 1.2ret1/ret2 > 2^order
-
+    @test 1.2ret1 / ret2 > 2^order
 end
-function test_timealg(interp::Vector{I},nbdt, timealg,ordalg; flbiginit=false) where {T,I<:AbstractInterpolation{T}}
-    sz = (128,100)
-   t_max = T(big"0.1")
+function test_timealg(
+    interp::Vector{I},
+    nbdt,
+    timealg,
+    ordalg;
+    flbiginit = false,
+) where {T,I<:AbstractInterpolation{T}}
+    sz = (128, 100)
+    t_max = T(big"0.1")
     ret1, _ = test_poisson2dadv(
         sz,
         interp,
@@ -360,7 +357,10 @@ function test_timealg(interp::Vector{I},nbdt, timealg,ordalg; flbiginit=false) w
         nbdt,
         StdPoisson2d,
         0,
-        timealg,ordalg, flbiginit=flbiginit)
+        timealg,
+        ordalg;
+        flbiginit = flbiginit,
+    )
     nbdt *= 2
     ret2, _ = test_poisson2dadv(
         sz,
@@ -369,53 +369,52 @@ function test_timealg(interp::Vector{I},nbdt, timealg,ordalg; flbiginit=false) w
         nbdt,
         StdPoisson2d,
         0,
-        timealg,ordalg, flbiginit=flbiginit)
-    
-    @show ret1,ret2, ret1/ret2
+        timealg,
+        ordalg;
+        flbiginit = flbiginit,
+    )
 
-    @test 1.25*ret1/ret2 > 2 ^ ordalg
+    @show ret1, ret2, ret1 / ret2
+
+    @test 1.25 * ret1 / ret2 > 2^ordalg
 end
 
 @testset "test poisson2d ABTimeAlg_new" begin
-
     T = Double64
     interp = [B_SplineLU(11, 128, T), B_SplineLU(11, 100, T)]
-    @time test_timealg(interp, 5, ABTimeAlg_new, 2 )
-
+    @time test_timealg(interp, 5, ABTimeAlg_new, 2)
 end
-
-
 
 @testset "test poisson2d ABTimeAlg_ip" begin
     T = Double64
-    interp = [Lagrange(7,T),Lagrange(7,T)]
-    @time test_timealg(interp,5,ABTimeAlg_ip,2)
-    @time test_timealg(interp,5,ABTimeAlg_ip,3)
-    @time test_timealg(interp,5,ABTimeAlg_ip,4)
+    interp = [Lagrange(7, T), Lagrange(7, T)]
+    @time test_timealg(interp, 5, ABTimeAlg_ip, 2)
+    @time test_timealg(interp, 5, ABTimeAlg_ip, 3)
+    @time test_timealg(interp, 5, ABTimeAlg_ip, 4)
 end
 
 @testset "test poisson2d ABTimeAlg_init" begin
     T = Double64
-    interp = [Lagrange(7,T),Lagrange(7,T)]
-    @time test_timealg(interp,5,ABTimeAlg_init,2)
-    @time test_timealg(interp,5,ABTimeAlg_init,3)
-    @time test_timealg(interp,5,ABTimeAlg_init,3)
-    @time test_timealg(interp,5,ABTimeAlg_init,4)
+    interp = [Lagrange(7, T), Lagrange(7, T)]
+    @time test_timealg(interp, 5, ABTimeAlg_init, 2)
+    @time test_timealg(interp, 5, ABTimeAlg_init, 3)
+    @time test_timealg(interp, 5, ABTimeAlg_init, 3)
+    @time test_timealg(interp, 5, ABTimeAlg_init, 4)
 end
 @testset "test poisson2d ABTimeAlg_init 2" begin
     T = Double64
-    interp = [Lagrange(9,T),Lagrange(9,T)]
-    @time test_timealg(interp,5,ABTimeAlg_init,2, flbiginit=true)
-    @time test_timealg(interp,5,ABTimeAlg_init,3, flbiginit=true)
-    @time test_timealg(interp,5,ABTimeAlg_init,4, flbiginit=true)
-    @time test_timealg(interp,10,ABTimeAlg_init,5, flbiginit=true)
+    interp = [Lagrange(9, T), Lagrange(9, T)]
+    @time test_timealg(interp, 5, ABTimeAlg_init, 2, flbiginit = true)
+    @time test_timealg(interp, 5, ABTimeAlg_init, 3, flbiginit = true)
+    @time test_timealg(interp, 5, ABTimeAlg_init, 4, flbiginit = true)
+    @time test_timealg(interp, 10, ABTimeAlg_init, 5, flbiginit = true)
 end
 
 @testset "test poisson2d thread" begin
     T = Float64
-    interp = [Lagrange(5,T),Lagrange(5,T)]
-    sz = (64,64)
-    flag=false
+    interp = [Lagrange(5, T), Lagrange(5, T)]
+    sz = (64, 64)
+    flag = false
     for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init)
         res = []
         for t_opt in (NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt)
@@ -428,9 +427,11 @@ end
                 5,
                 StdPoisson2d,
                 0,
-                t_alg, ordalg,
-                timeopt=t_opt,
-                flbiginit=flag)
+                t_alg,
+                ordalg;
+                timeopt = t_opt,
+                flbiginit = flag,
+            )
             push!(res, d1)
             if length(res) >= 2
                 @test res[end-1] == res[end]

@@ -1,12 +1,7 @@
-fortran/build
 docs/build
 *.swp
 Manifest.toml
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-*.png
 */.ipynb_checkpoints/
-notebooks/landau1d1v.ipynb
-notebooks/tmp.gif
-notebooks/rotation.ipynb

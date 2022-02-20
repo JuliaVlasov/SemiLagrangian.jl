@@ -17,6 +17,8 @@
 using LinearAlgebra
 using DoubleFloats
 using SemiLagrangian
+using ProgressMeter
+using Plots
 
 function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
     if timeopt != MPIOpt || advd.adv.mpid.ind == 1
@@ -41,44 +43,8 @@ function trace_energy(advd::AdvectionData{T,N,timeopt}, t) where {T,N,timeopt}
     return energyall
 end
 
-# +
-function landau(advd::AdvectionData, nbdt)
-
-    maxdiff = 0
-    dt = advd.adv.dt_base
-    refel = getenergyall(advd)
-    maxel = minel = refel
-    #    printall(cl_obs)
-    #    clockreset(cl_obs)
-    for i = 1:nbdt
-        while advection!(advd)
-        end
-        el = getenergyall(advd)
-        maxel = max(maxel, el)
-        minel = min(minel, el)
-        println("$(maxel-minel)")
-    end
-    println("#  end")
-    return maxel - minel
-end
-
-
-
-function landau2_2(
-    T::DataType,
-    nbdt,
-    timeopt;
-    sz = (32, 32, 32, 32),
-    dt = big"0.1",
-    interpall = ntuple(x -> Lagrange(19, T), 4),
-    split = strangsplit,
-    tabst = [
-        ([3, 4, 1, 2], 1, 1, true),
-        ([4, 3, 1, 2], 1, 1, true),
-        ([1, 2, 4, 3], 1, 2, true),
-        ([2, 1, 3, 4], 1, 2, true),
-    ],
-)
+function run_simulation(T::DataType, nbdt, timeopt, sz, dt, interpall, split, tabst)
+    
     epsilon = T(0.5)
     dt = T(dt)
 
@@ -115,7 +81,7 @@ function landau2_2(
     pvar = getpoissonvar(adv)
 
     advd = AdvectionData(adv, data, pvar)
-    # advdata = Advection1dData(adv, data, pvar)
+
     printout(
         advd,
         "# dt=$(Float32(dt)) eps=$(Float64(epsilon)) size1_sp=$nsp1 size2_sp=$nsp2 size_v1=$nv1 size_v2=$nv2",
@@ -138,29 +104,65 @@ function landau2_2(
     end
     printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
-    return landau(advd, nbdt)
+    maxdiff = 0
+    dt = advd.adv.dt_base
+    refel = getenergyall(advd)
+    maxel = minel = refel
+    el = Float64[]
+    @showprogress 1 for i = 1:nbdt
+        while advection!(advd) end
+        push!(el, getenergyall(advd))
+    end
+    return el
 end
-# landau2_2(Float64, 50, NoTimeOpt)
-# landau2_2(Float64, 50, SimpleThreadsOpt)
-# landau2_2(Float64, 50, SplitThreadsOpt)
-# landau2_2(Float64, 50, MPIOpt, sz=(32,32,32,32))
-# landau2_2(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
-# landau2_2(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
+
 T = Float64
-# landau2_2(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
-# @time landau2_2(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(5, T))
-# @time landau2_2(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
-# sz = (32, 32, 20, 22)
-# @time landau2_2(
-#     T,
-#     10,
-#     MPIOpt,
-#     sz = sz,
-#     dt = big"0.1",
-#     interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
-# )
-## @time landau2_2(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
-# -
+nbdt = 50
+timeopt = NoTimeOpt
+sz = (32, 32, 32, 32)
+dt = big"0.1"
+interpall = ntuple(x -> Lagrange(19, T), 4)
+split = strangsplit
+tabst = [
+        ([3, 4, 1, 2], 1, 1, true),
+        ([4, 3, 1, 2], 1, 1, true),
+        ([1, 2, 4, 3], 1, 2, true),
+        ([2, 1, 3, 4], 1, 2, true),
+    ]
+@time result = run_simulation(T, nbdt, timeopt, sz, dt, interpall, split, tabst)
+
+t = LinRange(0, nbdt * dt, nbdt)
+plot(t, result)
+
+run_simulation(Float64, 50, SimpleThreadsOpt)
+
+run_simulation(Float64, 50, SplitThreadsOpt)
+
+run_simulation(Float64, 50, MPIOpt, sz=(32,32,32,32))
+
+run_simulation(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
+
+run_simulation(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
+
+T = Float64
+run_simulation(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
+
+@time run_simulation(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(5, T))
+
+@time run_simulation(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
+
+sz = (32, 32, 20, 22)
+
+@time run_simulation(
+    T,
+    10,
+    MPIOpt,
+    sz = sz,
+    dt = big"0.1",
+    interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
+)
+
+@time run_simulation(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
 
 c = BigFloat(2)^(1 // 3)
 c1 = 1 / (2(2 - c))
@@ -170,7 +172,7 @@ d2 = -c / (2 - c)
 tc = [c1, d1, c2, d2, c2, d1, c1]
 tc = [1, 1]
 T = Float64
-@time landau2_2(
+@time run_simulation(
     T,
     5,
     NoTimeOpt,
@@ -179,7 +181,7 @@ T = Float64
     interpall = ntuple(x -> Lagrange(9, T), 4),
     split = strangsplit,
 )
-@time landau2_2(
+@time run_simulation(
     T,
     10,
     NoTimeOpt,
@@ -198,7 +200,7 @@ tabst = map(
     1:3
 )
 
-@time landau2_2(
+@time run_simulation(
     T,
     30,
     NoTimeOpt,
@@ -208,14 +210,6 @@ tabst = map(
     tabst = tabst,
 )
 # -
-@time landau2_2(
-    T,
-    30,
-    NoTimeOpt,
-    sz = (32, 64, 36, 40),
-    dt = big"0.1",
-    interpall = ntuple(x -> LagrangeInt(7, T), 4),
-)
-@time landau2_2(T, 10000, MPIOpt; sz = (64, 64, 64, 64), dt = big"0.01", interp = Lagrange(27, T))
+@time run_simulation(T, 10000, MPIOpt; sz = (64, 64, 64, 64), dt = big"0.01", interp = Lagrange(27, T))
 
 

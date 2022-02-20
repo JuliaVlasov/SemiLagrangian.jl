@@ -5,3 +5,5 @@ Manifest.toml
 *.jl.*.cov
 *.jl.mem
 */.ipynb_checkpoints/
+examples/vlasov-poisson-1d1v.ipynb
+examples/vlasov-poisson-2d2v.ipynb

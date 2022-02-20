@@ -7,3 +7,4 @@ Manifest.toml
 */.ipynb_checkpoints/
 examples/vlasov-poisson-1d1v.ipynb
 examples/vlasov-poisson-2d2v.ipynb
+examples/run_rotation.ipynb

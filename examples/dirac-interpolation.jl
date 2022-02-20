@@ -1,9 +1,4 @@
-include("../src/advection.jl")
-include("../src/spline.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-include("../src/bsplinefft.jl")
-include("../src/lagrange.jl")
+using SemiLagrangian
 
 function aff_graph(ind, fp)
     println("ind=$ind begin")
@@ -17,7 +12,8 @@ function aff_graph(ind, fp)
     println("minval=$minval maxval=$maxval")
     return println("ind=$ind end")
 end
-function test_dirac(bsp::InterpolationType, order, len, nb, modval)
+
+function test_dirac(bsp, order, len, nb, modval)
     #        println("lag=$lag")
     n = len
     # whennot circuar coef != 1 set the function unperiodic
@@ -35,14 +31,17 @@ function test_dirac(bsp::InterpolationType, order, len, nb, modval)
         end
     end
 end
+
 function test_dirac_lagrange(order, len, nb, modval)
     lag = Lagrange(BigFloat, order; iscirc = true)
     return test_dirac(lag, order, len, nb, modval)
 end
+
 function test_dirac_splu(order, len, nb, modval)
     bsp = B_SplineLU(order, len, BigFloat; iscirc = true)
     return test_dirac(bsp, order, len, nb, modval)
 end
+
 function test_dirac_spfft(order, len, nb, modval)
     bsp = B_SplineFFT(order, len, BigFloat)
     return test_dirac(bsp, order, len, nb, modval)
@@ -51,3 +50,5 @@ end
 test_dirac_lagrange(31, 256, 500, 50)
 test_dirac_splu(31, 256, 500, 50)
 test_dirac_spfft(31, 256, 500, 50)
+
+

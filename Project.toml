@@ -1,6 +1,6 @@
 name = "SemiLagrangian"
 uuid = "abe12ce6-d865-11e8-314f-3f926d5bd47d"
-authors = ["Yves Mocquard <yves.mocquard@irisa.fr>"]
+authors = "JuliaVlasov"
 version = "0.1.0"
 
 [deps]

@@ -1,8 +1,3 @@
-# Contents
-
-```@contents
-```
-
 ## Index
 
 ```@index

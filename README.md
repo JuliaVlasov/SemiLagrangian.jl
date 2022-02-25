@@ -13,4 +13,4 @@
 
 Advection implementation in Julia using Semi-Lagrangian numerical method
 
-**NOTE: This package is difficult to use directly. There is still a lack of documentation and some parts like splines need to be optimized. This package has been developed to calculate the interpolations and advections used in the package [VlasovSolvers.jl](https://github.com/JuliaVlasov/VlasovSolvers.jl. **
+**NOTE: This package is difficult to use directly. There is still a lack of documentation and some parts like splines need to be optimized. This package has been developed to calculate the interpolations and advections used in the package [VlasovSolvers.jl](https://github.com/JuliaVlasov/VlasovSolvers.jl).**

@@ -7,7 +7,7 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.13.7
+#       jupytext_version: 1.11.5
 #   kernelspec:
 #     display_name: Julia 1.7.2
 #     language: julia
@@ -32,7 +32,7 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
     states = [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)]
 
     adv = Advection((mesh_x, mesh_v), [interp, interp], dt, states; 
-        tab_coef = tab_coef, timeopt = NoTimeOpt)
+        tab_coef, timeopt = NoTimeOpt)
     
     kx = 0.5 
     fct_x(x) = epsilon * cos(kx * x) + 1
@@ -52,24 +52,24 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
     println("# v : from $(start(mesh_v)) to $(stop(mesh_v))")
     println("# interpolation : $interp order=$(get_order(interp))")
     println("# tab_coef : $tab_coef")
-    println("# timeopt=$timeopt")
     println("# size(data)=$(size(data))")
 
+    time = Float64[]
     el = Float64[]
     @showprogress 1 for i = 1:nbdt
         while advection!(advd) end
-        pvar = advd.pa
-        push(el, sum(pvar.t_elfield.^2))
+        push!(time, advd.time_cur)
+        push!(el, compute_ee(advd))
     end
-    return el
+    return time, el
 end
 
 nbdt = 1000
 sz = (64, 64)
 dt = 0.1
 interp = Lagrange(9, Float64)
-tab_coef = [1/2, 1, 1/2]
-result = run_simulation( nbdt, sz, dt, interp, tab_coef)
-plot(LinRange(0, nbdt*dt, nbdt), log.(result))
+tab_coef = strangsplit(dt)
+time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
+plot(time, log.(el.^2))
 
 

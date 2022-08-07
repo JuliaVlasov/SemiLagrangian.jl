@@ -1,6 +1,5 @@
 using LinearAlgebra
 using DoubleFloats
-# using SemiLagMPI
 using MPI
 using SemiLagrangian
 

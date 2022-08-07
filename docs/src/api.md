@@ -1,4 +1,5 @@
-## Mesh
+## Meshes
+
 ```@docs
 SemiLagrangian.UniformMesh
 Base.step
@@ -7,7 +8,9 @@ SemiLagrangian.points
 SemiLagrangian.width
 SemiLagrangian.vec_k_fft
 ```
-## Interpolation
+
+## Interpolations
+
 ```@docs
 SemiLagrangian.AbstractInterpolation
 SemiLagrangian.get_order
@@ -17,10 +20,10 @@ SemiLagrangian.Lagrange
 SemiLagrangian.B_SplineLU
 SemiLagrangian.B_SplineFFT
 ```
-## Advection
+
+## Advections
+
 ```@docs
-SemiLagrangian.Advection1d
-SemiLagrangian.Advection1dData
 SemiLagrangian.advection!
 ```
 

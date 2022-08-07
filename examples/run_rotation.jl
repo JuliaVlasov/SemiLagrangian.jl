@@ -7,11 +7,11 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.4.2
+#       jupytext_version: 1.11.5
 #   kernelspec:
-#     display_name: Julia 1.4.1
+#     display_name: Julia 1.7.2
 #     language: julia
-#     name: julia-1.4
+#     name: julia-1.7
 # ---
 
 using LinearAlgebra

@@ -6,9 +6,13 @@ using Polynomials: StandardBasisPolynomial
 using Polynomials
 using FFTW
 using Base.Threads
+using Requires
 
 # include("mpoly/MultiPoly.jl")
-include("mpiinterface.jl")
+function __init__()
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("mpiinterface.jl")
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("mpiinterpolation.jl")
+end
 
 include("util.jl")
 include("cplxlagrange.jl")
@@ -27,6 +31,11 @@ include("poisson.jl")
 include("rotation.jl")
 include("translation.jl")
 include("quasigeostrophic.jl")
+
+function __init__()
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("mpiinterface.jl")
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" include("mpiinterpolation.jl")
+end
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData

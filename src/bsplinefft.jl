@@ -1,6 +1,4 @@
 
-
-
 """
     B_SplineFFT{T, order} <: AbstractInterpolation{T, CircEdge, order}
     B_SplineFFT( order::Int, n::Int, T::DataType=Float64)
@@ -46,7 +44,5 @@ function sol(bsp::B_SplineFFT{T}, b::AbstractVector{T}) where {T}
     return real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end
 function sol!(Y::AbstractVector{T}, bsp::B_SplineFFT{T}, b::AbstractVector{T}) where {T}
-    Y .= real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
+    return Y .= real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end
-# get_n(bsp::B_SplineFFT) where{T}=size(bsp.c_fft,1)
-# get_bspline(bsp::B_SplineFFT) where{T}=bsp.bspline

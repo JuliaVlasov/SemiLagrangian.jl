@@ -1,10 +1,8 @@
 
-
 using LinearAlgebra
 using Polynomials
 
-using SemiLagrangian:
-    getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal
+using SemiLagrangian: getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
     setprecision(prec) do
@@ -12,8 +10,8 @@ function test_spline(order, prec)
             p0 = getbspline(order, 0)
             p3 = getbspline(order, 3)
             @test p3 == decal(p0, 3)
-            @test isapprox(sum(p0.(range(big"1.0", length = order + 1))), 1, atol = 1e-60)
-            @test sum(p0.(range(one(Rational{BigInt}), length = order + 1))) == 1
+            @test isapprox(sum(p0.(range(big"1.0"; length = order + 1))), 1, atol = 1e-60)
+            @test sum(p0.(range(one(Rational{BigInt}); length = order + 1))) == 1
             for i = 0:order
                 x = rand(BigFloat)
                 res0 = p0(x + i)
@@ -70,7 +68,6 @@ B_{i,p}(x) := \\frac{x - t_i}{t_{i+p} - t_i} B_{i,p-1}(x)
 
 """
 function bsplinerec(p, j, x::T) where {T}
-
     if p == 0
         if j == 0
             return one(T)
@@ -81,12 +78,10 @@ function bsplinerec(p, j, x::T) where {T}
         w = (x - j) / p
         w1 = (x - j - 1) / p
     end
-    (w * bsplinerec(p - 1, j, x) + (1 - w1) * bsplinerec(p - 1, j + 1, x))
-
+    return (w * bsplinerec(p - 1, j, x) + (1 - w1) * bsplinerec(p - 1, j + 1, x))
 end
 
 function test_bspline()
-
     @time @testset "test verify bspline" begin
         tab_x = [
             1821 // 10000,
@@ -96,28 +91,25 @@ function test_bspline()
             0 // 1,
         ]
         for ord = 1:10, x in tab_x
-            if ord >8
-                p1 = Polynomial([big(1//7),2//7,3//7])
-                p2 = Polynomial([-big(6//7), 2//7, 3//7])
+            if ord > 8
+                p1 = Polynomial([big(1 // 7), 2 // 7, 3 // 7])
+                p2 = Polynomial([-big(6 // 7), 2 // 7, 3 // 7])
             else
-                p1 = Polynomial([1//7,2//7,3//7])
-                p2 = Polynomial([-6//7, 2//7, 3//7])
+                p1 = Polynomial([1 // 7, 2 // 7, 3 // 7])
+                p2 = Polynomial([-6 // 7, 2 // 7, 3 // 7])
             end
             for i = 0:(ord-1)
                 bsp = getbspline(ord, i)
-                b1 = bsp*p1
-                b2 = bsp*p2
+                b1 = bsp * p1
+                b2 = bsp * p2
                 bspbis = b1 - b2
                 v = bsplinerec(ord, i, x)
-                @test  v == bsp(x)
+                @test v == bsp(x)
                 @test v == bspbis(x)
             end
         end
     end
-
 end
-
-
 
 @testset "test get_kl_ku" begin
     kl, ku = get_kl_ku(5)

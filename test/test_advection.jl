@@ -1,16 +1,16 @@
 
 using DoubleFloats
+using Random
 
 using SemiLagrangian:
     Advection,
     AdvectionData,
+    getstcoef,
     advection!,
     sizeall,
     getext,
     getdata,
     getcur_t,
-    isvelocity,
-    isvelocitystate,
     getindsplit,
     _getcurrentindice,
     getprecal,
@@ -27,126 +27,113 @@ using SemiLagrangian:
     points,
     dotprod
 
+function initmesh(t_deb, t_end, t_size)
+    t_step = (t_end - t_deb) ./ t_size
+    return totuple(UniformMesh.(t_deb, t_end, t_size)), t_step
+end
 
-# function initmesh(t_deb, t_end, t_size)
-#     t_step = (t_end - t_deb) ./ t_size
-#     return totuple(UniformMesh.(t_deb, t_end, t_size)), t_step
-# end
+function test_adv(T::DataType)
+    println("trace1")
+    t_debsp = T.([-1, -10, -3])
+    t_endsp = T.([3, 6, 5])
+    t_szsp = (16, 8, 32)
+    t_debv = T.([-3, -9, 1])
+    t_endv = T.([1, 7, 1])
+    t_szv = (4, 8, 4)
+    base_dt = one(T) / 80
 
+    Nsum = 6
 
+    t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
+    t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
 
+    interp = Lagrange(3, T)
+    adv = Advection(
+        (t_meshsp..., t_meshv...),
+        map(x -> Lagrange(3, T), 1:6),
+        base_dt,
+        [
+            ([1, 2, 3, 6, 5, 4], 1, 1, true),
+            ([2, 1, 3, 4, 6, 5], 1, 1, true),
+            ([3, 2, 1, 4, 5, 6], 1, 1, true), # space states
+            ([4, 5, 6, 1, 2, 3], 1, 2, true),
+            ([5, 4, 6, 1, 2, 3], 1, 2, true),
+            ([6, 5, 4, 1, 2, 3], 1, 2, true), # velocity states
+        ],
+    )
+    println("trace2")
 
+    sref = (t_szsp..., t_szv...)
+    @test sref == sizeall(adv)
 
-# function test_adv(T::DataType)
-#     t_debsp = T.([-1, -10, -3])
-#     t_endsp = T.([3, 6, 5])
-#     t_szsp = (16, 8, 32)
-#     t_debv = T.([-3, -9, 1])
-#     t_endv = T.([1, 7, 1])
-#     t_szv = (4, 8, 4)
-#     base_dt = one(T) / 80
+    tab = rand(T, sizeall(adv))
 
-#     Nsum = 6
+    advd = AdvectionData(adv, tab, getpoissonvar(adv))
 
-#     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
-#     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
+    @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
 
-#     interp = Lagrange(3, T)
-#     adv = Advection(
-#         (t_meshsp...,t_meshv...),
-#         map(x -> Lagrange(3, T), 1:6),
-#         base_dt,
-#         [
-#             ([1, 2, 3, 6, 5, 4], 1, 1, true),
-#             ([2, 1, 3, 4, 6, 5], 1, 1, true),
-#             ([3, 2, 1, 4, 5, 6], 1, 1, true), # space states
-#             ([4, 5, 6, 1, 2, 3], 1, 2, true),
-#             ([5, 4, 6, 1, 2, 3], 1, 2, true),
-#             ([6, 5, 4, 1, 2, 3], 1, 2, true), # velocity states
-#             ([1, 2, 3, 6, 5, 4], 1, 3, true),
-#             ([2, 1, 3, 4, 6, 5], 1, 3, true),
-#             ([3, 2, 1, 4, 5, 6], 1, 3, true), # space states
-#         ]
-#     )
+    @test advd.state_gen == 1
 
-#     sref = (t_szsp..., t_szv...)
-#     @test sref == sizeall(adv)
+    @test advd.parext == getext(advd)
+    @test advd.data == getdata(advd)
+    @test adv.tab_coef[1] == getcur_t(adv, 1)
+    @test adv.tab_coef[3] == getcur_t(adv, 1)
+    @test adv.tab_coef[1] == getcur_t(adv, 2)
+    @test adv.tab_coef[1] == getcur_t(adv, 3)
+    @test adv.tab_coef[2] == getcur_t(adv, 4)
+    @test adv.tab_coef[2] == getcur_t(adv, 5)
+    @test adv.tab_coef[2] == getcur_t(adv, 6)
 
+    @test getcur_t(advd) == advd.adv.tab_coef[1]
 
-#     tab = rand(T, sizeall(adv))
+    println("trace3")
 
-#     advd = AdvectionData(adv, tab, getpoissonvar(adv))
+    t_coef = [1, 1, 1, 2, 2, 2, 3, 3, 3, 1]
+    #    t_dim = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1]
+    t_indice = [1, 2, 3, 4, 5, 6, 1, 2, 3, 1]
+    t_v = [false, false, false, true, true, true, false, false, false, false]
+    t_result = [true, true, true, true, true, true, true, true, false, true]
+    # resfirst = [4, 4, 4, (4, 1, 1), (4, 1, 1), (4, 1, 1), 4, 4, 4, 4]
+    # ressecond = [
+    #     (:, 3, 1, 4, 1, 1),
+    #     (3, :, 1, 1, 4, 1),
+    #     (3, 1, :, 1, 1, 4),
+    #     (4, 1, 1, :, 3, 1),
+    #     (4, 1, 1, 3, :, 1),
+    #     (4, 1, 1, 3, 1, :),
+    #     (:, 3, 1, 4, 1, 1),
+    #     (3, :, 1, 1, 4, 1),
+    #     (3, 1, :, 1, 1, 4),
+    #     (:, 3, 1, 4, 1, 1),
+    # ]
 
+    for i = 1:length(t_coef)
+        @test getstcoef(advd) == t_coef[i]
+        @test advd.state_gen == (i - 1) % 9 + 1
+        @test t_indice[i] == _getcurrentindice(advd)
 
-#     @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
+        @test getcur_t(advd) == adv.tab_coef[t_coef[i]]
+        t = adv.t_interp
+        @test t[t_indice[i]] == getinterp(advd)[1]
 
-#     @test advd.state_coef == 1
-#     @test advd.state_dim == 1
+        # itrfirst = getitrfirst(advd)
+        # (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
 
-#     @test advd.parext == getext(advd)
-#     @test advd.data == getdata(advd)
-#     @test base_dt * adv.tab_coef[2] == getcur_t(adv, 2)
-#     @test 1 == getstate_dim(advd)
+        # @test resfirst[i] == res
 
-#     @test !isvelocitystate(advd)
-#     @test getcur_t(advd) == base_dt * advd.adv.tab_coef[1]
+        # itrsecond = getitrsecond(advd,res)
 
+        # (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
 
+        # @test ressecond[i] == res2
 
-#     t_coef = [1, 1, 1, 2, 2, 2, 3, 3, 3, 1]
-#     t_dim = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1]
-#     t_indice = [1, 2, 3, 4, 5, 6, 1, 2, 3, 1]
-#     t_v = [false, false, false, true, true, true, false, false, false, false]
-#     t_result = [true, true, true, true, true, true, true, true, false, true]
-#     resfirst = [4, 4, 4, (4, 1, 1), (4, 1, 1), (4, 1, 1), 4, 4, 4, 4]
-#     ressecond = [
-#         (:, 3, 1, 4, 1, 1),
-#         (3, :, 1, 1, 4, 1),
-#         (3, 1, :, 1, 1, 4),
-#         (4, 1, 1, :, 3, 1),
-#         (4, 1, 1, 3, :, 1),
-#         (4, 1, 1, 3, 1, :),
-#         (:, 3, 1, 4, 1, 1),
-#         (3, :, 1, 1, 4, 1),
-#         (3, 1, :, 1, 1, 4),
-#         (:, 3, 1, 4, 1, 1),
-#     ]
+        #        x = t_indice[i]
+        #    @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
 
-
-
-
-#     for i = 1:length(t_coef)
-#         @test advd.state_coef == t_coef[i]
-#         @test advd.state_dim == t_dim[i]
-#         @test t_indice[i] == _getcurrentindice(advd)
-#         @test isvelocitystate(advd) == t_v[i]
-#         @test advd.state_dim == getstate_dim(advd)
-#         @test getcur_t(advd) == base_dt * adv.tab_coef[t_coef[i]]
-#         @test getbufslgn(advd) == advd.t_buf[t_indice[i]]
-#         t = isvelocitystate(advd) ? adv.t_interp_v : adv.t_interp_sp
-#         @test t[t_dim[i]] == getinterp(advd)
-
-#         # itrfirst = getitrfirst(advd)
-#         # (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
-
-#         # @test resfirst[i] == res
-
-#         # itrsecond = getitrsecond(advd,res)
-
-#         # (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
-
-#         # @test ressecond[i] == res2
-
-#         x = t_indice[i]
-#         #    @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
-
-#         ret = nextstate!(advd)
-#         @test ret == t_result[i]
-#     end
-
-
-
-# end
+        ret = nextstate!(advd)
+        @test ret == t_result[i]
+    end
+end
 
 # @testset "test Advection1d Float" begin
 
@@ -192,7 +179,7 @@ function test_ke(T::DataType)
     dx = prod(step, t_meshsp)
     dv = prod(step, t_meshv)
     sum_sp = Array{T,Nv}(undef, szv)
-    sum_sp .= reshape(sum(fxv, dims = ntuple(x -> x, Nsp)), szv)
+    sum_sp .= reshape(sum(fxv; dims = ntuple(x -> x, Nsp)), szv)
     refres = (dx * dv) * sum(dotprod(points.(t_meshv)) .^ 2 .* sum_sp)
 
     @test refres == compute_ke(t_meshsp, t_meshv, fxv)
@@ -258,7 +245,6 @@ end
 #         CartesianIndex(6, 21, 1, 3, 1),
 #     ]
 
-
 #     for i = 1:length(resfirst)
 #         itr = getitr(advd)
 
@@ -283,6 +269,10 @@ end
     test_ke(Rational{BigInt})
     test_ke(Float64)
     test_ke(BigFloat)
+end
+
+@testset "test advection" begin
+    test_adv(Float64)
 end
 # @testset "test itr" begin
 #     test_itr(Float64)

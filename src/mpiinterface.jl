@@ -1,11 +1,12 @@
 using MPI
-
 struct MPIData
     comm::Any
     nb::Any
     ind::Any
     function MPIData()
-        MPI.Init()
+        if !MPI.Initialized()
+            MPI.Init()
+        end
         comm = MPI.COMM_WORLD
         nb = MPI.Comm_size(comm)
         ind = MPI.Comm_rank(comm) + 1
@@ -14,17 +15,18 @@ struct MPIData
 end
 
 function mpibroadcast(mpid, t_split, data::Array{T,N}) where {T,N}
-
     MPI.Barrier(mpid.comm)
-    if isbitstype(T)
-        # for Float64 or Double64 ... for example
-        for i = 1:mpid.nb
+    if T == Float64
+        # for Float64 ... for example
+        # Double64 here leads to memory leaks
+        for i = 1:(mpid.nb)
             vbcast = view(data, t_split[i])
             MPI.Bcast!(vbcast, i - 1, mpid.comm)
         end
     else
         # for BigFloat ... for example
-        for i = 1:mpid.nb
+        # for Double64 also
+        for i = 1:(mpid.nb)
             vbcast = view(data, t_split[i])
             bufr = MPI.bcast(vbcast, i - 1, mpid.comm)
             if i != mpid.ind
@@ -32,5 +34,5 @@ function mpibroadcast(mpid, t_split, data::Array{T,N}) where {T,N}
             end
         end
     end
-    MPI.Barrier(mpid.comm)
+    return MPI.Barrier(mpid.comm)
 end

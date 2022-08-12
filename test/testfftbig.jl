@@ -1,5 +1,6 @@
 
 using FFTW
+using DoubleFloats
 using Random
 using LinearAlgebra
 using SemiLagrangian:
@@ -26,10 +27,7 @@ function getfalse(tab)
     return 0, 0
 end
 
-
-
 function testfftbig(s, T::DataType, seed_val)
-
     Random.seed!(seed_val)
     tab = zeros(Complex{T}, 1, s)
     tab .= rand(T, 1, s)
@@ -43,7 +41,7 @@ function testfftbig(s, T::DataType, seed_val)
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s, real(tab[1, 1]), dims = (2,))
+    p = PrepareFftBig(s, real(tab[1, 1]); dims = (2,))
 
     fftbig!(p, tab_test)
 
@@ -51,15 +49,13 @@ function testfftbig(s, T::DataType, seed_val)
 
     tol = (T == BigFloat) ? 1e-50 : 1e-15
 
-    fftbig!(p, tab_test, flag_inv = true)
+    fftbig!(p, tab_test; flag_inv = true)
 
     @test getfalse(isapprox.(tab, tab_test, atol = tol, rtol = tol)) == (0, 0)
 
     @test isapprox(tab, tab_test, atol = tol, rtol = tol)
-
 end
 function testfftbig2(s, T::DataType, seed_val, nb_v; dims = (1,))
-
     Random.seed!(seed_val)
     sizedims = dims[1] == 1 ? (s, nb_v) : (nb_v, s)
     tab = zeros(Complex{T}, sizedims)
@@ -74,7 +70,7 @@ function testfftbig2(s, T::DataType, seed_val, nb_v; dims = (1,))
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s, one(T), dims = dims)
+    p = PrepareFftBig(s, one(T); dims = dims)
 
     tab_test2 = fftbig(p, tab_test)
 
@@ -86,17 +82,15 @@ function testfftbig2(s, T::DataType, seed_val, nb_v; dims = (1,))
 
     tol = (T == BigFloat) ? 1e-50 : 1e-15
 
-    tab_test3 = fftbig(p, tab_test, flag_inv = true)
+    tab_test3 = fftbig(p, tab_test; flag_inv = true)
     @test isapprox(tab, tab_test3, atol = tol, rtol = tol)
 
-    fftbig!(p, tab_test, flag_inv = true)
+    fftbig!(p, tab_test; flag_inv = true)
 
     @test isapprox(tab, tab_test, atol = tol, rtol = tol)
-
 end
 
 function testfftbig2bis(s, T::DataType, seed_val, nb_v; dims = (1,))
-
     Random.seed!(seed_val)
     otherdim = dims[1] == 1 ? 2 : 1
     sizedims = dims[1] == 1 ? (s, nb_v) : (nb_v, s)
@@ -112,7 +106,7 @@ function testfftbig2bis(s, T::DataType, seed_val, nb_v; dims = (1,))
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s, one(T), numdims = 1, dims = (1,))
+    p = PrepareFftBig(s, one(T); numdims = 1, dims = (1,))
 
     tab_test2 = Array{Complex{T},2}(undef, sizedims)
     for i = 1:nb_v
@@ -136,27 +130,24 @@ function testfftbig2bis(s, T::DataType, seed_val, nb_v; dims = (1,))
     for i = 1:nb_v
         s_in = selectdim(tab_test, otherdim, i)
         s_out = selectdim(tab_test3, otherdim, i)
-        s_out .= fftbig(p, s_in, flag_inv = true)
+        s_out .= fftbig(p, s_in; flag_inv = true)
     end
     @test isapprox(tab, tab_test3, atol = tol, rtol = tol)
 
     for i = 1:nb_v
         sel = selectdim(tab_test, otherdim, i)
-        fftbig!(p, sel, flag_inv = true)
+        fftbig!(p, sel; flag_inv = true)
     end
 
-
     @test isapprox(tab, tab_test, atol = tol, rtol = tol)
-
 end
 
 function testfftbigprec(s, seed_v)
-
     @time @testset "test fftbig changing precision s=$s seed=$seed_v" begin
         Random.seed!(seed_v)
         for k = 1:10
             setprecision(k * 256) do
-                p = PrepareFftBig(s, dims = (1,))
+                p = PrepareFftBig(s; dims = (1,))
                 tab = rand(BigFloat, s, 5)
                 tabRef = Complex.(tab)
                 tabRes = fftgen(p, tab)
@@ -169,9 +160,7 @@ function testfftbigprec(s, seed_v)
             end
         end
     end
-
 end
-
 
 tab_decl = [
     [8, Float64, 12345678],
@@ -210,7 +199,6 @@ for sd in tab_decl3
     testfftbigprec(32, sd)
 end
 
-
 @time @testset "testfftgen" begin
     s = 128
     #s = 2048
@@ -220,8 +208,8 @@ end
     f2 = zeros(Complex{BigFloat}, 100, s)
     f2 .= f
     f2_0 = copy(f2)
-    p = PrepareFftBig(s, 0.0, dims = (2,))
-    p2 = PrepareFftBig(s, big"0.0", dims = (2,))
+    p = PrepareFftBig(s, 0.0; dims = (2,))
+    p2 = PrepareFftBig(s, big"0.0"; dims = (2,))
     fftgen!(p, f)
     fftgen!(p2, f2)
     println("1norm(f-f2)=$(norm(f-f2))")
@@ -244,8 +232,8 @@ end
     f2 = zeros(Complex{BigFloat}, s, 100)
     f2 .= f
     f2_0 = copy(f2)
-    p = PrepareFftBig(s, 0.0, numdims = 1)
-    p2 = PrepareFftBig(s, big"0.0", numdims = 1)
+    p = PrepareFftBig(s, 0.0; numdims = 1)
+    p2 = PrepareFftBig(s, big"0.0"; numdims = 1)
     for i = 1:100
         fftgen!(p, f[:, i])
         fftgen!(p2, f2[:, i])
@@ -272,8 +260,8 @@ end
     f2 = zeros(Complex{BigFloat}, 100, s)
     f2 .= f
     f2_0 = copy(f2)
-    p = PrepareFftBig(s, 0.0, dims = (1,))
-    p2 = PrepareFftBig(s, big"0.0", dims = (1,))
+    p = PrepareFftBig(s, 0.0; dims = (1,))
+    p2 = PrepareFftBig(s, big"0.0"; dims = (1,))
     for i = 1:100
         fftgen!(p, f[i, :])
         fftgen!(p2, f2[i, :])
@@ -303,7 +291,6 @@ end
 end
 
 function testfftbigmult(s, T::DataType, seed_val; dims = (1,))
-
     Random.seed!(seed_val)
     tab = zeros(Complex{T}, s)
     tab .= rand(T, s)
@@ -317,7 +304,7 @@ function testfftbigmult(s, T::DataType, seed_val; dims = (1,))
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s[collect(dims)], one(T), dims = dims)
+    p = PrepareFftBig(s[collect(dims)], one(T); dims = dims)
 
     tab_test2 = fftbig(p, tab_test)
 
@@ -329,13 +316,12 @@ function testfftbigmult(s, T::DataType, seed_val; dims = (1,))
 
     tol = (T == BigFloat) ? 1e-50 : 1e-15
 
-    tab_test3 = fftbig(p, tab_test, flag_inv = true)
+    tab_test3 = fftbig(p, tab_test; flag_inv = true)
     @test isapprox(tab, tab_test3, atol = tol, rtol = tol)
 
-    fftbig!(p, tab_test, flag_inv = true)
+    fftbig!(p, tab_test; flag_inv = true)
 
     @test isapprox(tab, tab_test, atol = tol, rtol = tol)
-
 end
 @testset "multi-dimension test" begin
     @time testfftbigmult((3, 32, 5, 16), BigFloat, 15413; dims = (2, 4))
@@ -344,7 +330,6 @@ end
 end
 
 function testfftallbig(s, T::DataType, seed_val)
-
     Random.seed!(seed_val)
     tab = zeros(Complex{T}, s)
     tab .= rand(T, s)
@@ -359,7 +344,7 @@ function testfftallbig(s, T::DataType, seed_val)
 
     tab_test = copy(tab)
 
-    p = PrepareFftBig(s[collect(dims)], one(T), dims = dims)
+    p = PrepareFftBig(s[collect(dims)], one(T); dims = dims)
 
     tab_test2 = fftgenall(p, tab_test)
 
@@ -369,7 +354,13 @@ function testfftallbig(s, T::DataType, seed_val)
 
     @test isapprox(tabfftref, tab_test, atol = 1e-15, rtol = 1e-15)
 
-    tol = (T == BigFloat) ? 1e-50 : 1e-15
+    tol = if (T == BigFloat)
+        1e-50
+    elseif (T == Double64)
+        1e-30
+    else
+        1e-15
+    end
 
     tab_test3 = ifftgenall(p, tab_test)
     @test isapprox(tab, tab_test3, atol = tol, rtol = tol)
@@ -377,11 +368,13 @@ function testfftallbig(s, T::DataType, seed_val)
     ifftgenall!(p, tab_test)
 
     @test isapprox(tab, tab_test, atol = tol, rtol = tol)
-
 end
 
 @testset "all-dimension test" begin
     @time testfftallbig((4, 32, 4, 16), BigFloat, 15416)
     @time testfftallbig((4, 32, 16, 8), BigFloat, 44488)
     @time testfftallbig((8, 32, 16, 8), BigFloat, 44588)
+    @time testfftallbig((4, 32, 4, 16), Double64, 15416)
+    @time testfftallbig((4, 32, 16, 8), Double64, 44488)
+    @time testfftallbig((8, 32, 16, 8), Double64, 44588)
 end

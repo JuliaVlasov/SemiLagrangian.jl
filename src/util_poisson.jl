@@ -20,7 +20,7 @@ function compute_ke(
     dsp = prod(step, t_mesh_sp)
     dv = prod(step, t_mesh_v)
     sum_sp = Array{T,Nv}(undef, szv)
-    sum_sp .= reshape(sum(f, dims = ntuple(x -> x, Nsp)), szv)
+    sum_sp .= reshape(sum(f; dims = ntuple(x -> x, Nsp)), szv)
     return (dsp * dv) * sum(dotprod(points.(t_mesh_v)) .^ 2 .* sum_sp)
 end
 
@@ -37,11 +37,15 @@ Compute kinetic Energy.
 function compute_ke(self::AdvectionData{T,N}) where {T,N}
     pvar::PoissonVar = getext(self)
     Nsp, Nv = getNspNv(pvar)
+    #    @show Nsp, Nv
     adv = self.adv
-    szv = length.(adv.t_mesh[1:Nsp])
+    szv = length.(adv.t_mesh[(Nsp+1):N])
     dsp = prod(step, adv.t_mesh[1:Nsp])
-    dv = prod(step, adv.t_mesh[1:Nv])
-    sum_sp = reshape(sum(getdata(self), dims = ntuple(x -> x, Nsp)), szv)
+    dv = prod(step, adv.t_mesh[(Nsp+1):N])
+    #   @show szv
+    res = sum(getdata(self); dims = ntuple(x -> x, Nsp))
+    #    @show size(res)
+    sum_sp = reshape(res, szv)
     return (dsp * dv) * sum(pvar.pc.v_square .* sum_sp)
 end
 
@@ -65,41 +69,16 @@ function compute_charge!(
     Nsp + Nv == Nsum ||
         thrown(ArgumentError("Nsp=$Nsp Nv=$Nv Nsum=$Nsum we must have Nsp+Nv==Nsum"))
     dv = prod(step, t_mesh_v)
-    rho .= dv * reshape(sum(f, dims = ntuple(x -> Nsp + x, Nv)), size(rho))
+    rho .= dv * reshape(sum(f; dims = ntuple(x -> Nsp + x, Nv)), size(rho))
     rho .-= sum(rho) / prod(size(rho))
-    nothing
+    return nothing
 end
 
-"""
-    compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
-
-Computation of electric field.
-    ∇.e = - ρ
-
-# Argument
- - `self::Advection1dData`: mutable structure of variables data.
-"""
-# function compute_elfield!( self::Advection1dData{T, Nsp, Nv, Nsum}) where{T, Nsp, Nv, Nsum}
-#     pv::PoissonVar{T, Nsp, Nv} = getext(self)
-
-#     sz = size(pv.rho)
-#     pfft = pv.pc.pfftbig
-#     buf = fftgenall(pfft, pv.rho)
-#     # for i=1:Nsp
-#     #     size(buf) == size(pv.pc.fctv_k[i]) || thrown(DimensionMismatch("size(buf)=$(size(buf)) size(fctv_k[$i])=$(size(pv.pc.fctv_k[i]))"))
-#     # end
-#     pv.t_elfield = ntuple(
-#     x -> real(ifftgenall(pfft, pv.pc.fctv_k[x] .* buf )),
-#     Nsp
-# )
-#     missing
-# end
 function compute_elfield(
     t_mesh_x::NTuple{N,UniformMesh{T}},
     rho::Array{T,N},
     pfft,
 ) where {T<:AbstractFloat,N}
-
     fct_k(v) = im / sum(v .^ 2)
 
     v_k = vec_k_fft.(t_mesh_x)
@@ -113,10 +92,21 @@ function compute_elfield(
         N,
     )
 end
-function compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where {T}
-    elf .= compute_elfield((mesh,), rho, PrepareFftBig(size(rho), zero(T); numdims = 1))[1]
-end
+"""
+    compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
 
+Computation of electric field of one dimension.
+    ∇.e = - ρ
+
+# Argument
+ - `elf::Array{T,1}`: output Vector.
+ - `mesh::UniformMesh{T}` : mesh of the vector
+ - `rho::Array{T,1}` : rho computed before
+"""
+function compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where {T}
+    return elf .=
+        compute_elfield((mesh,), rho, PrepareFftBig(size(rho), zero(T); numdims = 1))[1]
+end
 
 """
     compute_ee(t_mesh_sp, t_elf)
@@ -137,7 +127,7 @@ function compute_ee(
     for i = 1:N
         res += sum(t_elf[i] .^ 2)
     end
-    dx * res
+    return dx * res
 end
 
 """
@@ -155,4 +145,17 @@ function compute_ee(self::AdvectionData)
     Nsp, Nv = getNspNv(pvar)
     dx = prod(step, adv.t_mesh[1:Nsp])
     return dx * sum(map(x -> sum(x .^ 2), pvar.t_elfield))
+end
+function getenergy(advd::AdvectionData)
+    pv::PoissonVar = getext(advd)
+    compute_charge!(pv, advd)
+    compute_elfield!(pv)
+    elenergy = compute_ee(advd)
+    kinenergy = compute_ke(advd)
+    energyall = elenergy + kinenergy
+    return elenergy, kinenergy, energyall
+end
+function getenergyall(advd::AdvectionData)
+    _, _, energyall = getenergy(advd)
+    return energyall
 end

@@ -1,7 +1,15 @@
 
-
-
-using SemiLagrangian: splititr, splitvec, transposition, totuple, tovector, tupleshape
+using SemiLagrangian:
+    splititr,
+    splitvec,
+    transposition,
+    totuple,
+    tovector,
+    tupleshape,
+    getextarray,
+    CircEdge,
+    AbstractInterpolation,
+    interpolatemod!
 
 @testset "split util" begin
     data = [
@@ -18,11 +26,10 @@ using SemiLagrangian: splititr, splitvec, transposition, totuple, tovector, tupl
         (23, 7, 13, [23:24, 25:26, 27:28, 29:30, 31:32, 33:34, 35:35])
     ]
     for d in data2
-        @test d[4] == splitvec(d[2], collect(d[1]:d[1]+d[3]-1))
+        @test d[4] == splitvec(d[2], collect(d[1]:(d[1]+d[3]-1)))
     end
 end
 @testset "test tools" begin
-
     v = collect(1:53)
     t = splitvec(5, v)
     @test t[1] == collect(1:11)
@@ -33,8 +40,6 @@ end
 
     @test transposition(1, 2, 5) == [2, 1, 3, 4, 5]
     @test transposition(4, 2, 7) == [1, 4, 3, 2, 5, 6, 7]
-
-
 end
 
 @testset "transposition" begin
@@ -53,4 +58,18 @@ end
     @test (1, 1, 71, 1) == tupleshape(3, 4, 71)
     @test (53, 1) == tupleshape(1, 2, 53)
     @test (1, 1, 67) == tupleshape(3, 3, 67)
+end
+
+function test_extarray(T, sz, decbeg, decend)
+    tabor = rand(T, sz)
+    tabext = getextarray(tabor, decbeg, decend)
+    for ind in CartesianIndices(tabext)
+        @test tabext[ind] == tabor[CartesianIndex(mod.(ind.I .- decbeg .- 1, sz) .+ 1)]
+    end
+    @test size(tabext) == sz .+ decbeg .+ decend
+end
+@testset "ExtArray test" begin
+    test_extarray(Float64, (20, 10), (3, 5), (2, 7))
+    test_extarray(Float64, (4, 10, 7), (2, 3, 5), (1, 2, 4))
+    test_extarray(Float64, (20,), (3,), (7,))
 end

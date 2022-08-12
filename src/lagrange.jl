@@ -1,5 +1,5 @@
 
-
+using Polynomials
 """
     _getpolylagrange(k::Int64, order::Int64, origin::Int64)
 
@@ -56,17 +56,22 @@ struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
     function Lagrange(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
         origin = -div(order, 2)
         tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
-
-        new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
+        return new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
     end
 end
 
-
-# struct Lagrange2d{T, edge, order} <: AbstractInterpolation2d{T, edge, order}
-#     l1d::Lagrange{T, edge, order}
-#     function Lagrange2d(order, T::DataType=Float64; edge::EdgeType=CircEdge)
-#         new{T, edge, order}(Lagrange(order, T, edge=edge))
-#     end
-# end
-
-# gettabfct(interp::Lagrange2d)=interp.l1d.tabfct
+function _c(k, n)
+    p = integrate(_getpolylagrange(k, n, 0))
+    return p(0) - p(-1)
+end
+struct ABcoef
+    tab::Array{Rational{Int}}
+    function ABcoef(ordermax::Int)
+        tab = zeros(Rational{Int}, ordermax, ordermax)
+        for j = 1:ordermax, i = 1:j
+            tab[i, j] = _c(i - 1, j - 1)
+        end
+        return new(tab)
+    end
+end
+c(st::ABcoef, k, n) = st.tab[k, n]

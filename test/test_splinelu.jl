@@ -32,10 +32,10 @@ function decLU(A::Matrix{T}) where {T}
     n = size(A, 1)
     for k = 1:n
         pivot = A[k, k]
-        for i = k+1:n
+        for i = (k+1):n
             A[i, k] /= pivot
         end
-        for i = k+1:n, j = k+1:n
+        for i = (k+1):n, j = (k+1):n
             # if A[i,k] != 0 && A[k,j] != 0
             #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
             # end
@@ -53,7 +53,7 @@ function getLU(A::Matrix{T}) where {T}
     U = zeros(T, n, n)
     for i = 1:n
         L[i, i] = 1
-        for j = 1:i-1
+        for j = 1:(i-1)
             L[i, j] = A[i, j]
         end
         for j = i:n
@@ -70,13 +70,13 @@ function sol(A::Matrix{T}, Y::Vector{T}) where {T}
     n = size(A, 1)
     Y1 = zeros(T, n)
     for i = 1:n
-        Y1[i] = Y[i] - sum(Y1[1:i-1] .* A[i, 1:i-1])
+        Y1[i] = Y[i] - sum(Y1[1:(i-1)] .* A[i, 1:(i-1)])
     end
     #   @assert Y1 == (L^(-1))*Y "Erreur 1" 
     #   @assert isapprox(Y1, (L^(-1))*Y, atol=1e-60) "Erreur 1" 
     X = zeros(T, n)
     for i = n:-1:1
-        X[i] = (Y1[i] - sum(X[i+1:n] .* A[i, i+1:n])) / A[i, i]
+        X[i] = (Y1[i] - sum(X[(i+1):n] .* A[i, (i+1):n])) / A[i, i]
     end
     #    @assert X == (U^(-1))*Y1 "Erreur 2" 
     #    @assert isapprox(X,(U^(-1))*Y1,atol=1e-60) "Erreur 2" 
@@ -84,8 +84,6 @@ function sol(A::Matrix{T}, Y::Vector{T}) where {T}
     #    @assert isapprox(X, ((L*U)^(-1))*Y, atol=1e-60) "Erreur3"
     return X, Y1
 end
-
-
 
 function test_decLU(n)
     dividende = 10000
@@ -99,14 +97,13 @@ function test_decLU(n)
     @test B * x == b
 end
 
-
-function test_sol(T, n,order)
+function test_sol(T, n, order)
     A = topl(n, getbspline(order, 0).(1:order))
-    bsp = B_SplineLU(order,n,Float64)
+    bsp = B_SplineLU(order, n, Float64)
     b = rand(n)
-#    y = zeros(n)
+    #    y = zeros(n)
     y = sol(bsp, b)
-    diff = norm(A*y-b)
+    diff = norm(A * y - b)
     @show diff
     return diff
 end
@@ -164,12 +161,10 @@ function test_perf(n, order, iscirc)
     x2, y2 = sol(spB, b)
     @test y == y2
     @test x == x2
-
 end
 
 function test_interface()
-    getpar(bsp::B_SplineLU{T,tedge,order}) where {T,tedge,order} =
-        (T, tedge, order)
+    getpar(bsp::B_SplineLU{T,tedge,order}) where {T,tedge,order} = (T, tedge, order)
     for i = 3:2:29
         bsp = B_SplineLU(i, 104, big"0.")
         (_1, _2, order) = getpar(bsp)
@@ -178,7 +173,6 @@ function test_interface()
         @test "B_SplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
     end
 end
-
 
 @testset "test decLU that is a tool for test" begin
     test_decLU(30)
@@ -198,10 +192,10 @@ end
     test_splu(30, 10, false, true)
     test_splu(30, 9, true, true)
     test_splu(31, 10, true, true)
-    test_splu(30, 9, true, true, type = BigFloat, tol = 1e-70)
-    test_splu(31, 10, true, true, type = BigFloat, tol = 1e-70)
-    test_splu(30, 11, false, true, type = BigFloat, tol = 1e-70)
-    test_splu(31, 10, false, true, type = BigFloat, tol = 1e-70)
+    test_splu(30, 9, true, true; type = BigFloat, tol = 1e-70)
+    test_splu(31, 10, true, true; type = BigFloat, tol = 1e-70)
+    test_splu(30, 11, false, true; type = BigFloat, tol = 1e-70)
+    test_splu(31, 10, false, true; type = BigFloat, tol = 1e-70)
     test_splu(30, 3, true, false)
     test_splu(30, 4, true, false)
     test_splu(30, 3, false, false)
@@ -210,13 +204,13 @@ end
     test_splu(30, 4, false, true)
     test_splu(30, 3, true, true)
     test_splu(31, 4, true, true)
-    test_splu(30, 3, true, true, type = BigFloat, tol = 1e-70)
-    test_splu(31, 4, true, true, type = BigFloat, tol = 1e-70)
-    test_splu(30, 5, false, true, type = BigFloat, tol = 1e-70)
-    test_splu(31, 4, false, true, type = BigFloat, tol = 1e-70)
+    test_splu(30, 3, true, true; type = BigFloat, tol = 1e-70)
+    test_splu(31, 4, true, true; type = BigFloat, tol = 1e-70)
+    test_splu(30, 5, false, true; type = BigFloat, tol = 1e-70)
+    test_splu(31, 4, false, true; type = BigFloat, tol = 1e-70)
     test_interface()
 end
 
 @testset "test perf" begin
-    test_splu(1000, 9, true, true, type = Float64, tol = 1e-12, perf = true)
+    test_splu(1000, 9, true, true; type = Float64, tol = 1e-12, perf = true)
 end

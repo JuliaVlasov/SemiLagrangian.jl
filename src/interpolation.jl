@@ -524,7 +524,7 @@ function interpolate!(
     fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     interp_t::AbstractVector{I};
-    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi))
+    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
 ) where {T,N,I<:AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
@@ -556,3 +556,34 @@ function interpolate!(
     return true
 end
 
+
+function autointerp!(
+    to::Array{OpTuple{N,T},N},
+    from::Array{OpTuple{N,T},N},
+    nb::Int,
+    interp_t::AbstractVector{I},
+) where {N,T,I<:AbstractInterpolation}
+    if nb < 1
+        to .= from
+    end
+    fmr = copy(from)
+    for i = 1:nb
+        interpolate!(to, from, fmr, interp_t)
+        if i != nb
+            fmr .= to
+        end
+    end
+end
+
+
+function interpbufc!(
+    t_buf::Vector{Array{OpTuple{N,T},N}},
+    bufdec::Array{OpTuple{N,T},N},
+    interp_t::AbstractVector{I},
+    nb::Int = length(t_buf),
+) where {N,T,I<:AbstractInterpolation{T}}
+    for i = 0:(nb-1)
+        buf = t_buf[end-i]
+        interpolate!(buf, copy(buf), bufdec, interp_t)
+    end
+end

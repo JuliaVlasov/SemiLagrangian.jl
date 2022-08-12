@@ -197,7 +197,6 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
         sizeall = length.(t_mesh)
 
         newstates = map(i -> StateAdv(i, states[i]...), 1:length(states))
-        #        newstates = map(i -> StateAdv(i, states[i]..., zeros(sizeall[states[i][1]][states[2]])), 1:length(states))
 
         maxcoef = maximum(x -> x.stcoef, newstates)
 
@@ -207,7 +206,6 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
 
         nbstates = div(length(tab_coef), maxcoef) * length(states) + nbstatesplus
 
-        #        v_square = dotprod(points.(t_mesh_v)) .^ 2 # precompute for ke
         mpid = timeopt == MPIOpt ? MPIData() : missing
         nbsplit = if timeopt == MPIOpt
             mpid.nb
@@ -437,7 +435,6 @@ Function called at the end of advection function to update internal state of Adv
                 `false` at the end of the series.
 """
 function retns(self::AdvectionData, extdata::AbstractExtDataAdv)
-    #    println("generic retns")
     return false
 end
 function nextstate!(self::AdvectionData)
@@ -451,20 +448,19 @@ function nextstate!(self::AdvectionData)
     end
 end
 
-# data formating
 function getformdata(advd::AdvectionData)
-    # ptr = pointer(advd.bufdata)
-    # f = unsafe_wrap(Array, ptr, sizeall(advd.adv)[p], own=false)
     f = advd.fmrtabdata[getst(advd).ind]
     permutedims!(f, advd.data, getst(advd).perm)
     return f
 end
+
 function copydata!(advd::AdvectionData{T,N,timeopt,timealg}, f) where {T,N,timeopt,timealg}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1 && length(advd.adv.states) != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
     end
     return permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
+
 function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I<:AbstractInterpolation}
     indice = length(t_trv)
     for i = 1:(indice-1)
@@ -488,7 +484,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
         adv = self.adv
         ordalg = getordalg(adv)
         if isbegin
-            #            println("debut begin")
             t_ref = []
             t_cal = []
             push!(t_ref, copy(self.bufcur))
@@ -500,16 +495,11 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                 t_ref = reverse(t_ref)
                 t_trv = sens * copy.(t_ref)
 
-                #                @show "1", length(t_trv), length(t_cal)
-
                 decbegin!(t_trv, t_cal, adv.t_interp)
-                #                @show "2", length(t_trv), length(t_cal)
 
                 t_cal = []
                 copy!(self.data, svdata)
                 for i = 1:indice
-                    @show "3", length(t_trv), indice
-
                     fmrdec = sum(map(k -> c(adv.abcoef, k, indice) * t_trv[k], 1:indice))
                     if i != 1
                         push!(t_cal, -fmrdec)
@@ -548,7 +538,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                     initcoef!(extdata, self) # calculate bufcur
                     pushfirst!(t_trv, copy(self.bufcur))
                     pushfirst!(t_ref, copy(self.bufcur))
-                    @show "4", length(t_trv)
                 end
 
                 fmrdec =
@@ -558,7 +547,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                 sens = -sens
             end
             @assert sens == 1 "sens must be positive at this place"
-            #            @show "5", length(t_trv)
 
             t_ref = reverse(t_ref)
             t_trv = sens * copy.(t_ref)
@@ -567,8 +555,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
             self.t_bufc = t_trv
             self.data .= svdata
             self.bufcur .= svbufcur
-            #            @show "6", length(t_trv)
-            #            @show "6", length(self.t_bufc)
         end
     end
 
@@ -598,7 +584,6 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
                     cachethreads = cachethreads,
                 )
             end
-            println("fin begin")
         end
     end
     if timealg == ABTimeAlg_init
@@ -686,9 +671,7 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
     f = getformdata(self)
     st = getst(self)
     sz = size(f)[1:(st.ndims)]
-    #    @show size(f)
     tabmod = adv.tabmod[st.perm]  # just for optimization of interpolation!
-    #    @show sz, timeopt
 
     coltuple = ntuple(x -> Colon(), st.ndims)
 
@@ -714,19 +697,12 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
             for indext in itr
                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
                 local slc = view(f, coltuple..., indext)
-                # if st.ndims == 2
-                #     @show typeof(cache)
-                #     @show typeof(precal)
-                #     @show typeof(decint)
-                #     @show indext
-                # end
                 interpolate!(buf, slc, decint, precal, interp, tabmod)
                 slc .= buf
             end
         else
             for indext in itr
                 local slc = view(f, coltuple..., indext)
-                # @show indext
                 interpolate!(
                     buf,
                     slc,
@@ -739,10 +715,8 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
             end
         end
     elseif timeopt == SimpleThreadsOpt
-        #        @inbounds begin
         local itr = collect(getitr(self))
         if st.isconstdec
-            #            @show itr
             @threads for indext in itr
                 local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
                 local cache = self.t_cache[st.ind][Threads.threadid()]
@@ -767,14 +741,11 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
                 slc .= buf
             end
         end
-        #        end
     elseif timeopt == SplitThreadsOpt
-        #        @inbounds begin
         Threads.@threads for indth = 1:Threads.nthreads()
             local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
             local cache = self.t_cache[st.ind][Threads.threadid()]
             local itr = getitr(self)
-            #           @show itr
             if st.isconstdec
                 for indext in itr
                     local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
@@ -785,7 +756,6 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
             else
                 for indext in itr
                     local slc = view(f, coltuple..., indext)
-                    #           @show ind
                     interpolate!(
                         buf,
                         slc,
@@ -798,7 +768,6 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
                 end
             end
         end
-        #        end
     end
     copydata!(self, f)
     return nextstate!(self)

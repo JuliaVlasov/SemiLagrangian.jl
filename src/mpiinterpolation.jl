@@ -5,9 +5,7 @@ function interpolate!(
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
     mpid::Union{MPIData,Missing} = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
-    #    itr::AbstractArray=CartesianIndices(fi)
+    t_split = missing
 ) where {T,N,I<:AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
@@ -15,9 +13,7 @@ function interpolate!(
         ),
     )
 
-    isthreads = !ismissing(cachethreads)
     sz = size(fp)
-    #    @show "interpolate!", sz
     res = sol(interp_t, fi)
 
     order = get_order.(interp_t)
@@ -34,35 +30,14 @@ function interpolate!(
         return fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N2)...] .* tab)
     end
     ci = CartesianIndices(sz)
-    if isthreads
-        if ismissing(t_split)
-            #            println("SimpleThreads")
-            @threads for ind in ci
-                local cache = cachethreads[Threads.threadid()]
-                fct(ind, cache)
-            end
-        else
-            #            println("SplitThreads")
-            @threads for it in t_split
-                local cache = cachethreads[Threads.threadid()]
-                for ind in ci[it]
-                    fct(ind, cache)
-                end
-            end
-        end
-    else
-        local cache = CachePrecal(interp_t, zero(T))
-        itr = ismissing(mpid) ? ci : ci[t_split[mpid.ind]]
-        for ind in itr
-            fct(ind, cache)
-        end
+    local cache = CachePrecal(interp_t, zero(T))
+    itr = ismissing(mpid) ? ci : ci[t_split[mpid.ind]]
+    for ind in itr
+        fct(ind, cache)
     end
 
-    if !ismissing(mpid)
-        mpibroadcast(mpid, t_split, fp)
-    end
+    mpibroadcast(mpid, t_split, fp)
     return true
-    #    @show "std2d", diffmax, decminmin, decmaxmax
 end
 
 function autointerp!(
@@ -72,7 +47,6 @@ function autointerp!(
     interp_t::AbstractVector{I};
     mpid::Union{MPIData,Missing} = missing,
     t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
 ) where {N,T,I<:AbstractInterpolation}
     if nb < 1
         to .= from
@@ -86,9 +60,7 @@ function autointerp!(
             interp_t;
             mpid = mpid,
             t_split = t_split,
-            cachethreads = cachethreads,
         )
-        #        @show "autointerp!", i, nb, norm(fmr-to)
         if i != nb
             fmr .= to
         end
@@ -103,7 +75,6 @@ function interpbufc!(
     nb::Int = length(t_buf);
     mpid::Union{MPIData,Missing} = missing,
     t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
 ) where {N,T,I<:AbstractInterpolation{T}}
     for i = 0:(nb-1)
         buf = t_buf[end-i]
@@ -114,7 +85,6 @@ function interpbufc!(
             interp_t;
             mpid = mpid,
             t_split = t_split,
-            cachethreads = cachethreads,
         )
     end
 end

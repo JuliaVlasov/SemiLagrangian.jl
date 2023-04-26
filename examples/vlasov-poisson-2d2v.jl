@@ -7,11 +7,11 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.11.5
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Julia 1.7.2
+#     display_name: Julia 1.8.5
 #     language: julia
-#     name: julia-1.7
+#     name: julia-1.8
 # ---
 
 using LinearAlgebra
@@ -211,5 +211,3 @@ tabst = map(
 )
 # -
 @time run_simulation(T, 10000, MPIOpt; sz = (64, 64, 64, 64), dt = big"0.01", interp = Lagrange(27, T))
-
-

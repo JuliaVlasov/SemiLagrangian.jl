@@ -1,7 +1,7 @@
 
 using Polynomials
 """
-    _getpolylagrange(k::Int64, order::Int64, origin::Int64)
+$(SIGNATURES)
 
 Function that return the k-th Lagrange Polynomial of a certain order. Coefficients are rational then the return is exact. The polynomial is equal to :
 ``\\prod_{i=0,\\ i \\neq k}^{order} \\frac{x - i - origin}{k - i}``
@@ -15,9 +15,9 @@ Function that return the k-th Lagrange Polynomial of a certain order. Coefficien
 - `Polynomial{Rational{BigInt}}` : the k-th Lagrange polynomial of order `order`
 
 # Throws
-- `DommaineError` : when `0 <= k <= order` is `false` or when N ∉ {BInt64, BigInt}
+- `DommaineError` : when `0 <= k <= order` is `false` 
 """
-function _getpolylagrange(k::Int, order::Int, origin::Int) where {N<:Integer}
+function _getpolylagrange(k::Int, order::Int, origin::Int)
     0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     # the computed is made with big rational
     result = Polynomials.Polynomial([big(1 // 1)])
@@ -30,8 +30,7 @@ function _getpolylagrange(k::Int, order::Int, origin::Int) where {N<:Integer}
 end
 
 """
-    Lagrange{T, edge, order, N} <: AbstractInterpolation{T, edge, order}
-    Lagrange(order, T::DataType=Float64; edge::EdgeType=CircEdge)
+$(TYPEDEF)
 
 Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 

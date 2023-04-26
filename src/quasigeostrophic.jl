@@ -106,7 +106,7 @@ end
     self::AdvectionData{T},
     indext::CartesianIndex,
     indbuf::CartesianIndex,
-) where {T,N,Nsp,Nv}
+) where {T,N}
     st = getst(self)
     ind = CartesianIndex((indbuf.I..., indext.I...)[st.invp])
     return ntuple(x -> self.bufcur[ind][st.invp[x]], st.ndims)

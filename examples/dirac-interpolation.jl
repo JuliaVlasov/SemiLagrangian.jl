@@ -1,3 +1,5 @@
+# # Dirac interpolation
+
 using SemiLagrangian
 
 function aff_graph(ind, fp)
@@ -10,7 +12,7 @@ function aff_graph(ind, fp)
         maxval = max(val, maxval)
     end
     println("minval=$minval maxval=$maxval")
-    return println("ind=$ind end")
+    println("ind=$ind end")
 end
 
 function test_dirac(bsp, order, len, nb, modval)
@@ -32,10 +34,14 @@ function test_dirac(bsp, order, len, nb, modval)
     end
 end
 
+?Lagrange
+
 function test_dirac_lagrange(order, len, nb, modval)
-    lag = Lagrange(BigFloat, order; iscirc = true)
+    lag = Lagrange(BigFloat, CircEdge, order)
     return test_dirac(lag, order, len, nb, modval)
 end
+test_dirac_lagrange(31, 256, 500, 50)
+
 
 function test_dirac_splu(order, len, nb, modval)
     bsp = B_SplineLU(order, len, BigFloat; iscirc = true)
@@ -47,7 +53,6 @@ function test_dirac_spfft(order, len, nb, modval)
     return test_dirac(bsp, order, len, nb, modval)
 end
 
-test_dirac_lagrange(31, 256, 500, 50)
 test_dirac_splu(31, 256, 500, 50)
 test_dirac_spfft(31, 256, 500, 50)
 

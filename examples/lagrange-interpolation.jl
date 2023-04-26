@@ -7,7 +7,7 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Julia 1.8.5
 #     language: julia
@@ -20,7 +20,7 @@ using SemiLagrangian
 using Plots
 using Test
 
-order = 5
+order = 5 
 lag = Lagrange(order, Float64)
 
 f(x) = (x+2) * (3x+2) * (2x-1) * (x - 2) * (3x+1)
@@ -35,7 +35,7 @@ end
 plot( f, LinRange(-2.1, 2.1, 100))
 scatter!(xi, fi)
 
-g(x, y) = exp(-(x^2+y^2))
+g(x, y) = f(x) * f(y)
 
 # +
 order = 3
@@ -60,5 +60,7 @@ end
 contour(xi, yi, g)
 
 contour(xi, yi, gi)
+
+
 
 

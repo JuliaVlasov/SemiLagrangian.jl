@@ -2,6 +2,11 @@
 @enum TimeOptimization NoTimeOpt = 1 SimpleThreadsOpt = 2 SplitThreadsOpt = 3 MPIOpt = 4
 @enum TimeAlgorithm NoTimeAlg = 1 ABTimeAlg_ip = 2 ABTimeAlg_new = 3 ABTimeAlg_init = 4
 
+"""
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+"""
 struct StateAdv{N}
     ind::Int          # indice
     perm::Vector{Int} # dimensions permutation
@@ -14,10 +19,25 @@ struct StateAdv{N}
     end
 end
 
+"""
+$(SIGNATURES)
+"""
 nosplit(dt::T) where {T} = dt * [1]
+"""
+$(SIGNATURES)
+"""
 standardsplit(dt::T) where {T} = dt * [1, 1]
+"""
+$(SIGNATURES)
+"""
 strangsplit(dt::T) where {T} = dt * [1 // 2, 1 // 1, 1 // 2]
+"""
+$(SIGNATURES)
+"""
 magicsplit(dt::T) where {T} = [tan(dt / 2), sin(dt), tan(dt / 2)]
+"""
+$(SIGNATURES)
+"""
 function triplejumpsplit(dt::T) where {T}
     c = T(2)^(1 // 3)
     c1 = 1 / (2(2 - c))
@@ -27,6 +47,9 @@ function triplejumpsplit(dt::T) where {T}
     return dt * [c1, d1, c2, d2, c2, d1, c1]
 end
 
+"""
+$(SIGNATURES)
+"""
 function order6split(dt::T) where {T}
     order6 = [
         0.0414649985182624,
@@ -60,6 +83,9 @@ function order6split(dt::T) where {T}
     return dt * b
 end
 
+"""
+$(SIGNATURES)
+"""
 function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
     a = [
         big"0.168735950563437422448195173400884809990898960535052167820406",
@@ -98,6 +124,9 @@ function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
     return result
 end
 
+"""
+$(SIGNATURES)
+"""
 function table2split(dt::T) where {T}
     a = [big"1.079852426382430882456991", -big"0.579852426382430882456991", 0]
     b = [
@@ -121,6 +150,8 @@ function table2split(dt::T) where {T}
 end
 
 """
+$(TYPEDEF)
+
     Advection{T}
     Advection(
         t_mesh::NTuple{N,UniformMesh{T}},
@@ -231,7 +262,7 @@ struct Advection{T,N,I,timeopt,timealg,ordalg}
     end
 end
 """
-    sizeall(adv::Advection)
+$(SIGNATURES)
 
 Return a tuple of the sizes of each dimensions
 
@@ -313,6 +344,8 @@ Mutable structure that contains variable parameters of advection series
 - `initcoef!(parext::AbstractExtDataAdv, self::Advection1dData)` : this method called at the beginning of each advection to initialize parext data. The `self.parext` mutable structure is the only data that initcoef! can modify otherwise it leads to unpredictable behaviour.
 - `getalpha(parext::AbstractExtDataAdv, self::Advection1dData, ind)` : return the alpha number that is used for interpolation.
 - `getperm(parext::AbstractExtDataAdv, advd::Advection1dData)` : get the permutation of the dimension as a function of the current state, the dimension where advection occurs must be first, the dimensions used to compute alpha must be at the end.
+
+$(TYPEDFIELDS)
 
 """
 mutable struct AdvectionData{T,N,timeopt,timealg}
@@ -425,7 +458,7 @@ getitr(self::AdvectionData) = self.t_itr[getst(self).ind][getindsplit(self)]
 gett_split(self::AdvectionData) = self.tt_split[getst(self).ind]
 
 """
-    nextstate!(self::AdvectionData{T, N})
+$(SIGNATURES)
 
 Function called at the end of advection function to update internal state of AdvectionData structure
 
@@ -439,6 +472,11 @@ Function called at the end of advection function to update internal state of Adv
 function retns(self::AdvectionData, extdata::AbstractExtDataAdv)
     return false
 end
+
+
+"""
+$(SIGNATURES)
+"""
 function nextstate!(self::AdvectionData)
     if self.state_gen < self.adv.nbstates
         self.state_gen += 1
@@ -450,12 +488,18 @@ function nextstate!(self::AdvectionData)
     end
 end
 
+"""
+$(SIGNATURES)
+"""
 function getformdata(advd::AdvectionData)
     f = advd.fmrtabdata[getst(advd).ind]
     permutedims!(f, advd.data, getst(advd).perm)
     return f
 end
 
+"""
+$(SIGNATURES)
+"""
 function copydata!(advd::AdvectionData{T,N,timeopt,timealg}, f) where {T,N,timeopt,timealg}
     if timeopt == MPIOpt && advd.adv.nbsplit != 1 && length(advd.adv.states) != 1
         mpibroadcast(advd.adv.mpid, gett_split(advd), f)
@@ -463,6 +507,9 @@ function copydata!(advd::AdvectionData{T,N,timeopt,timealg}, f) where {T,N,timeo
     return permutedims!(advd.data, f, invperm(getst(advd).perm))
 end
 
+"""
+$(SIGNATURES)
+"""
 function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I<:AbstractInterpolation}
     indice = length(t_trv)
     for i = 1:(indice-1)
@@ -473,6 +520,9 @@ function decbegin!(t_trv, t_cal, t_interp::Vector{I}) where {I<:AbstractInterpol
     end
 end
 
+"""
+$(SIGNATURES)
+"""
 function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,timealg}
     nbtours = 3
     isbegin = ismissing(self.bufcur)
@@ -652,7 +702,7 @@ function initcoef!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt,
 end
 
 """
-    advection!(self::AdvectionData)
+$(SIGNATURES)
 
 Advection function of a multidimensional function `f` discretized on `mesh`
 

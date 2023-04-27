@@ -62,28 +62,44 @@ end
 
 fct1(x) = cos(2π * x + 0.25)
 fct2(x) = exp(-(cos(2π * x + 0.25) - 1)^2)
-fct3(x) = exp(-((x - 0.5)/0.1)^2)
+fct3(x) = exp(-((x - 0.4)/0.1)^2)
+
+nx = 128
+mesh = UniformMesh(0., 1., nx)
+fp = fct3.(mesh.points)
+fi = copy(fp)
+order = 5
+interp = Lagrange(order, Float64)
 
 
+# +
+function advection!(fp, fi, mesh, interp, v, dt)
 
-sz = 128
-mesh = collect(0:(sz-1)) ./ sz
-deb = fct3.(mesh)
-fp = deb
-fi = zeros(sz)
-dec = 1.0
-decint = floor(Int, dec)
-value = dec - decint
-interp = Lagrange(5, Float64)
-if get_order(interp) % 2 == 0 && value > 0.5
-    value -= 1
-    decint += 1
+    dec = - v * dt / mesh.step
+    decint = floor(Int, dec)
+    value = dec - decint
+    
+    if get_order(interp) % 2 == 0 && value > 0.5
+        value -= 1
+        decint += 1
+    end
+        
+    precal =  [fct(value) for fct in interp.tabfct]    
+    
+    interpolate!(fp, fi, decint, precal, interp)
+    
 end
-precal =  [fct(value) for fct in interp.tabfct]      
-fi .= fp
-interpolate!(fp, fi, decint, precal, interp)
-plot(mesh, fp)
-plot!(mesh, fi)
+# -
 
+v, dt = 1.0, 1.0
+nsteps = 100
+dt = 0.2 / nsteps
+plot(mesh.points, fp, xlims=(0,1))
+for i in 1:nsteps
+    advection!(fp, fi, mesh, interp, v, dt)
+   
+    fi .= fp
+end
+plot!(mesh.points, fp, xlims=(0,1))
 
 

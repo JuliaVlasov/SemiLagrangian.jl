@@ -100,6 +100,7 @@ end
 @inline function getprecal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where {T}
     return v .= getprecal(bsp, decf)
 end
+
 @inline function getprecal!(
     v::Vector{T},
     bsp::Vector{I},
@@ -107,6 +108,7 @@ end
 ) where {T,I<:AbstractInterpolation{T}}
     return getprecal!(v, bsp[1], decf)
 end
+
 @inline function getprecal!(
     v::Array{T,N},
     bsp::Vector{I},
@@ -115,6 +117,9 @@ end
     return v .= dotprod(ntuple(x -> getprecal(bsp[x], decf[x]), N))
 end
 
+"""
+$(SIGNATURES)
+"""
 function get_allprecal(
     interp::AbstractInterpolation{T,InsideEdge,order},
     decint::Int,
@@ -125,6 +130,10 @@ function get_allprecal(
     indend = indbeg + order
     return [getprecal(interp, decfloat + i) for i = indbeg:indend]
 end
+
+"""
+$(TYPEDEF)
+"""
 struct ValInv{T}
     a::Int
     b::T
@@ -134,6 +143,10 @@ struct ValInv{T}
         return new{T}(round(Int, real(val)), imag(val), val, ind)
     end
 end
+
+"""
+$(SIGNATURES)
+"""
 function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
     return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
 end
@@ -335,6 +348,9 @@ mutable struct CachePrecal{T,N,I}
     end
 end
 
+"""
+$(SIGNATURES)
+"""
 @inline function getprecal(self::CachePrecal{T,N}, alpha::NTuple{N,T}) where {T,N}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
@@ -345,14 +361,23 @@ end
     return self.cache_int, self.precal
 end
 
+"""
+$(SIGNATURES)
+"""
 @inline function getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real}
     return getprecal(self, reim(alpha))
 end
 
+"""
+$(SIGNATURES)
+"""
 @inline function getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real}
     return getprecal(self, alpha.v)
 end
 
+"""
+$(SIGNATURES)
+"""
 @inline function getprecal(self::CachePrecal{T,1}, alpha::T) where {T}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
@@ -363,6 +388,9 @@ end
     return self.cache_int, self.precal
 end
 
+"""
+$(SIGNATURES)
+"""
 @inline function getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where {T}
     return getprecal(self, alpha[1])
 end
@@ -462,6 +490,9 @@ function interpolatemod!(
 
 end
 
+"""
+$(SIGNATURES)
+"""
 function getinverse(
     dec::NTuple{N,Array{T,N}},
     interp::Vector{I},
@@ -589,6 +620,9 @@ function interpolate!(
     return true
 end
 
+"""
+$(SIGNATURES)
+"""
 function autointerp!(
     to::Array{OpTuple{N,T},N},
     from::Array{OpTuple{N,T},N},
@@ -619,6 +653,9 @@ function autointerp!(
 end
 
 
+"""
+$(SIGNATURES)
+"""
 function interpbufc!(
     t_buf::Vector{Array{OpTuple{N,T},N}},
     bufdec::Array{OpTuple{N,T},N},
@@ -628,6 +665,7 @@ function interpbufc!(
     t_split::Union{Tuple,Missing} = missing,
     cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
 ) where {N,T,I<:AbstractInterpolation{T}}
+
     for i = 0:(nb-1)
         buf = t_buf[end-i]
         interpolate!(
@@ -640,4 +678,5 @@ function interpbufc!(
             cachethreads = cachethreads,
         )
     end
+
 end

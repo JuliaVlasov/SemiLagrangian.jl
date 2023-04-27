@@ -92,33 +92,17 @@ Get the fft coefficients of the mesh
 - fft coefficients
 """
 function vec_k_fft(mesh::UniformMesh{T}) where {T}
-    midx = div(length(mesh), 2)
+    nx = length(mesh)
     k = 2T(pi) / (width(mesh))
-    res = k * vcat(0:(midx-1), (-midx):-1)
+    res = k .* collect(fftfreq(nx, nx))
     return res
 end
-
-# @inline function newval(valref, val, borne, width)
-#     diff = val - valref
-#     if abs(diff) > borne
-#         s = sign(diff)
-#         divdiff, moddiff = divrem(diff, width)
-#         if abs(moddiff) > borne
-#             val -= (divdiff + s) * width
-#         else
-#             val -= divdiff * width
-#         end
-#     end
-#     return val
-# end
 
 @inline function newval(valref, val, borne, width)
     diff = val - valref
     return abs(diff) >= borne ? valref + mod(diff + borne, width) - borne : val
 end
-# @inline function newval(valref::OpTuple{N,T}, val::OpTuple{N,T}, borne::OpTuple{N,T}, width::OpTuple{N,T}) where{N,T}
-#     return OpTuple(ntuple(x -> newval(valref[x],val[x],borne[x],width[x]),N))
-# end
+
 function traitmodend!(
     lg::T2,
     f::Array{T2,N},

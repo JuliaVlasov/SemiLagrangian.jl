@@ -7,7 +7,7 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.4
 #   kernelspec:
 #     display_name: Julia 1.8.5
 #     language: julia
@@ -16,6 +16,7 @@
 
 # # Lagrange Interpolation
 
+using LinearAlgebra
 using SemiLagrangian
 using Plots
 using Test
@@ -38,7 +39,7 @@ scatter!(xi, fi)
 g(x, y) = f(x) * f(y)
 
 # +
-order = 3
+order = 5
 lag = Lagrange(order, Float64)
 nx, ny = 100, 100
 xi = LinRange(-4, 4, nx)
@@ -57,10 +58,28 @@ end
 
 # -
 
-contour(xi, yi, g)
+@test f.(xi) .* f.(yi') ≈ gi
 
-contour(xi, yi, gi)
+fct1(x) = cos(2π * x + 0.25)
 
-
+sz = 128
+mesh = collect(0:(sz-1)) ./ sz
+deb = fct1.(mesh)
+fp = deb
+fi = zeros(sz)
+dec = 1.0
+decint = floor(Int, dec)
+value = dec - decint
+interp = Lagrange(3, Float64)
+if get_order(interp) % 2 == 0 && value > 0.5
+    value -= 1
+    decint += 1
+end
+precal = SemiLagrangian.getprecal(interp, value)       
+fi .= fp
+@test ref ≈ fct1.(mesh .+ dec / sz)
+interpolate!(fp, fi, decint, precal, interp)
+plot(mesh, fp)
+plot!(mesh, fi)
 
 

@@ -3,18 +3,23 @@ using Polynomials
 """
 $(SIGNATURES)
 
-Function that return the k-th Lagrange Polynomial of a certain order. Coefficients are rational then the return is exact. The polynomial is equal to :
+Function that return the k-th Lagrange Polynomial of a certain order. 
+If coefficients are rational then the return is exact. The polynomial is equal to :
+
 ``\\prod_{i=0,\\ i \\neq k}^{order} \\frac{x - i - origin}{k - i}``
 
 # Arguments
+
 - `k::Int64` : number of the Polynomial, `k` must be between `0` and `order` (`0<= k <= order`).
 - `order::Int64` : order of the polynomial.
 - `origin::Int64` : origin of the first indice.
 
 # Returns
+
 - `Polynomial{Rational{BigInt}}` : the k-th Lagrange polynomial of order `order`
 
 # Throws
+
 - `DommaineError` : when `0 <= k <= order` is `false` 
 """
 function _getpolylagrange(k::Int, order::Int, origin::Int)
@@ -51,12 +56,19 @@ Type containing Lagrange Polynomials coefficients for Lagrange interpolation
 
 """
 struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
+
     tabfct::Vector{Polynomial{T}}
+
     function Lagrange(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
+
         origin = -div(order, 2)
-        tabfct_rat = collect([_getpolylagrange(i, order, origin) for i = 0:order])
+
+        tabfct_rat = [_getpolylagrange(i, order, origin) for i = 0:order]
+
         return new{T,edge,order}(convert.(Polynomial{T}, tabfct_rat))
+
     end
+
 end
 
 function _c(k, n)

@@ -51,10 +51,9 @@ the grid points $X_g$, thus, we have to interpolate (in $2D$) to compute
 $f(t^n, X(t^n))$. The semi-Lagrangian methods can be split into two
 steps
 
-1.  compute $X(t^n)$
+1. compute $X(t^n)$
 
-2.  compute $f(t^n, X(t^n))$: from the known values $f(t^n, X_g)$,
-    interpolate at $X(t^n)$.
+2. compute $f(t^n, X(t^n))$: from the known values $f(t^n, X_g)$, interpolate at $X(t^n)$.
 
 These two steps are details in the next section.
 
@@ -277,7 +276,7 @@ total energy ``{\cal E}_e+{\cal E}_k`` is preserved with time. We can also
 consider the time evolution of ``{\cal E}_e`` for which we know the
 behavior.
 
-### Example 4: guiding-center
+### Example 4: Guiding-center
 
 ```math
 \partial_t f + E_x \partial_x f +E_y \partial_y f = 0, f(t=0, x, y)= f_0(x, y)
@@ -302,15 +301,6 @@ energy ``{\cal E}_e :=\int\!\int (E_x^2+E_y^2)dxdy`` and the enstrophy
 ``{\cal E}_f:=\int\!\int f^2 dx dy`` are preserved with time. Some results
 are given in [^qiu] or [^crouseilles].
 
-## Etienne's models
-
-The code for the Etienne's model is available at
-<https://github.com/vressegu/sqgmu> (matlab). If I understood well, the
-deterministic case is exactly the guiding-center model (with different
-initial condition but with periodic boundary conditions). Stochastic
-terms can be added that we perhaps can take into account in our
-numerical method.
-
 ---
 
 ## References
@@ -320,8 +310,6 @@ numerical method.
 [^leveque]: R. LeVeque, *High-resolution conservative algorithms for advection in incompressible flow*, SIAM Journal on Numerical Analysis, (1996), pp.  627-665.  <https://www.jstor.org/stable/2158391?seq=29#metadata_info_tab_contents>
 
 [^qiu]: J. Qiu, C.-W. Shu, *Conservative high order semi-Lagrangian finite difference WENO methods for advection in incompressible flow*, Journal of Computational Physics, Volume 230, Issue 4, 20 (2011), pp. 863-889.
-
-[^lauritzen]: P. Lauritzen, D. Ramachandran, P. Ullrich, *A conservative semi-Lagrangian multi-tracer transport scheme (CSLAM) on the cubed-sphere grid*, J. Comput. Phys. 229, (2010), pp. 1401-1424.
 
 [^crouseilles]: N. Crouseilles, M. Mehrenberger, E. Sonnendrücker *Conservative semi-Lagrangian methods for the Vlasov equations*, J. Comput. Phys., 229, pp 1927-1953, (2010).
 

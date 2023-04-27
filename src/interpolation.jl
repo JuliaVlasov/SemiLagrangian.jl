@@ -3,7 +3,7 @@ import Base: isless
 @enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
-    AbstractInterpolation{T, edge, order, nd}
+$(SIGNATURES)
 
 Abstract supertype for all interpolation type
 
@@ -18,13 +18,14 @@ Abstract supertype for all interpolation type
 abstract type AbstractInterpolation{T,edge,order} end
 
 """
-    get_order(_::AbstractInterpolation{T, edge, order}) where{T, edge, order}
+$(SIGNATURES)
+   
 Return the order of interpolation implementation       
 """
 get_order(_::AbstractInterpolation{T,edge,order}) where {T,edge,order} = order
 
 """
-    sol(_::AbstractInterpolation, line::AbstractVector)
+$(SIGNATURES)
 
 Interface method to transform the treated line, by default this method does nothing
 
@@ -137,13 +138,7 @@ function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tup
 end
 
 """
-    interpolate!( fp::AbstractVector{T}, 
-        fi::AbstractVector{T},
-        decint::Int, 
-        precal::Vector{T}, 
-        interp::AbstractInterpolation{T, CircEdge, order},
-        self::AdvectionData{T},
-        tabmod=gettabmod(size(fi)) ) where {T, order}
+$(SIGNATURES)
 
 apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
 decint and precal are precompute with getprecal method, the TypeEdge is CircEdge
@@ -213,12 +208,7 @@ function interpolate!(
 end
 
 """
-    interpolate!( 
-    fp::AbstractVector{T}, fi::AbstractVector{T}, decint::Int, 
-    allprecal::Vector{Vector{T}}, 
-    interp::AbstractInterpolation{T, InsideEdge, order},
-    tabmod=gettabmod(length(fi))
-    ) where {T, order}
+$(SIGNATURES)
 
 apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
 decint and precal are precompute with getprecal method, the TypeEdge is InsideEdge, it is a marginal case
@@ -273,7 +263,7 @@ function interpolate!(
 end
 
 """
-    interpolate!( fp, fi, dec, interp)
+$(SIGNATURES)
 
 apply the offset dec to the function fi interpolate by interp struct, the result is in fp Vector
 

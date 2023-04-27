@@ -276,6 +276,8 @@ function initfmrdata(adv::Advection, bufdata::Vector{T}, state) where {T}
 end
 
 """
+$(TYPEDEF)
+
     AdvectionData{T,N,timeopt}
     AdvectionData(
     adv::Advection{T,N,timeopt},

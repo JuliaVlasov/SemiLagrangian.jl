@@ -61,25 +61,29 @@ end
 @test f.(xi) .* f.(yi') ≈ gi
 
 fct1(x) = cos(2π * x + 0.25)
+fct2(x) = exp(-(cos(2π * x + 0.25) - 1)^2)
+fct3(x) = exp(-((x - 0.5)/0.1)^2)
+
+
 
 sz = 128
 mesh = collect(0:(sz-1)) ./ sz
-deb = fct1.(mesh)
+deb = fct3.(mesh)
 fp = deb
 fi = zeros(sz)
 dec = 1.0
 decint = floor(Int, dec)
 value = dec - decint
-interp = Lagrange(3, Float64)
+interp = Lagrange(5, Float64)
 if get_order(interp) % 2 == 0 && value > 0.5
     value -= 1
     decint += 1
 end
-precal = SemiLagrangian.getprecal(interp, value)       
+precal =  [fct(value) for fct in interp.tabfct]      
 fi .= fp
-@test ref ≈ fct1.(mesh .+ dec / sz)
 interpolate!(fp, fi, decint, precal, interp)
 plot(mesh, fp)
 plot!(mesh, fi)
+
 
 

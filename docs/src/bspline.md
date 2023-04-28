@@ -1,9 +1,8 @@
 # B-spline
 
 
-```@docs
-SemiLagrangian.BSpline
-SemiLagrangian.LuSpline
-SemiLagrangian.BSplineFFT
-SemiLagrangian.BSplineLU
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["spline.jl", "bspline.jl", "bsplinelu.jl", "bsplinefft.jl"]
 ```

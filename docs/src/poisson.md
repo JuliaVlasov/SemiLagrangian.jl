@@ -1,6 +1,7 @@
 # Poisson solver
 
-```@docs
-SemiLagrangian.PoissonVar
-SemiLagrangian.PoissonConst
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["poisson.jl", "util_poisson.jl"]
 ```

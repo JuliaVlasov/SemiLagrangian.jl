@@ -4,6 +4,8 @@
 To compute a Lagrange interpolation you have to instantiate
 a `Lagrange` type variable:
 
-```@docs
-SemiLagrangian.Lagrange
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["lagrange.jl"]
 ```

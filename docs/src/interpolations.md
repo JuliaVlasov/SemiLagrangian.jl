@@ -1,12 +1,7 @@
 # Interpolations
 
-```@docs
-SemiLagrangian.AbstractInterpolation
-SemiLagrangian.get_order
-SemiLagrangian.sol(_::AbstractInterpolation, b::AbstractVector)
-SemiLagrangian.interpolate!
-SemiLagrangian.CachePrecal
-SemiLagrangian.ValInv
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["interpolation.jl"]
 ```
-
-

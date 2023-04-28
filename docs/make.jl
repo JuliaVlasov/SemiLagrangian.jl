@@ -24,13 +24,13 @@ makedocs(;
     doctest = false,
     pages = [
         "Home" => "index.md",
-        "Quickstart" => ["rotation.md", "vlasov-poisson.md"],
+        "Quickstart" => ["rotation.md", "vlasov-poisson.md", 
+                         "translation.md", "surfacequasigeostrophic.md"],
         "Meshes" => "meshes.md",
         "Interpolations" => ["interpolations.md", "lagrange.md", "bspline.md", "hermite.md"],
         "Poisson solver" => "poisson.md",
         "Advection" => "advection.md",
         "Two dimensions" => "modele_2d.md",
-        "Functions" => "functions.md",
         "Contents" => "contents.md",
     ],
 )

@@ -1,5 +1,12 @@
 # Rotation
+
 First simulation using semi-lagrangian method to get a rotation
+
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["rotation.jl"]
+```
 
 ```@example rotation
 

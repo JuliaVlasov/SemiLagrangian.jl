@@ -47,7 +47,14 @@ Get the step of the mesh
 """
 Base.step(mesh::UniformMesh) = mesh.step
 
+"""
+$(SIGNATURES)
+"""
 start(mesh::UniformMesh) = mesh.points[1]
+
+"""
+$(SIGNATURES)
+"""
 stop(mesh::UniformMesh) = mesh.points[end] + mesh.step
 
 
@@ -121,6 +128,10 @@ function traitmodend!(
 ) where {N,T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
     return f .= mod.(f, lg)
 end
+
+"""
+$(SIGNATURES)
+"""
 function traitmodbegin!(
     lg::T2,
     f::Array{T2,N},
@@ -174,7 +185,7 @@ end
 """
 $(SIGNATURES)
 """
-dtomesh(mesh::UniformMesh{T}, v) where {T} = mesh.step * v .+ mesh.points[1]
+stdtomesh(mesh::UniformMesh{T}, v) where {T} = mesh.step * v .+ mesh.points[1]
 
 """
 $(SIGNATURES)

@@ -1,11 +1,7 @@
 ## Meshes
 
-```@docs
-SemiLagrangian.UniformMesh
-Base.step
-Base.length
-SemiLagrangian.points
-SemiLagrangian.width
-SemiLagrangian.vec_k_fft
+```@autodocs
+Modules = [SemiLagrangian]
+Order   = [:type, :function]
+Pages   = ["mesh.jl"]
 ```
-

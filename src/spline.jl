@@ -1,8 +1,8 @@
 
 import Base: +, *, -, ==, getindex, setindex!
-# import Base: +, *
 
 abstract type AbstractSpline{N} end
+
 struct Spline{N} <: AbstractSpline{N}
     tabpol::Vector{Polynomials.Polynomial{Rational{N}}}
     function Spline(tabpol::Vector{Polynomials.Polynomial{Rational{N}}}) where {N<:Signed}
@@ -18,13 +18,9 @@ function Base.getindex(sp::AbstractSpline{N}, index::Integer) where {N<:Signed}
         zero(Polynomials.Polynomial{Rational{N}})
     end
 end
-# function Base.getindex(sp::AbstractSpline{N}, index::AbstractRange) where{N<:Signed}
-#     return Base.getindex.((sp::AbstractSpline{N},), index::AbstractRange)
-# end
-# function Base.setindex!(sp::AbstractSpline{N}, pol::Polynomials.Polynomial{Rational{N}}, index) where{N<:Signed}
-#     sp.tabpol[index-1] = pol
-# end
+
 Base.size(sp::AbstractSpline, dim = 1) = size(sp.tabpol, 1)
+
 function +(a::Spline{N}, b::Spline{N}) where {N<:Signed}
     sizenew = max(size(a.tabpol, 1), size(b.tabpol, 1))
     tabpolnew = zeros(Polynomials.Polynomial{Rational{N}}, sizenew)
@@ -33,6 +29,7 @@ function +(a::Spline{N}, b::Spline{N}) where {N<:Signed}
     end
     return (Spline(tabpolnew))
 end
+
 function -(a::Spline{N}, b::Spline{N}) where {N<:Signed}
     sizenew = max(size(a.tabpol, 1), size(b.tabpol, 1))
     tabpolnew = zeros(Polynomials.Polynomial{Rational{N}}, sizenew)
@@ -41,6 +38,7 @@ function -(a::Spline{N}, b::Spline{N}) where {N<:Signed}
     end
     return (Spline(tabpolnew))
 end
+
 function ==(a::Spline{N}, b::Spline{N}) where {N<:Signed}
     return a.tabpol == b.tabpol
 end
@@ -65,7 +63,9 @@ function decal(a::Spline{N}, n) where {N<:Signed}
         Spline(vcat(zeros(Polynomials.Polynomial{Rational{N}}, n), tabpol))
     end
 end
+
 w(p, j) = Polynomials.Polynomial([-j // p, 1 // p])
+
 function _getbspline(n::N, j) where {N<:Signed}
     #   println("_getbspline($n=$n , j=$j ) N=$N")
     if n == zero(N)
@@ -78,6 +78,7 @@ function _getbspline(n::N, j) where {N<:Signed}
     #    println("n=$n j=$j N=$N ret=$ret")
     return ret
 end
+
 function getbspline(n, j)
     return if (n > 8)
         _getbspline(big(n), j)
@@ -85,6 +86,7 @@ function getbspline(n, j)
         _getbspline(n, j)
     end
 end
+
 function (f::Spline{N})(x) where {N<:Signed}
     i = Int64((floor(x))) # it's different from ceil(x)
     if 0 <= i < size(f, 1)
@@ -93,29 +95,3 @@ function (f::Spline{N})(x) where {N<:Signed}
         return zero(x)
     end
 end
-# struct SplineInt{N} <: AbstractSpline{N}
-#     fact_order::N
-#     tabpol::Vector{Polynomials.Polynomial{N}}
-# end
-# function SplineInt(order)
-#     sp = getbspline(order, 0)
-#     N = order <= 13 ? Int64 : BigInt
-#     fact_order = factorial(big(order))
-#     return SplineInt{N}(N(fact_order), map( x->Polynomial(N.(fact_order*coeffs(sp[x]))), 0:order))
-# end
-# function (f::SplineInt{N})(x::T) where{N<:Signed, T <: AbstractFloat}
-#     i = Int64((floor(x))) # it's different from ceil(x)
-#     if 0 <= i < size(f,1)
-#         return f[i](x)/f.fact_order
-#     else
-#         return zero(x)/f.fact_order
-#     end
-# end
-# function (f::SplineInt{N})(x::Union{Rational,Int}) where{N<:Signed}
-#     i = Int64((floor(x))) # it's different from ceil(x)
-#     if 0 <= i < size(f,1)
-#         return f[i](x)//f.fact_order
-#     else
-#         return zero(x)//f.fact_order
-#     end
-# end

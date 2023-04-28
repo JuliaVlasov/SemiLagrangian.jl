@@ -1,9 +1,9 @@
 """
-$(EXPORTS)
+$(README)
+
+# Dependencies
 
 $(IMPORTS)
-
-$(README)
 
 """
 module SemiLagrangian

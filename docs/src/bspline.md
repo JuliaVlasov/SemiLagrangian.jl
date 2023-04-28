@@ -2,8 +2,8 @@
 
 
 ```@docs
-SemiLagrangian.B_Spline
+SemiLagrangian.BSpline
 SemiLagrangian.LuSpline
-SemiLagrangian.B_SplineFFT
-SemiLagrangian.B_SplineLU
+SemiLagrangian.BSplineFFT
+SemiLagrangian.BSplineLU
 ```

@@ -62,8 +62,8 @@ function fctmain(sz, dt::T, ordmax) where {T}
     for order = 3:2:ordmax
         println("order=$order")
         lag = Lagrange(BigFloat, order)
-        splu = B_SplineLU(order, mesh1.length, zero(T))
-        spfft = B_SplineFFT(order, mesh1.length, zero(T))
+        splu = BSplineLU(order, mesh1.length, zero(T))
+        spfft = BSplineFFT(order, mesh1.length, zero(T))
 
         y[ind, 1] = fctadv(lag, mesh1, mesh2, v1, v2, refdeb, refend, dt)
         y[ind, 2] = fctadv(splu, mesh1, mesh2, v1, v2, refdeb, refend, dt)
@@ -116,8 +116,8 @@ function fctmain2(sz, ordmax)
     for order = 3:ordmax
         println("order=$order")
         lag = Lagrange(BigFloat, order)
-        splu = B_SplineLU(order, sz, big"0.")
-        #        spfft = B_SplineFFT(order, sz, big"0.")
+        splu = BSplineLU(order, sz, big"0.")
+        #        spfft = BSplineFFT(order, sz, big"0.")
 
         y[ind, 1] = fctinter(lag, sz)
         y[ind, 2] = fctinter(splu, sz)
@@ -153,11 +153,11 @@ end
 function fctmain_gnuplot(sz, ordmax)
     prec = precision(BigFloat)
     println("# begin gnuplot size=$sz julia precision=$prec")
-    println("# order\tLagrange\tformule\t(formule-lag)\tB_SplineLU")
+    println("# order\tLagrange\tformule\t(formule-lag)\tBSplineLU")
     dec = big"0.351726155665655665187291927162514231451"
     for order = 3:ordmax
         lag = Lagrange(BigFloat, order)
-        splu = B_SplineLU(order, sz, big"0.")
+        splu = BSplineLU(order, sz, big"0.")
         reslag = fctinter(lag, sz, dec)
         ressplu = fctinter(splu, sz, dec)
         resformule = formule(order, sz, dec)
@@ -170,7 +170,7 @@ function fctmainsize_gnuplot(szlist, orderlist)
     println("# begin gnuplot order=$orderlist julia precision=$prec")
     print("# size")
     for order in orderlist
-        print("\tLagrange($order)\tB_Spline($order)")
+        print("\tLagrange($order)\tBSpline($order)")
     end
     println("")
     dec = big"0.351726155665655665187291927162514231451"
@@ -178,7 +178,7 @@ function fctmainsize_gnuplot(szlist, orderlist)
         print("$sz")
         for order in orderlist
             lag = Lagrange(BigFloat, order)
-            splu = B_SplineLU(order, sz, big"0.")
+            splu = BSplineLU(order, sz, big"0.")
             reslag = fctinter(lag, sz, dec)
             ressplu = fctinter(splu, sz, dec)
             print("\t$reslag\t$ressplu")

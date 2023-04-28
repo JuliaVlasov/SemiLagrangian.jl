@@ -99,8 +99,8 @@ fp = fct3.(mesh.points)
 fi = copy(fp)
 plot(mesh.points, fp, xlims=(0,1))
 interp = Lagrange(order, Float64)
-interp = B_SplineLU(order, nx, Float64)
-interp = B_SplineFFT(order, nx, Float64)
+interp = BSplineLU(order, nx, Float64)
+interp = BSplineFFT(order, nx, Float64)
 for i in 1:nsteps
     advection!(fp, fi, mesh, interp, v, dt)
     fi .= fp

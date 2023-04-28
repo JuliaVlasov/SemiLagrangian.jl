@@ -214,7 +214,7 @@ end
 get_order(sp::LuSpline) = sp.ku + sp.kl + 1
 
 """
-    B_SplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
+    BSplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
 
 Type containing spline coefficients for b-spline interpolation
 
@@ -233,13 +233,13 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineLU{T,edge,order} <: B_Spline{T,edge,order}
+struct BSplineLU{T,edge,order} <: BSpline{T,edge,order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
-    function B_SplineLU(order::Int, n::Int, T::DataType = Float64)
+    function BSplineLU(order::Int, n::Int, T::DataType = Float64)
         (order % 2 == 0) && throw(
             ArgumentError(
-                "order=$order B_SplineLU for even  order is not implemented n=$n",
+                "order=$order BSplineLU for even  order is not implemented n=$n",
             ),
         )
         bspline = getbspline(order, 0)
@@ -250,15 +250,15 @@ struct B_SplineLU{T,edge,order} <: B_Spline{T,edge,order}
         ls = LuSpline(n, convert.(T, bspline.(1:order)); iscirc = true, isLU = true)
         return new{T,CircEdge,order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
-    function B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}
-        return B_SplineLU(o, n, T; kwargs...)
+    function BSplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}
+        return BSplineLU(o, n, T; kwargs...)
     end
 end
 
-function sol!(X::AbstractVector{I}, bsp::B_SplineLU{T}, Y::AbstractVector{I}) where {T,I}
+function sol!(X::AbstractVector{I}, bsp::BSplineLU{T}, Y::AbstractVector{I}) where {T,I}
     return sol!(X, bsp.ls, Y)[1]
 end
 
-function sol(bsp::B_SplineLU{T}, b::AbstractVector{I}) where {T<:Number,I}
+function sol(bsp::BSplineLU{T}, b::AbstractVector{I}) where {T<:Number,I}
     return sol!(zeros(I, length(b)), bsp, copy(b))
 end

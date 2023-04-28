@@ -42,7 +42,7 @@ export nosplit,
     hamsplit_3_11,
     ymsplit,
     table2split
-export Lagrange, Hermite, B_SplineLU, B_SplineFFT, interpolate!
+export Lagrange, Hermite, BSplineLU, BSplineFFT, interpolate!
 export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar

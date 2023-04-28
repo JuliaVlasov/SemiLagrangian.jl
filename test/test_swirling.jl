@@ -12,8 +12,8 @@ using SemiLagrangian:
     AbstractInterpolation,
     Lagrange,
     Hermite,
-    B_SplineLU,
-    B_SplineFFT,
+    BSplineLU,
+    BSplineFFT,
     interpolate!,
     gettabmod,
     CachePrecal,
@@ -254,7 +254,7 @@ end
     @time @test test_swirling_adv(
         (100, 100),
         one(T),
-        [B_SplineLU(9, 100, T), B_SplineLU(9, 100, T)],
+        [BSplineLU(9, 100, T), BSplineLU(9, 100, T)],
         50,
     ) < 5
     @time @test test_swirling_adv((100, 100), one(T), [Hermite(9, T), Hermite(9, T)], 50) <

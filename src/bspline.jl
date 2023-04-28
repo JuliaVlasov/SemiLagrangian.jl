@@ -1,5 +1,7 @@
 
 """
+$(TYPEDEF)
+
     BSpline{T, edge, order} <: AbstractInterpolation{T, edge, order}
 
 Abstract supertype for all bspline interpolation type

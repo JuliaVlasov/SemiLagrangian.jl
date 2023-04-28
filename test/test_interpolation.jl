@@ -4,8 +4,8 @@ using DoubleFloats
 using SemiLagrangian:
     AbstractInterpolation,
     Lagrange,
-    B_SplineLU,
-    B_SplineFFT,
+    BSplineLU,
+    BSplineFFT,
     interpolate!,
     isbspline,
     getbspline,
@@ -121,7 +121,7 @@ function test_interp2d(
     t_interp::Vector{I},
     coeff::T,
     sz::Tuple{Int,Int},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,I<:AbstractInterpolation{T,CircEdge}}
     prec = 1000 * eps(T)
     @show prec
     ref = zeros(T, sz)
@@ -489,7 +489,7 @@ test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 12
 
 test_interp(Lagrange(3, Rational{BigInt}; edge = CircEdge), 128)
 
-test_interp(B_SplineLU(3, 128, Rational{BigInt}), 128)
+test_interp(BSplineLU(3, 128, Rational{BigInt}), 128)
 
 test_interpfloat(Lagrange(3, BigFloat; edge = CircEdge), 128, 1e-3, 100)
 test_interpfloat(Lagrange(3, Float64; edge = CircEdge), 128, 1e-3, 100)
@@ -506,14 +506,14 @@ test_interpfloat(Lagrange(4, Float64; edge = CircEdge), 256, 1e-5)
 test_interpfloat(Lagrange(22, BigFloat; edge = CircEdge), 256, 1e-20)
 test_interpfloat(Lagrange(12, Float64; edge = CircEdge), 256, 1e-10)
 
-test_interpfloat(B_SplineLU(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(B_SplineLU(3, 256, Float64), 256, 1e-5)
+test_interpfloat(BSplineLU(3, 256, BigFloat), 256, 1e-5)
+test_interpfloat(BSplineLU(3, 256, Float64), 256, 1e-5)
 
-test_interpfloat(B_SplineLU(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(B_SplineLU(11, 256, Float64), 256, 1e-12)
+test_interpfloat(BSplineLU(21, 256, BigFloat), 256, 1e-30)
+test_interpfloat(BSplineLU(11, 256, Float64), 256, 1e-12)
 
-test_interpfloat(B_SplineFFT(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(B_SplineFFT(3, 256, Float64), 256, 1e-5)
+test_interpfloat(BSplineFFT(3, 256, BigFloat), 256, 1e-5)
+test_interpfloat(BSplineFFT(3, 256, Float64), 256, 1e-5)
 
-test_interpfloat(B_SplineFFT(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(B_SplineFFT(11, 256, Float64), 256, 1e-12)
+test_interpfloat(BSplineFFT(21, 256, BigFloat), 256, 1e-30)
+test_interpfloat(BSplineFFT(11, 256, Float64), 256, 1e-12)

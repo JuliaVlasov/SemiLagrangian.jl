@@ -2,7 +2,7 @@ using LinearAlgebra
 using Random
 using Polynomials
 using SemiLagrangian:
-    get_kl_ku, getbspline, LuSpline, B_SplineLU, sol, decal, get_order, interpolate!
+    get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
 import SemiLagrangian: sol, sol!
 
 Random.seed!(5431221)
@@ -99,7 +99,7 @@ end
 
 function test_sol(T, n, order)
     A = topl(n, getbspline(order, 0).(1:order))
-    bsp = B_SplineLU(order, n, Float64)
+    bsp = BSplineLU(order, n, Float64)
     b = rand(n)
     #    y = zeros(n)
     y = sol(bsp, b)
@@ -164,13 +164,13 @@ function test_perf(n, order, iscirc)
 end
 
 function test_interface()
-    getpar(bsp::B_SplineLU{T,tedge,order}) where {T,tedge,order} = (T, tedge, order)
+    getpar(bsp::BSplineLU{T,tedge,order}) where {T,tedge,order} = (T, tedge, order)
     for i = 3:2:29
-        bsp = B_SplineLU(i, 104, big"0.")
+        bsp = BSplineLU(i, 104, big"0.")
         (_1, _2, order) = getpar(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test "B_SplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
+        @test "BSplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
     end
 end
 
@@ -178,7 +178,7 @@ end
     test_decLU(30)
 end
 
-@testset "test B_SplineLU sol" begin
+@testset "test BSplineLU sol" begin
     @test test_sol(Float64, 128, 9) < 1e-10
 end
 

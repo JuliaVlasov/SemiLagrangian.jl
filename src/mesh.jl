@@ -1,5 +1,7 @@
 
 """
+$(TYPEDEF)
+
     UniformMesh{T}
     UniformMesh(start::T, stop::T, length::Int) where {T}
 
@@ -29,7 +31,10 @@ struct UniformMesh{T}
         return new{T}(step_loc, points, width)
     end
 end
+
 """
+$(SIGNATURES)
+
     Base.step(mesh::UniformMesh)
 
 Get the step of the mesh
@@ -44,7 +49,11 @@ Base.step(mesh::UniformMesh) = mesh.step
 
 start(mesh::UniformMesh) = mesh.points[1]
 stop(mesh::UniformMesh) = mesh.points[end] + mesh.step
+
+
 """
+$(SIGNATURES)
+
     Base.length(mesh::UniformMesh)
 
 Get the length of the mesh
@@ -103,6 +112,9 @@ end
     return abs(diff) >= borne ? valref + mod(diff + borne, width) - borne : val
 end
 
+"""
+$(SIGNATURES)
+"""
 function traitmodend!(
     lg::T2,
     f::Array{T2,N},
@@ -142,64 +154,29 @@ function traitmodbegin!(
     return flagmod
 end
 
+"""
+$(SIGNATURES)
+"""
 function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N}
     return traitmodbegin!(width(mesh), f)
 end
-# traitmodbegin!(mesh::NTuple{N,UniformMesh{T}}, f::Array{OpTuple{T,N},N}) where {T,N} = traitmodbegin!(OpTuple(width.(mesh)),f)
 
-# function traitmodbegin!(mesh::Union{NTuple{N,UniformMesh{T}},UniformMesh{T}}, f::Array{T,N}) where {T,N}
-#     sz = size(f)
-#     wdth = width.(mesh)
-#     borne = wdth ./ 2
-#     flagmod = false
-#     list = [ones(Int, N)]
-#     flagfait = zeros(Bool, sz)
-#     incr = map(x -> map(y -> y == x, 1:N), 1:N)
-#     while !isempty(list)
-#         indice = popfirst!(list)
-# #        @show indice
-#         valref = f[indice...]
-#         for i = 1:N
-#             newindice = indice + incr[i]
-#             if newindice[i] <= sz[i]
-#                 if !flagfait[newindice...]
-#                     val = f[newindice...]
-#                     nval = newval(valref, val, borne, wdth)
-#                     if nval != val
-#                         f[newindice...] = nval
-#                         flagmod = true
-#                     end
-#                     flagfait[newindice...] = true
-#                     push!(list, newindice)
-#                 end
-#             end
-#         end
-#     end
-#     return flagmod
-# end
+"""
+$(SIGNATURES)
+"""
 function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
     strt = start(mesh)
     res .-= strt
     traitmodend!(width(mesh), res)
     return res .+= strt
 end
-# function traitmodend!(t_mesh::NTuple{N, UniformMesh{T}}, res::Array{OpTuple{N,T},N}) where {T,N}
-#     strt = OpTuple(start.(t_mesh))
-#     res .-= strt
-#     traitmodend!(OpTuple(width.(t_mesh)), res)
-#     res .+= strt
-# end
 
-stdtomesh(mesh::UniformMesh{T}, v) where {T} = mesh.step * v .+ mesh.points[1]
+"""
+$(SIGNATURES)
+"""
+dtomesh(mesh::UniformMesh{T}, v) where {T} = mesh.step * v .+ mesh.points[1]
+
+"""
+$(SIGNATURES)
+"""
 meshtostd(mesh::UniformMesh{T}, v) where {T} = (v .- mesh.points[1]) / mesh.step
-
-# function gettuple_x(t_mesh::NTuple{N,UniformMesh{T}}) where {T,N}
-#     sz = length.(t_mesh)
-#     ret = ntuple(x -> zeros(T, sz), N)
-#     for ind in CartesianIndices(sz)
-#         for i = 1:N
-#             ret[i][ind] = t_mesh[i].points[ind.I[i]]
-#         end
-#     end
-#     return ret
-# end

@@ -27,3 +27,6 @@ characteristics. Two steps are needed to update the distribution function
 
 *[Eric Sonnendrücker - Numerical methods for the Vlasov equations](http://www-m16.ma.tum.de/foswiki/pub/M16/Allgemeines/NumMethVlasov/Num-Meth-Vlasov-Notes.pdf)*
 
+```@docs
+SemiLagrangian.SemiLagrangian
+```

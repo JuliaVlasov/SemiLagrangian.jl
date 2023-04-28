@@ -1,4 +1,3 @@
-
 using Polynomials
 
 function cplxlagrange(tab::Array{Complex{T}}, k::CartesianIndex) where {T}
@@ -18,6 +17,7 @@ function getpoly(tab::Array{Complex{T},2}) where {T}
     end
     return p
 end
+
 function getpolyvec(tab::Array{Complex{T},2}) where {T}
     p = Polynomial([zero(Complex{T}), zero(Complex{T})])
     order = size(tab, 1) - 1

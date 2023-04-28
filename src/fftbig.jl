@@ -1,11 +1,8 @@
-#=
-fft:
-- Julia version: 
-- Author: ymocquar
-- Date: 2019-11-15
-=#
-# function that reverse the order of the pos lowest bits
+"""
+$(SIGNATURES)
 
+function that reverse the order of the pos lowest bits
+"""
 function _reverse_num(num, pos)
     result = 0
     pos_m1 = pos - 1
@@ -18,6 +15,8 @@ function _reverse_num(num, pos)
 end
 
 """
+$(TYPEDEF)
+
     PrepareFftBig( size_fft::Unsigned, [T=BigFloat])
 
 Immutable structure to operate fft transform, 
@@ -39,7 +38,6 @@ x is the type of non transformed data also called signal.
 - DIMS : tuple of dimensions
 
 """
-
 struct PrepareFftBig{T,NUMDIMS,DIMS}
     size_fft::Any
     tab_permut::Any
@@ -77,16 +75,23 @@ struct PrepareFftBig{T,NUMDIMS,DIMS}
         return new{T,numdims,dims}(size_fft, tab_permut, root_one, root_one_conj)
     end
 end
+
+
 function PrepareFftBig(size_fft, type::DataType; kwargs...)
     return PrepareFftBig(size_fft, one(type); kwargs...)
 end
+
 function PrepareFftBig(size_fft; kwargs...)
     return PrepareFftBig(size_fft, one(BigFloat); kwargs...)
 end
+
 function PrepareFftBig(s::Integer, x::T; kwargs...) where {T<:AbstractFloat}
     return PrepareFftBig((s,), x; kwargs...)
 end
 
+"""
+$(SIGNATURES)
+"""
 function fftbig!(
     par::PrepareFftBig{T,NUMDIMS,DIMS},
     signal;
@@ -101,8 +106,6 @@ function fftbig!(
         nb_r = 1
         rootO = flag_inv ? par.root_one[inddim] : par.root_one_conj[inddim]
         perm = par.tab_permut[inddim]
-        #    prec= precision(real(rootO[1]))
-        #    setprecision(prec+32) do
         while n_len != 0
             start = 1
             suite = start + n_len
@@ -120,16 +123,6 @@ function fftbig!(
                         s_start .= s_sum
                         s_suite .= s_diff
                     end
-                    # if NDIMS == 1
-                    #     signal[start], signal[suite] = (signal[start] + signal[suite]), 
-                    #     (signal[start] - signal[suite])*rootO[j]
-                    # elseif NUMDIM == 1
-                    #     signal[start, :], signal[suite, :] = (signal[start, :] + signal[suite, :]), 
-                    #     (signal[start, :] - signal[suite, :])*rootO[j]
-                    # else
-                    #     signal[:,start], signal[:,suite] = (signal[:,start] + signal[:,suite]), 
-                    #     (signal[:,start] - signal[:,suite])*rootO[j]
-                    # end
                     start += 1
                     suite += 1
                 end
@@ -152,6 +145,7 @@ function fftbig!(
     end
     return signal
 end
+
 function fftbig(
     par::PrepareFftBig{T,NUMDIMS,DIMS},
     signal;
@@ -165,52 +159,39 @@ function fftbig(
     )
 end
 
-# fftgen(_::Any, t::AbstractArray{Complex{Float64}}) = fft(t, (1,))
-# fftgen!(_::Any, t::AbstractArray{Complex{Float64}}) = fft!(t, (1,))
-# fftgen(_::Any, t::AbstractArray{Float64}) = fft(t, (1,))
-# fftgenall(_::Any, t::AbstractArray{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
-# fftgenall!(_::Any, t::AbstractArray{Complex{Float64}}) = fft(t, ntuple(x->x,ndims(t)))
 fftgenall(_::Any, t::AbstractArray{Float64}) = fft(t, ntuple(x -> x, ndims(t)))
 
-# function fftgen(
-#     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
-#     t::AbstractArray{Complex{Float64}}
-# ) where {T, NUMDIMS, DIMS}
-#     return fft(t, DIMS)
-# end
 function fftgen!(
     _::PrepareFftBig{T,NUMDIMS,DIMS},
     t::AbstractArray{Complex{Float64}},
 ) where {T,NUMDIMS,DIMS}
     return fft!(t, DIMS)
 end
+
 function fftgen(
     _::PrepareFftBig{T,NUMDIMS,DIMS},
     t::AbstractArray{Float64},
 ) where {T,NUMDIMS,DIMS}
     return fft(t, DIMS)
 end
+
 fftgenall(p::PrepareFftBig, t::AbstractArray{Float64}) = fftgen(p, t)
-# fftgenall(p::PrepareFftBig,t::AbstractArray{Complex{Float64}})=fftgen(p, t)
-# fftgenall!(p::PrepareFftBig,t::AbstractArray{Complex{Float64}})=fftgen!(p, t)
 
 fftgen(p::PrepareFftBig, t::AbstractArray{T}) where {T<:AbstractFloat} = fftbig(p, t)
+
 function fftgen(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T<:AbstractFloat}
     return fftbig(p, t)
 end
+
 function fftgen!(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T<:AbstractFloat}
     return fftbig!(p, t)
 end
+
 fftgenall(p::PrepareFftBig, t::AbstractArray{T}) where {T} = fftgen(p, t)
 fftgenall(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T} = fftgen(p, t)
 fftgenall!(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T} = fftgen!(p, t)
 
-# ifftgen(_::Any, t::AbstractArray{Complex{Float64}}) = ifft(t, (1,))
-# ifftgen!(_::Any, t::AbstractArray{Complex{Float64}}) = ifft!(t, (1,))
-# ifftgen(_::Any, t::AbstractArray{Float64}) = ifft(t, (1,))
 ifftgenall(_::Any, t::AbstractArray{Complex{Float64}}) = ifft(t, ntuple(x -> x, ndims(t)))
-# ifftgenall!(_::Any, t::AbstractArray{Complex{Float64}}) = ifft(t, ntuple(x->x,ndims(t)))
-# ifftgenall(_::Any, t::AbstractArray{Float64}) = ifft(t, ntuple(x->x,ndims(t)))
 
 function ifftgen(
     _::PrepareFftBig{T,NUMDIMS,DIMS},
@@ -218,29 +199,23 @@ function ifftgen(
 ) where {T,NUMDIMS,DIMS}
     return ifft(t, DIMS)
 end
+
 function ifftgen!(
     _::PrepareFftBig{T,NUMDIMS,DIMS},
     t::AbstractArray{Complex{Float64}},
 ) where {T,NUMDIMS,DIMS}
     return ifft!(t, DIMS)
 end
-# function ifftgen(
-#     _::PrepareFftBig{T, NUMDIMS, DIMS}, 
-#     t::AbstractArray{Float64}
-# ) where {T, NUMDIMS, DIMS}
-#     return ifft(t, DIMS)
-# end
-# ifftgenall(p::PrepareFftBig,t::AbstractArray{Float64})=ifftgen(p, t)
-ifftgenall(p::PrepareFftBig, t::AbstractArray{Complex{Float64}}) = ifftgen(p, t)
-# ifftgenall!(p::PrepareFftBig,t::AbstractArray{Complex{Float64}})=ifftgen!(p, t)
 
-# ifftgen(p::PrepareFftBig, t::AbstractArray{T}) where {T}  = fftbig(p, t, flag_inv = true)
+ifftgenall(p::PrepareFftBig, t::AbstractArray{Complex{Float64}}) = ifftgen(p, t)
+
 function ifftgen(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T}
     return fftbig(p, t; flag_inv = true)
 end
+
 function ifftgen!(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T}
     return fftbig!(p, t; flag_inv = true)
 end
-# ifftgenall(p::PrepareFftBig,t::AbstractArray{T}) where {T} =ifftgen(p, t)
+
 ifftgenall(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T} = ifftgen(p, t)
 ifftgenall!(p::PrepareFftBig, t::AbstractArray{Complex{T}}) where {T} = ifftgen!(p, t)

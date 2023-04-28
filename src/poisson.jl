@@ -1,6 +1,9 @@
 
 @enum TypePoisson StdPoisson = 1 StdPoisson2d = 2 StdABp = 3
 
+"""
+$(SIGNATURES)
+"""
 function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     fct_k(v) = im / sum(v .^ 2)
     Nsp = div(N, 2)
@@ -11,10 +14,9 @@ function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
     return ntuple(x -> reshape(v_k[x], tupleshape(x, Nsp, sz[x])) .* fctv_k_gen, Nsp)
 end
 
-# using SHA
-# cod(a::Array) = bytes2hex(sha256(reinterpret(UInt8, collect(Iterators.flatten(a)))))
-
 """
+$(TYPEDEF)
+
     PoissonConst{T, Nsp, Nv}
     PoissonConst(adv::Advection{T, Nsp, Nv, Nsum}; isfftbig=true)
 
@@ -59,6 +61,8 @@ end
 getNspNv(pc::PoissonConst{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
 
 """
+$(TYPEDEF)
+
     PoissonVar{T, N, Nsp, Nv} <: AbstractExtDataAdv{T}
     PoissonVar(pc::PoissonConst{T, N, Nsp, Nv})
 
@@ -89,13 +93,20 @@ mutable struct PoissonVar{T,N,Nsp,Nv,type,typeadd} <: AbstractExtDataAdv
         return new{T,N,Nsp,Nv,type,typeadd}(pc, rho, missing, missing, missing, missing)
     end
 end
+
+"""
+$(SIGNATURES)
+"""
 function getpoissonvar(adv::Advection; type::TypePoisson = StdPoisson, typeadd = 0)
     pc = PoissonConst(adv; type = type, typeadd = typeadd)
     return PoissonVar(pc)
 end
 
 getNspNv(_::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv} = (Nsp, Nv)
+
 """
+$(SIGNATURES)
+
     compute_charge!( self::PoissonVar, advd::AdvectionData)
 
  Compute charge density
@@ -114,6 +125,8 @@ function compute_charge!(
 end
 
 """
+$(SIGNATURES)
+
     compute_elfield!( self:PoissonVar)
 
 computation of electric field
@@ -131,6 +144,8 @@ function compute_elfield!(self::PoissonVar{T,N,Nsp,Nv}) where {T,N,Nsp,Nv}
 end
 
 """
+$(SIGNATURES)
+
     initcoef!(pv::PoissonVar{T, N,Nsp, Nv}, self::AdvectionData{T, N})
 
 Implementation of the interface function that is called at the begining of each advection
@@ -141,6 +156,11 @@ function isvelocity(pv::PoissonVar{T,N,Nsp,Nv}, advd::AdvectionData{T,N}) where 
     st = getst(advd)
     return st.perm[1] > Nsp
 end
+
+
+"""
+$(SIGNATURES)
+"""
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson},
     advd::AdvectionData{T,N},
@@ -183,6 +203,10 @@ function initcoef!(
         end
     end
 end
+
+"""
+$(SIGNATURES)
+"""
 @inline function getalpha(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson},
     advd::AdvectionData{T},
@@ -199,6 +223,9 @@ end
     end
 end
 
+"""
+$(SIGNATURES)
+"""
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
     advd::AdvectionData{T,N,timeopt},

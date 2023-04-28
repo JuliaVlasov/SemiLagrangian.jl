@@ -1,5 +1,8 @@
 import Base: ==
 
+"""
+$(SIGNATURES)
+"""
 function decLULu(iscirc, band, lastcols, lastrows)
     wd = size(band, 1)
     kl, ku = get_kl_ku(wd)
@@ -59,6 +62,8 @@ function decLULu(iscirc, band, lastcols, lastrows)
 end
 
 """
+$(TYPEDEF)
+
     struct LuSpline{T}
     LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
 
@@ -155,6 +160,8 @@ struct LuSpline{T}
         return new{T}(band, ku, kl, iscirc, isLU, lastcols, lastrows)
     end
 end
+
+
 function ==(la::LuSpline{T}, lb::LuSpline{T}) where {T}
     return (
         la.ku == lb.ku &&
@@ -165,6 +172,10 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where {T}
         (!la.iscirc || (la.lastrows == lb.lastrows && la.lastcols == lb.lastcols))
     )
 end
+
+"""
+$(SIGNATURES)
+"""
 function sol!(X::AbstractVector{I}, spA::LuSpline{T}, Y::AbstractVector{I}) where {T,I}
     szb = size(spA.band, 2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
@@ -207,6 +218,10 @@ function sol!(X::AbstractVector{I}, spA::LuSpline{T}, Y::AbstractVector{I}) wher
     end
     return X, Y
 end
+
+"""
+$(SIGNATURES)
+"""
 function sol(spA::LuSpline{T}, b::AbstractVector) where {T}
     return sol!(zeros(eltype(b), size(b, 1)), spA, copy(b))
 end
@@ -214,7 +229,9 @@ end
 get_order(sp::LuSpline) = sp.ku + sp.kl + 1
 
 """
-    B_SplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
+$(TYPEDEF)
+
+    BSplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
 
 Type containing spline coefficients for b-spline interpolation
 
@@ -233,32 +250,35 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineLU{T,edge,order} <: B_Spline{T,edge,order}
+struct BSplineLU{T,edge,order} <: BSpline{T,edge,order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
-    function B_SplineLU(order::Int, n::Int, T::DataType = Float64)
+    function BSplineLU(order::Int, n::Int, T::DataType = Float64)
         (order % 2 == 0) && throw(
             ArgumentError(
-                "order=$order B_SplineLU for even  order is not implemented n=$n",
+                "order=$order BSplineLU for even  order is not implemented n=$n",
             ),
         )
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order - x, 1])), 0:order)
-        # bspline = SplineInt(order)
-        # N = typeof(bspline.fact_order)
-        # tabpol = map(x -> bspline[order-x](Polynomial([order-x,1])), 0:order)
         ls = LuSpline(n, convert.(T, bspline.(1:order)); iscirc = true, isLU = true)
         return new{T,CircEdge,order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
-    function B_SplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}
-        return B_SplineLU(o, n, T; kwargs...)
+    function BSplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}
+        return BSplineLU(o, n, T; kwargs...)
     end
 end
 
-function sol!(X::AbstractVector{I}, bsp::B_SplineLU{T}, Y::AbstractVector{I}) where {T,I}
+"""
+$(SIGNATURES)
+"""
+function sol!(X::AbstractVector{I}, bsp::BSplineLU{T}, Y::AbstractVector{I}) where {T,I}
     return sol!(X, bsp.ls, Y)[1]
 end
 
-function sol(bsp::B_SplineLU{T}, b::AbstractVector{I}) where {T<:Number,I}
+"""
+$(SIGNATURES)
+"""
+function sol(bsp::BSplineLU{T}, b::AbstractVector{I}) where {T<:Number,I}
     return sol!(zeros(I, length(b)), bsp, copy(b))
 end

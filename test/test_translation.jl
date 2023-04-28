@@ -15,8 +15,8 @@ using SemiLagrangian:
     AbstractInterpolation,
     interpolate!,
     Lagrange,
-    B_SplineLU,
-    B_SplineFFT,
+    BSplineLU,
+    BSplineFFT,
     Hermite
 """
 
@@ -171,21 +171,21 @@ end
     ) < 1e-3
     @time @test test_translation(
         (128, 64),
-        B_SplineLU(5, 128, T),
-        B_SplineLU(5, 64, T),
+        BSplineLU(5, 128, T),
+        BSplineLU(5, 64, T),
         dt,
     ) < 1e-6
     @time @test test_translation(
         (128, 64),
-        B_SplineLU(5, 128, T),
-        B_SplineLU(5, 64, T),
+        BSplineLU(5, 128, T),
+        BSplineLU(5, 64, T),
         dt;
         tc = triplejumpsplit(dt),
     ) < 1e-6
     @time @test test_translation(
         (128, 64),
-        B_SplineFFT(5, 128, T),
-        B_SplineFFT(5, 64, T),
+        BSplineFFT(5, 128, T),
+        BSplineFFT(5, 64, T),
         dt,
     ) < 1e-6
     T = Double64
@@ -193,14 +193,14 @@ end
     @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
     @time @test test_translation(
         (128, 64),
-        B_SplineLU(15, 128, T),
-        B_SplineLU(15, 64, T),
+        BSplineLU(15, 128, T),
+        BSplineLU(15, 64, T),
         dt,
     ) < 1e-18
     @time @test test_translation(
         (128, 64),
-        B_SplineFFT(15, 128, T),
-        B_SplineFFT(15, 64, T),
+        BSplineFFT(15, 128, T),
+        BSplineFFT(15, 64, T),
         dt,
     ) < 1e-17
 
@@ -209,14 +209,14 @@ end
     @time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
     @time @test test_translation(
         (128, 64),
-        B_SplineLU(25, 128, T),
-        B_SplineLU(25, 64, T),
+        BSplineLU(25, 128, T),
+        BSplineLU(25, 64, T),
         dt,
     ) < 1e-22
     @time @test test_translation(
         (128, 64),
-        B_SplineFFT(25, 128, T),
-        B_SplineFFT(25, 64, T),
+        BSplineFFT(25, 128, T),
+        BSplineFFT(25, 64, T),
         dt,
     ) < 1e-22
 end

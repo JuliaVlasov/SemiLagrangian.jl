@@ -1,4 +1,6 @@
-
+"""
+$(TYPEDEF)
+"""
 mutable struct RotationVar{T,N} <: AbstractExtDataAdv
     decfl::Any
     decint::Any
@@ -8,13 +10,14 @@ mutable struct RotationVar{T,N} <: AbstractExtDataAdv
 end
 
 """
+$(SIGNATURES)
+
     initcoef!(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum})
 
 Implementation of the interface function that is called at the begining of each advection
     This is implementation for Vlasov-Poisson equation
 
 """
-
 function initcoef!(
     pv::RotationVar{T,N},
     self::AdvectionData{T,N,timeopt,NoTimeAlg},
@@ -25,15 +28,11 @@ function initcoef!(
     sign = (st_cur == 1) ? -1 : 1
     return pv.decfl = sign * getcur_t(self) / step(mesh_cur) * mesh_other.points
 
-    #  if isvelocitystate(self)
-    #     #        println("sp trace init moins")
-    #     pv.bufcur = (getcur_t(self) / step(mesh_v)) * mesh_sp.points
-    # else
-    #     mesh_sp = self.adv.t_mesh_sp[state_dim]
-    #     #        println("sp trace init moins")
-    #     pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
-    # end
 end
+
+"""
+$(SIGNATURES)
+"""
 function initcoef!(
     pv::RotationVar{T,2},
     self::Union{
@@ -52,23 +51,18 @@ function initcoef!(
         self.bufcur[ind] = OpTuple((buf1[ind.I[2]], buf2[ind.I[1]]))
     end
 
-    #   @show self.bufcur
 end
 
-#  if isvelocitystate(self)
-#     #        println("sp trace init moins")
-#     pv.bufcur = (getcur_t(self) / step(mesh_v)) * mesh_sp.points
-# else
-#     mesh_sp = self.adv.t_mesh_sp[state_dim]
-#     #        println("sp trace init moins")
-#     pv.bufcur = (-getcur_t(self) / step(mesh_sp)) * mesh_v.points
-# end
-
+"""
+$(SIGNATURES)
+"""
 function getrotationvar(adv::Advection)
     return RotationVar(adv)
 end
 
 """
+$(SIGNATURES)
+
     getalpha(pv::RotationVar, self::AdvectionData, ind) 
 
 Implementation of the interface function that is called before each interpolation in advection

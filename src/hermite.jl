@@ -25,31 +25,22 @@ function _Lprim(i, ord)
 end
 _K(i, ord) = _L(i, ord)^2 * Polynomial([-i, 1 // 1])
 _H(i, ord) = _L(i, ord)^2 * (1 - 2 * _Lprim(i, ord) * Polynomial([-i, 1 // 1]))
-# function bplusbis(i,ord)
-#     i != 0 || throw(DomainError("i=$i must be different of zero"))
-#     result=big(1//1)
-#     for j=-d:d+1
-#         if i != j
-#             if j != 0
-#                 result *= (-j)
-#             end
-#             result /= (i-j)
-#         end
-#     end
-#     return result
-# end
-# ref function _bplus(i,ord)
-#     d = div(ord,2)
-#     res= prod([big(-j//1) for j=-d:d+1 if j!=0 && j!=i])
-#     return res * prod([big(1//(i-j)) for j=-d:d+1 if j!=i])
-# end
+
 function _bplus(i, rplus, splus)
     res = prod([big(-j // 1) for j = rplus:splus if j != 0 && j != i])
     return res * prod([big(1 // (i - j)) for j = rplus:splus if j != i])
 end
+
 function _bminus(i, rminus, sminus)
     return -_bplus(-i, -sminus, -rminus)
 end
+
+
+"""
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+"""
 struct PrecalHermite{ord,d}
     L::Vector{Polynomial{Rational{BigInt}}}
     Lprim::Vector{Rational{BigInt}}
@@ -87,13 +78,24 @@ struct PrecalHermite{ord,d}
         return new{ord,d}(L, Lprim, K, H, bplus, bminus, rplus, splus, rminus, sminus)
     end
 end
+
 L(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.L[d+1+i]
+
 Lprim(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.Lprim[d+1+i]
+
 K(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.K[d+1+i]
+
 H(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.H[d+1+i]
+
 bplus(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.bplus[1-ph.rplus+i]
+
 bminus(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.bminus[1-ph.rminus+i]
 
+"""
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+"""
 struct Hermite{T,edge,order} <: AbstractInterpolation{T,edge,order}
     tabfct::Vector{Polynomial{T}}
     function Hermite(

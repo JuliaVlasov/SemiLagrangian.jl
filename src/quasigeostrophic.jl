@@ -1,4 +1,8 @@
+"""
+$(TYPEDEF)
 
+$(TYPEDFIELDS)
+"""
 struct GeoConst{T,N}
     adv::Advection{T,N}
     #    rho::T
@@ -52,14 +56,25 @@ struct GeoConst{T,N}
     end
 end
 
+"""
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+"""
 struct GeoVar{T,N} <: AbstractExtDataAdv
     gc::GeoConst{T,N}
 end
 
+"""
+$(SIGNATURES)
+"""
 function getgeovar(adv::Advection{T,N}; kwargs...) where {T,N}
     return GeoVar{T,N}(GeoConst(adv; kwargs...))
 end
 
+"""
+$(SIGNATURES)
+"""
 function initdata!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     mesh_x = advd.adv.t_mesh[1]
     mesh_y = advd.adv.t_mesh[2]
@@ -88,6 +103,9 @@ function initdata!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     return advd.data .*= geoc.gc.odg_b
 end
 
+"""
+$(SIGNATURES)
+"""
 function initcoef!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
     pfft = geoc.gc.pfftbig
     dt = getcur_t(advd)
@@ -101,12 +119,16 @@ function initcoef!(geoc::GeoVar{T,N}, advd::AdvectionData{T,N}) where {T,N}
         dt *
         OpTuple.(zip(ntuple(x -> real(ifftgenall(pfft, geoc.gc.coefrsqk[x] .* buf)), N)...))
 end
+
+"""
+$(SIGNATURES)
+"""
 @inline function getalpha(
     ::GeoVar{T,N},
     self::AdvectionData{T},
     indext::CartesianIndex,
     indbuf::CartesianIndex,
-) where {T,N,Nsp,Nv}
+) where {T,N}
     st = getst(self)
     ind = CartesianIndex((indbuf.I..., indext.I...)[st.invp])
     return ntuple(x -> self.bufcur[ind][st.invp[x]], st.ndims)

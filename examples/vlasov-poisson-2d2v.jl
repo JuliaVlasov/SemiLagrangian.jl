@@ -7,11 +7,11 @@
 #       extension: .jl
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.11.5
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Julia 1.7.2
+#     display_name: Julia 1.8.5
 #     language: julia
-#     name: julia-1.7
+#     name: julia-1.8
 # ---
 
 using LinearAlgebra
@@ -145,7 +145,7 @@ run_simulation(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
 run_simulation(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
 
 T = Float64
-run_simulation(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=B_SplineLU(27,32,T))
+run_simulation(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=BSplineLU(27,32,T))
 
 @time run_simulation(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(5, T))
 
@@ -159,7 +159,7 @@ sz = (32, 32, 20, 22)
     MPIOpt,
     sz = sz,
     dt = big"0.1",
-    interpall = ntuple(x -> B_SplineLU(13, sz[x], T), 4),
+    interpall = ntuple(x -> BSplineLU(13, sz[x], T), 4),
 )
 
 @time run_simulation(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
@@ -211,5 +211,3 @@ tabst = map(
 )
 # -
 @time run_simulation(T, 10000, MPIOpt; sz = (64, 64, 64, 64), dt = big"0.01", interp = Lagrange(27, T))
-
-

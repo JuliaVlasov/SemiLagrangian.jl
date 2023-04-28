@@ -1,30 +1,15 @@
-# -*- coding: utf-8 -*-
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,jl:light
-#     text_representation:
-#       extension: .jl
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.14.5
-#   kernelspec:
-#     display_name: Julia 1.8.5
-#     language: julia
-#     name: julia-1.8
-# ---
+# Vlasov-Poisson
 
-using LinearAlgebra
+```@example landau
+
 using SemiLagrangian
-using ProgressMeter
 using Plots
 
 function run_simulation(nbdt, sz, dt, interp, tab_coef)
     
     epsilon = 0.001
-    kx = 0.4
 
-    xmin, xmax, nx = 0., 2π/kx, sz[1]
+    xmin, xmax, nx = 0., 4π, sz[1]
     vmin, vmax, nv = -6., 6., sz[2]
 
     mesh_x = UniformMesh(xmin, xmax, nx)
@@ -35,7 +20,7 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
     adv = Advection((mesh_x, mesh_v), [interp, interp], dt, states; 
         tab_coef, timeopt = NoTimeOpt)
     
-    
+    kx = 0.5 
     fct_x(x) = epsilon * cos(kx * x) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2π)
 
@@ -48,16 +33,9 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
 
     advd = AdvectionData(adv, data, pvar)
 
-    println("# dt=$(dt) eps=$(epsilon) size_x=$nx size_v=$nv")
-    println("# x : from $(start(mesh_x)) to $(stop(mesh_x))")
-    println("# v : from $(start(mesh_v)) to $(stop(mesh_v))")
-    println("# interpolation : $interp order=$(get_order(interp))")
-    println("# tab_coef : $tab_coef")
-    println("# size(data)=$(size(data))")
-
     time = Float64[]
     el = Float64[]
-    @showprogress 1 for i = 1:nbdt
+    for i = 1:nbdt
         while advection!(advd) end
         push!(time, advd.time_cur)
         push!(el, compute_ee(advd))
@@ -73,4 +51,5 @@ tab_coef = strangsplit(dt)
 time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
 plot(time, 0.5 .* log.(el.^2))
 
+```
 

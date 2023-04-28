@@ -1,4 +1,6 @@
 """
+$(SIGNATURES)
+
     compute_ke(t_mesh_sp, t_mesh_v, f)
 
 Compute kinetic Energy from phase space distribution `f`.
@@ -25,6 +27,7 @@ function compute_ke(
 end
 
 """
+$(SIGNATURES)
     compute_ke(self::AdvectionData)
 
 Compute kinetic Energy.
@@ -50,6 +53,7 @@ function compute_ke(self::AdvectionData{T,N}) where {T,N}
 end
 
 """
+$(SIGNATURES)
     compute_charge!(rho, mesh_v, f)
 
 Compute charge density from phase space distribution `f`.
@@ -74,6 +78,9 @@ function compute_charge!(
     return nothing
 end
 
+"""
+$(SIGNATURES)
+"""
 function compute_elfield(
     t_mesh_x::NTuple{N,UniformMesh{T}},
     rho::Array{T,N},
@@ -92,7 +99,10 @@ function compute_elfield(
         N,
     )
 end
+
 """
+$(SIGNATURES)
+
     compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}) where{T}
 
 Computation of electric field of one dimension.
@@ -109,6 +119,8 @@ function compute_elfield!(elf::Array{T,1}, mesh::UniformMesh{T}, rho::Array{T,1}
 end
 
 """
+$(SIGNATURES)
+
     compute_ee(t_mesh_sp, t_elf)
 
 Compute electric energy
@@ -131,6 +143,8 @@ function compute_ee(
 end
 
 """
+$(SIGNATURES)
+
     compute_ee(self::AdvectionData)
 
 Compute electric energy
@@ -146,6 +160,10 @@ function compute_ee(self::AdvectionData)
     dx = prod(step, adv.t_mesh[1:Nsp])
     return dx * sum(map(x -> sum(x .^ 2), pvar.t_elfield))
 end
+
+"""
+$(SIGNATURES)
+"""
 function getenergy(advd::AdvectionData)
     pv::PoissonVar = getext(advd)
     compute_charge!(pv, advd)
@@ -155,6 +173,10 @@ function getenergy(advd::AdvectionData)
     energyall = elenergy + kinenergy
     return elenergy, kinenergy, energyall
 end
+
+"""
+$(SIGNATURES)
+"""
 function getenergyall(advd::AdvectionData)
     _, _, energyall = getenergy(advd)
     return energyall

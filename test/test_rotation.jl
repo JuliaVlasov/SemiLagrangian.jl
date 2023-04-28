@@ -14,8 +14,8 @@ using SemiLagrangian:
     AbstractInterpolation,
     Lagrange,
     Hermite,
-    B_SplineLU,
-    B_SplineFFT,
+    BSplineLU,
+    BSplineFFT,
     interpolate!,
     NoTimeAlg,
     ABTimeAlg_ip
@@ -240,14 +240,14 @@ end
     @time @test test_rotation((2000, 1022), Hermite(5, T), Hermite(5, T), 11) < 1e-3
     @time @test test_rotation(
         (128, 256),
-        B_SplineLU(5, 128, T),
-        B_SplineLU(5, 256, T),
+        BSplineLU(5, 128, T),
+        BSplineLU(5, 256, T),
         11,
     ) < 1e-3
     @time @test test_rotation(
         (128, 256),
-        B_SplineFFT(5, 128, T),
-        B_SplineFFT(5, 256, T),
+        BSplineFFT(5, 128, T),
+        BSplineFFT(5, 256, T),
         11,
     ) < 1e-3
     T = Double64
@@ -255,14 +255,14 @@ end
     @time @test test_rotation((200, 220), Lagrange(15, T), Lagrange(15, T), 11) < 1e-7
     @time @test test_rotation(
         (128, 256),
-        B_SplineLU(15, 128, T),
-        B_SplineLU(15, 256, T),
+        BSplineLU(15, 128, T),
+        BSplineLU(15, 256, T),
         11,
     ) < 1e-8
     @time @test test_rotation(
         (128, 256),
-        B_SplineFFT(15, 128, T),
-        B_SplineFFT(15, 256, T),
+        BSplineFFT(15, 128, T),
+        BSplineFFT(15, 256, T),
         11,
     ) < 1e-8
     T = BigFloat
@@ -270,14 +270,14 @@ end
     @time @test test_rotation((200, 220), Lagrange(25, T), Lagrange(25, T), 11) < 1e-9
     @time @test test_rotation(
         (128, 256),
-        B_SplineLU(25, 128, T),
-        B_SplineLU(25, 256, T),
+        BSplineLU(25, 128, T),
+        BSplineLU(25, 256, T),
         11,
     ) < 1e-9
     @time @test test_rotation(
         (128, 256),
-        B_SplineFFT(25, 128, T),
-        B_SplineFFT(25, 256, T),
+        BSplineFFT(25, 128, T),
+        BSplineFFT(25, 256, T),
         11,
     ) < 1e-9
 end

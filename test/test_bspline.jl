@@ -2,7 +2,7 @@
 using LinearAlgebra
 using Polynomials
 
-using SemiLagrangian: getbspline, B_SplineLU, get_kl_ku, B_SplineFFT, interpolate!, decal
+using SemiLagrangian: getbspline, BSplineLU, get_kl_ku, BSplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
     setprecision(prec) do

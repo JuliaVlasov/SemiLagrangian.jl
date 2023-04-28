@@ -11,8 +11,8 @@ using SemiLagrangian:
     UniformMesh,
     AbstractInterpolation,
     Lagrange,
-    B_SplineLU,
-    B_SplineFFT,
+    BSplineLU,
+    BSplineFFT,
     gettabmod,
     CachePrecal,
     interpolate!,
@@ -381,7 +381,7 @@ end
 
 @testset "test poisson2d ABTimeAlg_new" begin
     T = Double64
-    interp = [B_SplineLU(11, 128, T), B_SplineLU(11, 100, T)]
+    interp = [BSplineLU(11, 128, T), BSplineLU(11, 100, T)]
     @time test_timealg(interp, 5, ABTimeAlg_new, 2)
 end
 

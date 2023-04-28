@@ -1,7 +1,9 @@
 
 """
-    B_SplineFFT{T, order} <: AbstractInterpolation{T, CircEdge, order}
-    B_SplineFFT( order::Int, n::Int, T::DataType=Float64)
+$(TYPEDEF)
+
+    BSplineFFT{T, order} <: AbstractInterpolation{T, CircEdge, order}
+    BSplineFFT( order::Int, n::Int, T::DataType=Float64)
 
 Type containing spline coefficients for b-spline interpolation based on fft, using the fact that b-spline matrix is a circulant matrix
 
@@ -20,11 +22,11 @@ Type containing spline coefficients for b-spline interpolation based on fft, usi
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct B_SplineFFT{T,order} <: B_Spline{T,CircEdge,order}
+struct BSplineFFT{T,order} <: BSpline{T,CircEdge,order}
     c_fft::Vector{Complex{T}}
     parfft::PrepareFftBig
     tabfct::Vector{Polynomial{T}}
-    function B_SplineFFT(order::Int, n::Int, T::DataType = Float64)
+    function BSplineFFT(order::Int, n::Int, T::DataType = Float64)
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order - x, 1])), 0:order)
         kl, ku = get_kl_ku(order)
@@ -38,11 +40,19 @@ struct B_SplineFFT{T,order} <: B_Spline{T,CircEdge,order}
         c_fft = fftgen(parfft, c)
         return new{T,order}(c_fft, parfft, convert.(Polynomial{T}, tabfct_rat))
     end
-    B_SplineFFT(o::Int, n::Int, _::T) where {T} = B_SplineFFT(o, n, T)
+    BSplineFFT(o::Int, n::Int, _::T) where {T} = BSplineFFT(o, n, T)
 end
-function sol(bsp::B_SplineFFT{T}, b::AbstractVector{T}) where {T}
+
+"""
+$(SIGNATURES)
+"""
+function sol(bsp::BSplineFFT{T}, b::AbstractVector{T}) where {T}
     return real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end
-function sol!(Y::AbstractVector{T}, bsp::B_SplineFFT{T}, b::AbstractVector{T}) where {T}
+
+"""
+$(SIGNATURES)
+"""
+function sol!(Y::AbstractVector{T}, bsp::BSplineFFT{T}, b::AbstractVector{T}) where {T}
     return Y .= real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end

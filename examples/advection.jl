@@ -14,7 +14,7 @@
 #     name: julia-1.8
 # ---
 
-# # Lagrange Interpolation
+# # Advection
 
 using LinearAlgebra
 using SemiLagrangian
@@ -94,10 +94,15 @@ end
 v, dt = 1.0, 1.0
 nsteps = 100
 dt = 0.2 / nsteps
+order = 5
+fp = fct3.(mesh.points)
+fi = copy(fp)
 plot(mesh.points, fp, xlims=(0,1))
+interp = Lagrange(order, Float64)
+interp = B_SplineLU(order, nx, Float64)
+interp = B_SplineFFT(order, nx, Float64)
 for i in 1:nsteps
     advection!(fp, fi, mesh, interp, v, dt)
-   
     fi .= fp
 end
 plot!(mesh.points, fp, xlims=(0,1))

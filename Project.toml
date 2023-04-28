@@ -12,6 +12,7 @@ Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 
 [compat]
+DocStringExtensions = "0.9"
 DoubleFloats = "1"
 FFTW = "1"
 Polynomials = "2,3"

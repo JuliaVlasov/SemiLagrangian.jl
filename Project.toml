@@ -1,6 +1,6 @@
 name = "SemiLagrangian"
 uuid = "abe12ce6-d865-11e8-314f-3f926d5bd47d"
-authors = "Julia Vlasov"
+authors = "Julia Vlasov Organisation"
 version = "0.1.2"
 
 [deps]

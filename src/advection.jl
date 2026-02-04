@@ -671,33 +671,33 @@ function advection!(self::AdvectionData{T,N,timeopt,timealg}) where {T,N,timeopt
                 slc .= buf
             end
         end
-    elseif timeopt == SplitThreadsOpt
-        Threads.@threads for indth = 1:Threads.nthreads()
-            local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
-            local cache = self.t_cache[st.ind][Threads.threadid()]
-            local itr = getitr(self)
-            if st.isconstdec
-                for indext in itr
-                    local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
-                    local slc = view(f, coltuple..., indext)
-                    interpolate!(buf, slc, decint, precal, interp, tabmod)
-                    slc .= buf
-                end
-            else
-                for indext in itr
-                    local slc = view(f, coltuple..., indext)
-                    interpolate!(
-                        buf,
-                        slc,
-                        indbuf -> getalpha(extdata, self, indext, indbuf),
-                        interp,
-                        tabmod,
-                        cache,
-                    )
-                    slc .= buf
-                end
-            end
-        end
+    # elseif timeopt == SplitThreadsOpt
+    #     Threads.@threads for indth = 1:Threads.nthreads()
+    #         local buf = view(self.t_buf[st.ind], coltuple..., Threads.threadid())
+    #         local cache = self.t_cache[st.ind][Threads.threadid()]
+    #         local itr = getitr(self)
+    #         if st.isconstdec
+    #             for indext in itr
+    #                 local decint, precal = getprecal(cache, getalpha(extdata, self, indext))
+    #                 local slc = view(f, coltuple..., indext)
+    #                 interpolate!(buf, slc, decint, precal, interp, tabmod)
+    #                 slc .= buf
+    #             end
+    #         else
+    #             for indext in itr
+    #                 local slc = view(f, coltuple..., indext)
+    #                 interpolate!(
+    #                     buf,
+    #                     slc,
+    #                     indbuf -> getalpha(extdata, self, indext, indbuf),
+    #                     interp,
+    #                     tabmod,
+    #                     cache,
+    #                 )
+    #                 slc .= buf
+    #             end
+    #         end
+    #     end
     end
     copydata!(self, f)
     return nextstate!(self)

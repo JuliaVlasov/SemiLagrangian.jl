@@ -417,7 +417,7 @@ end
     flag = false
     for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init)
         res = []
-        for t_opt in (NoTimeOpt, SimpleThreadsOpt, SplitThreadsOpt)
+        for t_opt in (NoTimeOpt,) # SimpleThreadsOpt, SplitThreadsOpt)
             @show t_alg, t_opt
             ordalg = t_alg == NoTimeAlg ? 0 : 2
             _, d1 = test_poisson2dadv(

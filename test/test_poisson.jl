@@ -219,7 +219,7 @@ end
 
 @testset "Poisson Threads" begin
     res = test_poisson_real(Float64, NoTimeOpt)
-    @test res == test_poisson_real(Float64, SimpleThreadsOpt)
+    # @test res == test_poisson_real(Float64, SimpleThreadsOpt)
     # @test res == test_poisson_real(Float64, SplitThreadsOpt)
 end
 

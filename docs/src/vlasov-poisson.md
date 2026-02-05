@@ -2,8 +2,9 @@
 
 ```@example landau
 
-using SemiLagrangian
+using DispersionRelations
 using Plots
+using SemiLagrangian
 
 function run_simulation(nbdt, sz, dt, interp, tab_coef)
     
@@ -49,7 +50,9 @@ dt = 0.1
 interp = Lagrange(9, Float64)
 tab_coef = strangsplit(dt)
 time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
-plot(time, 0.5 .* log.(el.^2))
-
+plot(time, sqrt.(el), yaxis = :log)
+line, ω, = fit_complex_frequency(time, sqrt.(el))
+plot!(time, line; yaxis = :log)
+title!("ω = $(imag(ω))")
 ```
 

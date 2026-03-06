@@ -1,6 +1,8 @@
 using LinearAlgebra: size
 using Test
 using SemiLagrangian
+using Aqua
+using TestItemRunner
 
 # include("mpoly/runtests.jl")
 include("test_interpolation.jl")
@@ -21,3 +23,5 @@ include("test_rotation.jl")
 include("test_translation.jl")
 include("test_swirling.jl")
 include("test_quasigeostrophic.jl")
+
+@run_package_tests verbose = true

@@ -16,7 +16,6 @@
 
 using LinearAlgebra
 using SemiLagrangian
-using ProgressMeter
 using Plots
 
 function run_simulation(nbdt, sz, dt, interp, tab_coef)
@@ -57,7 +56,7 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
 
     time = Float64[]
     el = Float64[]
-    @showprogress 1 for i = 1:nbdt
+    for i = 1:nbdt
         while advection!(advd) end
         push!(time, advd.time_cur)
         push!(el, compute_ee(advd))
@@ -66,11 +65,11 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
 end
 
 nbdt = 1000
-sz = (64, 64)
+sz = (128, 256)
 dt = 0.1
-interp = Lagrange(9, Float64)
+interp = Lagrange(7, Float64)
 tab_coef = strangsplit(dt)
-time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
+@time time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
 plot(time, 0.5 .* log.(el.^2))
 
 

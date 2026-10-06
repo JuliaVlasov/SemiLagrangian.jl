@@ -7,5 +7,5 @@ a `Lagrange` type variable:
 ```@autodocs
 Modules = [SemiLagrangian]
 Order   = [:type, :function]
-Pages   = ["lagrange.jl"]
+Pages   = ["lagrange.jl", "lagrange_interp.jl"]
 ```

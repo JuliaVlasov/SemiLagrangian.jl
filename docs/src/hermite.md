@@ -3,6 +3,5 @@
 ```@autodocs
 Modules = [SemiLagrangian]
 Order   = [:type, :function]
-Pages   = ["hermite.jl"]
+Pages   = ["hermite.jl", "hermite_interp.jl"]
 ```
-

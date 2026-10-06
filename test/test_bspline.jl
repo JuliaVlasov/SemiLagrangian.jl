@@ -1,8 +1,8 @@
 
 using LinearAlgebra
-using Polynomials
 
-using SemiLagrangian: getbspline, BSplineLU, get_kl_ku, BSplineFFT, interpolate!, decal
+using SemiLagrangian:
+    Polynomial, degree, derivative, getbspline, BSplineLU, get_kl_ku, BSplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
     setprecision(prec) do
@@ -17,7 +17,7 @@ function test_spline(order, prec)
                 res0 = p0(x + i)
                 res3 = p3(x + i + 3)
                 @test isapprox(res0, res3, atol = 1e-60)
-                @test order == Polynomials.degree(p0[i])
+                @test order == degree(p0[i])
                 pol1 = p0[i]
                 pol2 = p0[i+1]
                 for j = 1:order

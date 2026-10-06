@@ -1,5 +1,4 @@
 
-using Polynomials
 using SemiLagrangian: getpoly
 function test_cmplx(n, decref::CartesianIndex{2} = CartesianIndex(0, 0))
     #    fctref = Polynomial(big.(rationalize.(rand(n^2-1), tol=0.001)+ im*rationalize.(rand(n^2-1), tol=0.001)))

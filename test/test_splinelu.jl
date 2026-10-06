@@ -1,8 +1,7 @@
 using LinearAlgebra
 using Random
-using Polynomials
 using SemiLagrangian:
-    get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
+    CircEdge, get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
 import SemiLagrangian: sol, sol!
 
 Random.seed!(5431221)
@@ -170,7 +169,7 @@ function test_interface()
         (_1, _2, order) = getpar(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test "BSplineLU{BigFloat,CircEdge,$order}" == replace("$bsp", " " => "")
+        @test getpar(bsp) == (BigFloat, CircEdge, order)
     end
 end
 

@@ -9,14 +9,13 @@ $(IMPORTS)
 module SemiLagrangian
 
 using DocStringExtensions
-using Polynomials: StandardBasisPolynomial
-using Polynomials
 using FFTW
 using Base.Threads
 using Requires
 
 
 include("util.jl")
+include("polynomial.jl")
 include("cplxlagrange.jl")
 include("fftbig.jl")
 include("mesh.jl")
@@ -28,8 +27,11 @@ function __init__()
 end
 
 include("lagrange.jl")
+include("lagrange_interp.jl")
 include("hermite.jl")
+include("hermite_interp.jl")
 include("spline.jl")
+include("spline_interp.jl")
 include("bspline.jl")
 include("bsplinelu.jl")
 include("bsplinefft.jl")
@@ -50,6 +52,10 @@ export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
 export nosplit, standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11, table2split
 export Lagrange, Hermite, BSplineLU, BSplineFFT, interpolate!
+export LagrangeCache, lagrange_interp, lagrange_interp!
+export HermiteCache, hermite_interp, hermite_interp!
+export SplineCache, spline_interp, spline_interp!
+export Polynomial, derivative, degree
 export compute_charge!,
     compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
 export dotprod, getpoissonvar, getrotationvar, gettranslationvar

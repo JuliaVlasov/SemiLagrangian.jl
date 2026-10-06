@@ -1,6 +1,12 @@
 using LinearAlgebra
-using Polynomials
-using SemiLagrangian: Lagrange
+using SemiLagrangian:
+    Polynomial,
+    Lagrange,
+    _getlagrangecoefficients,
+    _c,
+    LagrangeCache,
+    lagrange_interp,
+    lagrange_interp!
 
 struct Pol2{T}
     tab::Array{T,2}
@@ -46,6 +52,57 @@ function test_base_lagrange2d(order)
         @test res == resf
     end
 end
+@testset "Lagrange basis coefficient construction" begin
+    for order = 0:15, origin in (-div(order, 2), 0), k = 0:order
+        coefficients = _getlagrangecoefficients(k, order, origin)
+        for x in (big(-1 // 3), big(0 // 1), big(2 // 5))
+            reference = prod(
+                ((x - (l + origin)) / (k - l) for l = 0:order if l != k);
+                init = one(x),
+            )
+            @test evalpoly(x, coefficients) == reference
+        end
+    end
+
+    for order = 0:12, k = 0:order
+        coefficients = _getlagrangecoefficients(k, order, 0)
+        integral = sum(
+            coefficients[m] * ((isodd(m) ? 1 : -1) // m) for m in eachindex(coefficients)
+        )
+        @test _c(k, order) == integral
+    end
+end
+
+@testset "Lagrange one-shot interpolation" begin
+    x = [0.0, 0.15, 0.4, 0.8, 1.1, 1.7, 2.0]
+    y = x .^ 3 .- 2x .^ 2 .+ 4x .- 1
+    targets = reshape([0.0, 0.25, 0.7, 1.3, 2.0], 1, :)
+    expected = targets .^ 3 .- 2targets .^ 2 .+ 4targets .- 1
+
+    result = lagrange_interp(x, y, targets; order = 3)
+    @test result ≈ expected
+
+    output = similar(result)
+    @test lagrange_interp!(output, x, y, targets; order = 3) === output
+    @test output ≈ expected
+    @test lagrange_interp(x, y, 0.7; order = 3) ≈ 0.7^3 - 2 * 0.7^2 + 4 * 0.7 - 1
+    @test lagrange_interp([0, 2, 3], [0, 4, 9], [1]; order = 1) ≈ [2.0]
+
+    cache = LagrangeCache(x; order = 3)
+    @test lagrange_interp(cache, y, targets) ≈ expected
+    cached_output = similar(output)
+    @test lagrange_interp!(cached_output, cache, y, targets) === cached_output
+    @test cached_output ≈ expected
+    y2 = cos.(x)
+    @test lagrange_interp(cache, y2, targets) ≈ lagrange_interp(x, y2, targets; order = 3)
+    @test_throws DimensionMismatch lagrange_interp(cache, y[1:end-1], targets)
+
+    @test_throws DomainError lagrange_interp(x, y, -0.1; order = 3)
+    @test_throws DimensionMismatch lagrange_interp!(zeros(2), x, y, targets; order = 3)
+    @test_throws ArgumentError lagrange_interp([0.0, 1.0, 1.0], [1.0, 2.0, 3.0], [0.5]; order = 1)
+    @test_throws ArgumentError lagrange_interp(x, y, [0.5]; order = -1)
+end
+
 @time @testset "test base interpolation" begin
     for ord = 3:27
         test_base_lagrange(ord)

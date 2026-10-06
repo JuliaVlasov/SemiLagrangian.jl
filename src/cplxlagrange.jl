@@ -1,5 +1,3 @@
-using Polynomials
-
 function cplxlagrange(tab::Array{Complex{T}}, k::CartesianIndex) where {T}
     p = Polynomial([one(T) + zero(T) * im, 0])
     for ind in CartesianIndices(tab)

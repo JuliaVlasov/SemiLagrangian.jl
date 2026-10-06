@@ -37,8 +37,6 @@ include("bsplinelu.jl")
 include("bsplinefft.jl")
 include("splitting.jl")
 include("advection.jl")
-include("util_poisson.jl")
-include("poisson.jl")
 include("rotation.jl")
 include("translation.jl")
 include("quasigeostrophic.jl")
@@ -56,9 +54,8 @@ export LagrangeCache, lagrange_interp, lagrange_interp!
 export HermiteCache, hermite_interp, hermite_interp!
 export SplineCache, spline_interp, spline_interp!
 export Polynomial, derivative, degree
-export compute_charge!,
-    compute_elfield!, compute_elfield, compute_ee, compute_ke, advection!
-export dotprod, getpoissonvar, getrotationvar, gettranslationvar
+export advection!
+export dotprod, getrotationvar, gettranslationvar
 export TimeOptimization,
     NoTimeOpt,
     SimpleThreadsOpt,
@@ -70,9 +67,7 @@ export TimeOptimization,
     ABTimeAlg_init,
     ABTimeAlg_new
 
-export TypePoisson, StdPoisson, StdPoisson2d, StdABp
-
-export sizeall, getdata, OpTuple, getgeovar, initdata!, getenergyall
+export sizeall, getdata, OpTuple, getgeovar, initdata!
 export Spectral, FastLagrange, CubicSpline, PeriodicLagrange, PeriodicBSpline
 
 end

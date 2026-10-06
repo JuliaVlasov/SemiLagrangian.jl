@@ -21,11 +21,7 @@ using SemiLagrangian:
     totuple,
     tovector,
     Lagrange,
-    getpoissonvar,
-    compute_ke,
-    getinterp,
-    points,
-    dotprod
+    getinterp
 
 function initmesh(t_deb, t_end, t_size)
     t_step = (t_end - t_deb) ./ t_size
@@ -68,9 +64,7 @@ function test_adv(T::DataType)
 
     tab = rand(T, sizeall(adv))
 
-    advd = AdvectionData(adv, tab, getpoissonvar(adv))
-
-    @test compute_ke(t_meshsp, t_meshv, tab) == compute_ke(advd)
+    advd = AdvectionData(adv, tab, TestExtData())
 
     @test advd.state_gen == 1
 
@@ -135,6 +129,8 @@ function test_adv(T::DataType)
     end
 end
 
+struct TestExtData <: SemiLagrangian.AbstractExtDataAdv end
+
 # @testset "test Advection1d Float" begin
 
 #     test_adv(Float64)
@@ -150,41 +146,6 @@ end
 #     test_adv(Double64)
 
 # end
-function test_ke(T::DataType)
-    t_debsp = T.([-1 // 1, -10 // 1, -3 // 1])
-    t_endsp = T.([3 // 1, 6 // 1, 5 // 1])
-    t_szsp = [2, 4, 8]
-    t_stepsp = (t_endsp - t_debsp) ./ t_szsp
-    tt_meshsp = UniformMesh.(t_debsp, t_endsp, t_szsp)
-    t_meshsp = totuple(tt_meshsp)
-    szsp = totuple(t_szsp)
-
-    t_debv = T.([-3 // 1, -9 // 1, 1 // 1, -1 // 1])
-    t_endv = T.([1 // 1, 7 // 1, 5 // 1, 3 // 1])
-    t_szv = [4, 8, 4, 2]
-    t_stepv = (t_endv - t_debv) ./ t_szv
-    tt_meshv = UniformMesh.(t_debv, t_endv, t_szv)
-    t_meshv = totuple(tt_meshv)
-    szv = totuple(t_szv)
-
-    fxv = if T <: Rational
-        rationalize.(BigInt, rand(Float64, (szsp..., szv...)))
-    else
-        rand(T, (szsp..., szv...))
-    end
-
-    Nsp = length(szsp)
-    Nv = length(szv)
-    Nsum = Nsp + Nv
-    dx = prod(step, t_meshsp)
-    dv = prod(step, t_meshv)
-    sum_sp = Array{T,Nv}(undef, szv)
-    sum_sp .= reshape(sum(fxv; dims = ntuple(x -> x, Nsp)), szv)
-    refres = (dx * dv) * sum(dotprod(points.(t_meshv)) .^ 2 .* sum_sp)
-
-    @test refres == compute_ke(t_meshsp, t_meshv, fxv)
-end
-
 # function test_itr(T::DataType)
 #     t_debsp = T.([-1, -10, -3])
 #     t_endsp = T.([3, 6, 5])
@@ -216,7 +177,6 @@ end
 
 #     @show size(tab)
 
-#     advd = Advection1dData(adv, tab, getpoissonvar(adv))
 
 #     #    @show advd.t_itrfirst
 
@@ -264,12 +224,6 @@ end
 #     end
 
 # end
-
-@testset "test compute_ke" begin
-    test_ke(Rational{BigInt})
-    test_ke(Float64)
-    test_ke(BigFloat)
-end
 
 @testset "test advection" begin
     test_adv(Float64)

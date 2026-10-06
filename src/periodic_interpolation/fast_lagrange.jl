@@ -427,7 +427,7 @@ lagr_7pt_coeff!(pp, 0.3)
 interpolate!(fp, lag, fi, 0.3)
 ```
 """
-function interpolate!(fp, interpolant::FastLagrange, fi, p)
+function interpolate!(fp, interpolant::FastLagrange, fi, p::Real)
 
     n = length(fi)
     stencil = interpolant.stencil
@@ -480,4 +480,3 @@ function interpolate!(fp, interpolant::FastLagrange, fi, p)
         fp[n]   = lagr_11pt(fi[n-5], fi[n-4], fi[n-3], fi[n-2], fi[n-1], fi[n], fi[1], fi[2], fi[3], fi[4], fi[5], p, pp)
     end
 end
-

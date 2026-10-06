@@ -2,7 +2,7 @@
 
 This example demonstrates the simulation of the **Vlasov-Poisson system** in 1D phase space
 (1 spatial dimension + 1 velocity dimension) and compares the performance and accuracy of
-different interpolation methods provided by PeriodicInterpolation1D.
+different periodic interpolation methods available in `SemiLagrangian`.
 
 ## Problem Description
 
@@ -60,9 +60,9 @@ where `γ_L ≈ 0.1533` is the Landau damping rate.
 The script compares four interpolation methods:
 
 1. **FastLagrange**: Locally computed 7-point Lagrange polynomials
-2. **Lagrange**: Global FFT-based Lagrange (7-point stencil)
+2. **PeriodicLagrange**: Global FFT-based Lagrange (7-point stencil)
 3. **Spectral**: Pure Fourier interpolation
-4. **BSpline**: B-spline interpolation (order 6)
+4. **PeriodicBSpline**: B-spline interpolation (order 6)
 
 Each method shows:
 - Execution time for the simulation
@@ -85,7 +85,7 @@ Each method shows:
 ```@example vp1d1v
 using Plots
 using FFTW
-using PeriodicInterpolation1D
+using SemiLagrangian
 using LinearAlgebra
 import Statistics: mean
 

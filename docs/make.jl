@@ -1,7 +1,7 @@
 push!(LOAD_PATH, "../src/")
 
 using Documenter
-using SemiLagrangian
+import SemiLagrangian
 using Plots
 
 ENV["GKSwstype"] = "100"
@@ -26,8 +26,10 @@ makedocs(;
         "Home" => "index.md",
         "Quickstart" => ["rotation.md", "vlasov-poisson.md", 
                          "translation.md", "surfacequasigeostrophic.md"],
+        "Landau damping comparison" => "landau-damping.md",
         "Meshes" => "meshes.md",
-        "Interpolations" => ["interpolations.md", "lagrange.md", "bspline.md", "hermite.md"],
+        "Interpolations" => ["interpolations.md", "lagrange.md", "bspline.md", "hermite.md", "fast-interpolations.md"],
+        "Periodic interpolation" => ["periodic/index.md", "periodic/quickstart.md", "periodic/methods.md", "periodic/vlasov-poisson.md", "periodic/95-reference.md"],
         "Poisson solver" => "poisson.md",
         "Advection" => "advection.md",
         "Two dimensions" => "modele_2d.md",

@@ -9,7 +9,7 @@ using Test
 
     for order in [2, 4, 6, 8]
 
-        interpolant = BSpline(nx, order)
+        interpolant = PeriodicBSpline(nx, order)
         interpolate!(u_out, interpolant, u, 0.0)
         @test maximum(abs.(u_out - u)) < 1e-14
 
@@ -22,7 +22,7 @@ end
 
 @testitem "B-Splines basis" begin
     p = 3
-    biatx = PeriodicInterpolation1D.uniform_bsplines_eval_basis(p, 0.0)
+    biatx = SemiLagrangian.uniform_bsplines_eval_basis(p, 0.0)
     @test biatx[1] ≈ 1/6
     @test biatx[2] ≈ 2/3
     @test biatx[3] ≈ 1/6

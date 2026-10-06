@@ -1,10 +1,10 @@
 ```@meta
-CurrentModule = PeriodicInterpolation1D
+CurrentModule = SemiLagrangian
 ```
 
 # 1D Periodic Interpolation on Uniform Grids
 
-Documentation for [PeriodicInterpolation1D](https://github.com/juliavlasov/PeriodicInterpolation1D.jl).
+Periodic interpolation methods available in `SemiLagrangian`.
 
 Author: Translated from Fortran to Julia by Pierre Navaro with [claude.ai](https://claude.ai/).
 Original Authors: Klaus Reuter (MPCDF), Katharina Kormann (RUB) and Michel Mehrenberger (I2M)

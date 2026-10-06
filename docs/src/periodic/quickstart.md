@@ -1,20 +1,13 @@
 # Getting Started
 
-Quick start guide for using `PeriodicInterpolation1D`.
+Quick start guide for using the periodic interpolation methods in `SemiLagrangian`.
 
 ## Installation
 
-Add the package to your Julia environment:
+The periodic interpolation methods are part of `SemiLagrangian`:
 
 ```julia
-julia> using Pkg
-julia> Pkg.add(url=\"https://github.com/JuliaVlasov/PeriodicInterpolation1D.jl\")
-```
-
-Or in the REPL in `pkg` mode:
-
-```
-pkg> add https://github.com/JuliaVlasov/PeriodicInterpolation1D.jl
+using SemiLagrangian
 ```
 
 ## Basic Usage
@@ -22,7 +15,7 @@ pkg> add https://github.com/JuliaVlasov/PeriodicInterpolation1D.jl
 ### 1. Simple Example with Lagrange Interpolation
 
 ```julia
-using PeriodicInterpolation1D
+using SemiLagrangian
 using Plots  # optional, for visualization
 
 # Create a periodic grid
@@ -36,7 +29,7 @@ f = sin.(x)
 f_interp = zeros(n)
 
 # Create interpolation object with 5-point stencil (order-4 polynomial)
-lagr = Lagrange(n, 5)
+lagr = PeriodicLagrange(n, 5)
 
 # Interpolate with shift of 0.5 grid points
 interpolate!(f_interp, lagr, f, 0.5)
@@ -49,7 +42,7 @@ println(\"Interpolated values computed: \", length(f_interp), \" points\")
 Interpolate the same function using all four methods:
 
 ```julia
-using PeriodicInterpolation1D
+using SemiLagrangian
 
 n = 100
 x = 2π .* (0:n-1) ./ n
@@ -63,8 +56,8 @@ f_spec = zeros(n)
 f_fast = zeros(n)
 
 # Create interpolators
-lagr = Lagrange(n, 7)
-bspl = BSpline(n, 4)
+lagr = PeriodicLagrange(n, 7)
+bspl = PeriodicBSpline(n, 4)
 spec = Spectral(n)
 fast = FastLagrange(7)
 
@@ -95,13 +88,13 @@ println(\"  FastLagrange:\", err_fast)
 Efficiently perform many interpolations by reusing objects:
 
 ```julia
-using PeriodicInterpolation1D
+using SemiLagrangian
 
 n = 1000
 f = randn(n)  # random data
 
 # Create interpolator once
-lagr = Lagrange(n, 5)
+lagr = PeriodicLagrange(n, 5)
 
 # Perform many interpolations efficiently
 shifts = range(0, 2π, length=100)
@@ -119,7 +112,7 @@ println(\"Computed \", length(results), \" interpolations\")
 ### 4. Cosine Interpolation Example
 
 ```julia
-using PeriodicInterpolation1D
+using SemiLagrangian
 
 # High-frequency cosine function
 n = 128
@@ -145,15 +138,15 @@ println(\"Spectral method error: \", error)
 ### 5. Large-scale Problem
 
 ```julia
-using PeriodicInterpolation1D, BenchmarkTools
+using SemiLagrangian, BenchmarkTools
 
 # Large problem
 n = 10_000
 f = randn(n)
 
 # Time different methods
-lagr = Lagrange(n, 5)
-bspl = BSpline(n, 4)
+lagr = PeriodicLagrange(n, 5)
+bspl = PeriodicBSpline(n, 4)
 spec = Spectral(n)
 fast = FastLagrange(7)
 
@@ -174,7 +167,7 @@ println(\"Performance comparison for n=$n, shift=$shift:\")
 The output array is modified **in-place**. Make sure to provide a pre-allocated array:
 
 ```julia
-lagr = Lagrange(100, 5)
+lagr = PeriodicLagrange(100, 5)
 u = randn(100)
 
 # ✓ Correct
@@ -190,7 +183,7 @@ result = interpolate!(nothing, lagr, u, 0.5)  # Error!
 All arrays must have the same length:
 
 ```julia
-lagr = Lagrange(100, 5)
+lagr = PeriodicLagrange(100, 5)
 u = randn(100)
 
 # ✓ Correct
@@ -222,10 +215,10 @@ interpolate!(u_out, fast, u, 10.5)  # Large shift, results unreliable!
 
 ```julia
 # ✓ Correct
-bspl = BSpline(100, 4)  # order 4 is even
+bspl = PeriodicBSpline(100, 4)  # order 4 is even
 
 # ✗ Wrong - odd order not allowed
-# bspl = BSpline(100, 5)  # error!
+# bspl = PeriodicBSpline(100, 5)  # error!
 ```
 
 ## Next Steps

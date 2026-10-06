@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = SemiLagrangian
+```
+
 # [Reference](@id reference)
 
 ## Contents
@@ -12,6 +16,13 @@ Pages = ["95-reference.md"]
 Pages = ["95-reference.md"]
 ```
 
-```@autodocs
-Modules = [PeriodicInterpolation1D]
+The interpolation types are documented alongside the rest of the `SemiLagrangian` API.
+
+```@docs
+PeriodicBSpline
+CubicSpline
+Spectral
+interpolate!(::Any, ::PeriodicBSpline, ::Any, ::Float64)
+interpolate!(::Any, ::CubicSpline, ::Any, ::Real)
+interpolate!(::Any, ::Spectral, ::Any, ::Float64)
 ```

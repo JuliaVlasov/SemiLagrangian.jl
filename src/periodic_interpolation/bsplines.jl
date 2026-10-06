@@ -22,10 +22,10 @@ function uniform_bsplines_eval_basis(p::Int, x::Float64)
     return bspl
 end
 
-export BSpline, interpolate!
+export PeriodicBSpline, interpolate!
 
 """
-    BSpline(nx, order)
+    PeriodicBSpline(nx, order)
 
 Create a B-spline interpolation object for periodic 1D grids.
 
@@ -53,10 +53,10 @@ circulant matrix properties.
 
 # Example
 ```julia
-bspl = BSpline(100, 4)  # cubic B-splines on 100-point grid
+bspl = PeriodicBSpline(100, 4)  # cubic B-splines on 100-point grid
 ```
 """
-struct BSpline
+struct PeriodicBSpline
 
     nx::Int
     order::Int
@@ -65,7 +65,7 @@ struct BSpline
     eikx::Vector{ComplexF64}
     ufft::Vector{ComplexF64}
 
-    function BSpline(nx::Int, order::Int)
+    function PeriodicBSpline(nx::Int, order::Int)
 
         p = order - 1
 
@@ -101,7 +101,7 @@ end
 @inline modulo(a, p) = a - floor(Int, a / p) * p
 
 """
-    interpolate!(u_out, bspl::BSpline, u, alpha)
+    interpolate!(u_out, bspl::PeriodicBSpline, u, alpha)
 
 Interpolate array `u` by a displacement `alpha` (in grid units) using B-spline basis.
 
@@ -121,13 +121,13 @@ Provides smooth interpolation with accuracy proportional to the spline order.
 
 # Example
 ```julia
-bspl = BSpline(100, 4)
+bspl = PeriodicBSpline(100, 4)
 f = sin.(2π .* (0:99) ./ 100)
 f_interp = zeros(100)
 interpolate!(f_interp, bspl, f, 0.3)  # shift by 0.3 grid points
 ```
 """
-function interpolate!( u_out, interpolant::BSpline, u, alpha::Float64 )
+function interpolate!( u_out, interpolant::PeriodicBSpline, u, alpha::Float64 )
 
    p = interpolant.order - 1
    nx = interpolant.nx

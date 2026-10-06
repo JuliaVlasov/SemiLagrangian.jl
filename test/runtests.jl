@@ -23,5 +23,6 @@ include("test_rotation.jl")
 include("test_translation.jl")
 include("test_swirling.jl")
 include("test_quasigeostrophic.jl")
+include("test_fast_interpolations.jl")
 
 @run_package_tests verbose = true

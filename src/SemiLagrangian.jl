@@ -40,6 +40,11 @@ include("poisson.jl")
 include("rotation.jl")
 include("translation.jl")
 include("quasigeostrophic.jl")
+include("periodic_interpolation/bsplines.jl")
+include("periodic_interpolation/spectral.jl")
+include("periodic_interpolation/fast_lagrange.jl")
+include("periodic_interpolation/lagrange.jl")
+include("periodic_interpolation/cubic_interp.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export Advection, AdvectionData
@@ -61,6 +66,7 @@ export TimeOptimization,
 
 export TypePoisson, StdPoisson, StdPoisson2d, StdABp
 
-export get_type, sizeall, getdata, OpTuple, getgeovar, initdata!, getenergyall
+export sizeall, getdata, OpTuple, getgeovar, initdata!, getenergyall
+export Spectral, FastLagrange, CubicSpline, PeriodicLagrange, PeriodicBSpline
 
 end

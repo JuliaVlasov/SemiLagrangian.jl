@@ -20,12 +20,12 @@ If all tests pass, the program prints "PASSED."
 If any test fails, the program prints "FAILED."
 """
 
-using PeriodicInterpolation1D
+using SemiLagrangian
 
 @testmodule CommonHelpers begin
 
 
-    using PeriodicInterpolation1D
+    using SemiLagrangian
 
 
     """

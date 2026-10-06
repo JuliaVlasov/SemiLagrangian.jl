@@ -1,23 +1,24 @@
 # Interpolation Methods
 
-This page describes the different interpolation methods available in `PeriodicInterpolation1D`.
+This page describes the interpolation methods available in
+`SemiLagrangian`.
 
 ## Overview
 
 The module provides five interpolation methods for periodic 1D grids on uniform meshes:
 
-1. **[Lagrange](@ref)** - Global FFT-based Lagrange polynomials
-2. **[BSpline](@ref)** - B-spline basis functions  
-3. **[Spectral](@ref)** - Pure Fourier spectral interpolation
-4. **[FastLagrange](@ref)** - Local Lagrange polynomials
-5. **[CubicSpline](@ref)** - Cubic-spline interpolation (uses `FastInterpolations.jl` for speed)
+1. **PeriodicLagrange** - Global FFT-based Lagrange polynomials
+2. **PeriodicBSpline** - B-spline basis functions
+3. **Spectral** - Pure Fourier spectral interpolation
+4. **FastLagrange** - Local Lagrange polynomials
+5. **CubicSpline** - Cubic-spline interpolation (uses `FastInterpolations.jl` for speed)
 
 ## Method Comparison
 
 | Method | Accuracy | Speed | Memory | Best For |
 |--------|----------|-------|--------|----------|
-| Lagrange | Spectral | Medium | Medium | Smooth functions, high accuracy |
-| BSpline | Polynomial order | Medium | Medium | Smooth interpolation, flexibility |
+| PeriodicLagrange | Spectral | Medium | Medium | Smooth functions, high accuracy |
+| PeriodicBSpline | Polynomial order | Medium | Medium | Smooth interpolation, flexibility |
 | Spectral | Exponential | Medium | Medium | Very smooth data, maximum accuracy |
 | FastLagrange | Polynomial order | Fast | Low | Small shifts, performance-critical code |
 | CubicSpline | Cubic | Fast | Medium | Smooth cubic-spline interpolation (fast with FastInterpolations.jl) |
@@ -26,17 +27,17 @@ The module provides five interpolation methods for periodic 1D grids on uniform 
 
 ### Lagrange Interpolation
 
-The `Lagrange` method uses FFT-based computation with global Lagrange polynomials:
+The `PeriodicLagrange` method uses FFT-based computation with global Lagrange polynomials:
 
 ```julia
-using PeriodicInterpolation1D
+using SemiLagrangian
 
 n = 100
 x = 2π .* (0:n-1) ./ n
 f = sin.(x)
 f_interp = zeros(n)
 
-lagr = Lagrange(n, 5)  # 5-point stencil → order-4 polynomial
+lagr = PeriodicLagrange(n, 5)  # 5-point stencil → order-4 polynomial
 interpolate!(f_interp, lagr, f, 0.5)  # shift by 0.5 grid points
 ```
 
@@ -52,10 +53,10 @@ interpolate!(f_interp, lagr, f, 0.5)  # shift by 0.5 grid points
 
 ### B-Spline Interpolation
 
-The `BSpline` method uses B-spline basis functions with even polynomial orders:
+The `PeriodicBSpline` method uses B-spline basis functions with even polynomial orders:
 
 ```julia
-bspl = BSpline(n, 4)  # even order: cubic B-splines (C² continuity)
+bspl = PeriodicBSpline(n, 4)  # even order: cubic B-splines (C² continuity)
 interpolate!(f_interp, bspl, f, 0.3)
 ```
 
@@ -155,19 +156,19 @@ For a smooth periodic function (e.g., `sin(2πx)`), typical accuracy (L∞ error
 ```
 Method         | Error magnitude
 Spectral       | ~10^-13 (machine precision)
-Lagrange (11pt)| ~10^-10
-BSpline (order 8)| ~10^-8
+PeriodicLagrange (11pt)| ~10^-10
+PeriodicBSpline (order 8)| ~10^-8
 FastLagrange (11pt)| ~10^-6 (small shift ok)
 ```
 
 ## Choosing a Method
 
-**Use Spectral or Lagrange if:**
+**Use Spectral or PeriodicLagrange if:**
 - Maximum accuracy is required
 - Function is very smooth (C^∞ or analytic)
 - Small to medium grid sizes (< 10,000 points)
 
-**Use BSpline if:**
+**Use PeriodicBSpline if:**
 - You want smooth interpolation with controlled properties
 - Interpolating non-smooth data
 - Need C² or C⁴ continuity
@@ -182,7 +183,7 @@ FastLagrange (11pt)| ~10^-6 (small shift ok)
 
 1. **Reuse objects**: Create interpolation objects once, use multiple times
    ```julia
-   lagr = Lagrange(n, 5)
+   lagr = PeriodicLagrange(n, 5)
    for alpha in alphas
        interpolate!(f_interp, lagr, f, alpha)
    end
@@ -190,7 +191,7 @@ FastLagrange (11pt)| ~10^-6 (small shift ok)
 
 2. **Batch operations**: Process multiple arrays efficiently
    ```julia
-   lagr = Lagrange(n, 5)
+   lagr = PeriodicLagrange(n, 5)
    for data in dataset
        interpolate!(output, lagr, data, shift)
    end
@@ -213,7 +214,7 @@ n = 10
 x = (0:n-1) ./ n
 u = sin.(2π .* x)
 
-lagr = Lagrange(n, 5)
+lagr = PeriodicLagrange(n, 5)
 u_out = zeros(n)
 
 # These are equivalent due to periodicity:

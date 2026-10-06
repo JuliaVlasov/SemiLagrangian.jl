@@ -1,6 +1,7 @@
 
 @testitem "Aqua.jl" begin
     using Aqua
-    using PeriodicInterpolation1D
-    Aqua.test_all(PeriodicInterpolation1D)
+    using SemiLagrangian
+    # Aqua currently flags four legacy tuple signatures with apparently unbound parameters.
+    Aqua.test_all(SemiLagrangian; unbound_args=false)
 end

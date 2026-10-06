@@ -1,7 +1,7 @@
-export Lagrange, interpolate!
+export PeriodicLagrange, interpolate!
 
 """
-    Lagrange(nx, order)
+    PeriodicLagrange(nx, order)
 
 Create a Lagrange interpolation object using FFT-based circulant approach for periodic 1D grids.
 
@@ -22,10 +22,10 @@ properties to efficiently compute interpolated values via convolution in Fourier
 
 # Example
 ```julia
-lagr = Lagrange(100, 5)  # 100 grid points, order-4 polynomial
+lagr = PeriodicLagrange(100, 5)  # 100 grid points, order-4 polynomial
 ```
 """
-struct Lagrange 
+struct PeriodicLagrange
 
     nx :: Int
     order :: Int
@@ -33,13 +33,13 @@ struct Lagrange
     bfft :: Vector{ComplexF64}
     ufft :: Vector{ComplexF64}
 
-    Lagrange( nx, order ) = new( nx, order, zeros(nx), zeros(ComplexF64, nx), zeros(ComplexF64, nx))
+    PeriodicLagrange(nx, order) = new(nx, order, zeros(nx), zeros(ComplexF64, nx), zeros(ComplexF64, nx))
 
 end
 
 
 """
-    interpolate!(u_out, lagr::Lagrange, u, alpha)
+    interpolate!(u_out, lagr::PeriodicLagrange, u, alpha)
 
 Interpolate array `u` by a displacement `alpha` (in grid units) using global Lagrange
 polynomials via FFT convolution.
@@ -61,13 +61,13 @@ For smooth periodic functions, this provides spectral (exponential) accuracy.
 
 # Example
 ```julia
-lagr = Lagrange(100, 5)
+lagr = PeriodicLagrange(100, 5)
 f = sin.(2π .* (0:99) ./ 100)
 f_interp = zeros(100)
 interpolate!(f_interp, lagr, f, 0.5)  # shift by 0.5 grid points
 ```
 """
-function interpolate!(u_out, self::Lagrange, u, alpha)
+function interpolate!(u_out, self::PeriodicLagrange, u, alpha::Real)
 
     nx = length(u)
     d  = self.order ÷ 2 - 1

@@ -4,7 +4,7 @@
 """
 $(SIGNATURES)
 """
-function _get_fctv_k(adv::Advection{T,N,timeopt}) where {T,N,timeopt}
+function _get_fctv_k(adv::Advection{T,N}) where {T,N}
     fct_k(v) = im / sum(v .^ 2)
     Nsp = div(N, 2)
     v_k = vec_k_fft.(adv.t_mesh[1:Nsp])
@@ -18,12 +18,12 @@ end
 $(TYPEDEF)
 
     PoissonConst{T, Nsp, Nv}
-    PoissonConst(adv::Advection{T, Nsp, Nv, Nsum}; isfftbig=true)
+    PoissonConst(adv::Advection{T, N}; isfftbig=true)
 
 Constant data for the computation of poisson coefficients
 
 # Arguments
-- `adv::Advection{T, Nsp, Nv, Nsum, timeopt}` : Advection constant data
+- `adv::Advection{T, N}` : Advection constant data
 - `isfftbig=true`: if true compute the fttbig structure
 
 # Implementation
@@ -39,11 +39,11 @@ struct PoissonConst{T,N,Nsp,Nv,type,typeadd}
     pfftbig::Any
     abcoef::ABcoef
     function PoissonConst(
-        adv::Advection{T,N,timeopt};
+        adv::Advection{T,N};
         isfftbig = true,
         type::TypePoisson = StdPoisson,
         typeadd = 0,
-    ) where {T,N,timeopt}
+    ) where {T,N}
         N % 2 == 0 || thrown(ArgumentError("N=$N must be a multiple of 2"))
 
         Nsp = Nv = div(N, 2)
@@ -228,8 +228,8 @@ $(SIGNATURES)
 """
 function initcoef!(
     pv::PoissonVar{T,N,Nsp,Nv,StdPoisson2d},
-    advd::AdvectionData{T,N,timeopt},
-) where {T,N,Nsp,Nv,timeopt}
+    advd::AdvectionData{T,N},
+) where {T,N,Nsp,Nv}
     #    st = getst(self)
     adv = advd.adv
     compute_charge!(pv, advd)

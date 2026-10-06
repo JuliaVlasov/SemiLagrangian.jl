@@ -33,7 +33,7 @@ function run_simulation(nbdt, sz, dt, interp, tab_coef)
     states = [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)]
 
     adv = Advection((mesh_x, mesh_v), [interp, interp], dt, states; 
-        tab_coef, timeopt = NoTimeOpt)
+        tab_coef)
     
     
     fct_x(x) = epsilon * cos(kx * x) + 1
@@ -72,5 +72,4 @@ interp = Lagrange(9, Float64)
 tab_coef = strangsplit(dt)
 time, el = run_simulation( nbdt, sz, dt, interp, tab_coef)
 plot(time, 0.5 .* log.(el.^2))
-
 

@@ -1,18 +1,14 @@
 using LinearAlgebra
 using DoubleFloats
-using MPI
 using SemiLagrangian
 
-function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
-    if timeopt != MPIOpt || advd.adv.mpid.ind == 1
-        println(str)
-    end
+function printout(advd::AdvectionData, str)
+    println(str)
 end
 printout(str) = println(str)
 
 function sqg2(
     t_max::T,
-    timeopt,
     dt::T,
     sz,
     interp::AbstractInterpolation,
@@ -34,7 +30,6 @@ function sqg2(
         dt,
         tabst;
         tab_coef = nosplit(dt),
-        timeopt = timeopt,
         timealg = typealg,
         ordalg = ordalg,
     )
@@ -50,7 +45,7 @@ function sqg2(
         newt_max = dt * (3ordalg - 1)
         newtypealg = ordalg == 2 ? NoTimeAlg : typealg
         newordalg = ordalg == 2 ? 0 : (ordalg - 1)
-        res = sqg2(newt_max, timeopt, newdt, sz, interp, newtypealg, newordalg)
+        res = sqg2(newt_max, newdt, sz, interp, newtypealg, newordalg)
         initdatas = res[nbfordt:nbfordt:end]
         append!(result, initdatas)
     end
@@ -69,7 +64,7 @@ function sqg2(
     return result
 end
 
-function run_mesure(t_max::T, timeopt, sz, interp) where {T}
+function run_mesure(t_max::T, sz, interp) where {T}
     tabtypealg = [
         NoTimeAlg,
         ABTimeAlg_ip,
@@ -102,9 +97,6 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
         1000000,
     ]
 
-    #        if MPI.Comm_rank(MPI.COMM_WORLD) == 1
-    #        end
-
     resdata = [zeros(T, sz) for i in CartesianIndices((length(tabnbdt), length(tabtxt)))]
 
     lastind = zeros(Int, length(tabtxt))
@@ -113,7 +105,6 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
         lastind[itc] = inbdt
         tabres = sqg2(
             t_max,
-            timeopt,
             t_max / tabnbdt[inbdt],
             sz,
             interp,
@@ -121,57 +112,46 @@ function run_mesure(t_max::T, timeopt, sz, interp) where {T}
             tabordalg[itc],
         )
         resdata[inbdt, itc] .= tabres[end]
-        # to run with mpi here is the command for n process (n must be a number) from SemiLagrangian.jl :
-        # ./mpiexec.loc n notebooks/run_mesure_sqg.jl
-        # else run like this :
-        # julia --project=.  notebooks/run_mesure_sqg.jl
-
-        if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 1
-            nb = if timeopt != MPIOpt
-                (timeopt == NoTimeOpt ? 1 : Threads.nthreads())
-            else
-                MPI.Comm_size(MPI.COMM_WORLD)
-            end
-            t_now = time_ns()
-            t = (t_now - t_loc) * 1e-9
-            t_loc = t_now
-            for k = 1:length(tabtxt)
-                if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
-                    println(
-                        "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) timeopt=$timeopt nb=$nb t=$t\n# t",
-                    )
-                    for txt in tabtxt
-                        print("\t$txt")
+        # Run with julia --project=. notebooks/run_mesure_sqg.jl.
+        nb = 1
+        t_now = time_ns()
+        t = (t_now - t_loc) * 1e-9
+        t_loc = t_now
+        for k = 1:length(tabtxt)
+            if lastind[k] > 0 && (k != 1 || lastind[k] > 1)
+                println(
+                    "# sz=$sz t_max=$t_max interp=$interp ref=$(tabtxt[k]) nb=$nb t=$t\n# t",
+                )
+                for txt in tabtxt
+                    print("\t$txt")
+                end
+                println("")
+                for j = 1:length(tabnbdt), i = 0:length(tabtxt)
+                    if i == 0
+                        res = Float32(t_max / tabnbdt[j])
+                    else
+                        res = Float64(
+                            if (j < lastind[k] || (j == lastind[k] && i < k))
+                                norm(resdata[j, i] - resdata[lastind[k], k])
+                            else
+                                0
+                            end,
+                        )
                     end
-                    println("")
-                    for j = 1:length(tabnbdt), i = 0:length(tabtxt)
-                        if i == 0
-                            res = Float32(t_max / tabnbdt[j])
-                        else
-                            res = Float64(
-                                if (j < lastind[k] || (j == lastind[k] && i < k))
-                                    norm(resdata[j, i] - resdata[lastind[k], k])
-                                else
-                                    0
-                                end,
-                            )
-                        end
-                        print("$res")
-                        if i == length(tabtxt)
-                            print("\n")
-                        else
-                            print("\t")
-                        end
+                    print("$res")
+                    if i == length(tabtxt)
+                        print("\n")
+                    else
+                        print("\t")
                     end
                 end
             end
-
-            println("free memory : $(Sys.free_memory()/2^30)")
-            flush(stdout)
         end
+
+        println("free memory : $(Sys.free_memory()/2^30)")
+        flush(stdout)
     end
 end
 
 T = Double64
-# run_mesure(T(100000), MPIOpt, (128, 128), Lagrange(11, T))
-run_mesure(T(100000), SimpleThreadsOpt, (128, 128), Lagrange(11, T))
+run_mesure(T(100000), (128, 128), Lagrange(11, T))

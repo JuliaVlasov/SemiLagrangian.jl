@@ -35,10 +35,6 @@ using SemiLagrangian:
     ABTimeAlg_new,
     ABTimeAlg_init,
     hamsplit_3_11,
-    TimeOptimization,
-    NoTimeOpt,
-    SimpleThreadsOpt,
-    SplitThreadsOpt,
     standardsplit,
     strangsplit,
     triplejumpsplit,
@@ -183,7 +179,6 @@ function test_poisson2dadv(
     typeadd = 0,
     timealg::TimeAlgorithm = NoTimeAlg,
     ordalg = 0;
-    timeopt::TimeOptimization = NoTimeOpt,
     flbiginit::Bool = false,
 ) where {T,I<:AbstractInterpolation{T}}
     spmin, spmax, nsp = T(0), 4T(pi), sz[1]
@@ -204,7 +199,6 @@ function test_poisson2dadv(
         tab_coef = nosplit(dt),
         timealg = timealg,
         ordalg = ordalg,
-        timeopt = timeopt,
     )
 
     tabref = initdata(adv)
@@ -410,33 +404,26 @@ end
     @time test_timealg(interp, 10, ABTimeAlg_init, 5, flbiginit = true)
 end
 
-@testset "test poisson2d thread" begin
+@testset "test poisson2d serial" begin
     T = Float64
     interp = [Lagrange(5, T), Lagrange(5, T)]
     sz = (64, 64)
     flag = false
     for t_alg in (NoTimeAlg, ABTimeAlg_ip, ABTimeAlg_init, ABTimeAlg_init)
         res = []
-        for t_opt in (NoTimeOpt,) # SimpleThreadsOpt, SplitThreadsOpt)
-            @show t_alg, t_opt
-            ordalg = t_alg == NoTimeAlg ? 0 : 2
-            _, d1 = test_poisson2dadv(
-                sz,
-                interp,
-                T(0.01),
-                5,
-                StdPoisson2d,
-                0,
-                t_alg,
-                ordalg;
-                timeopt = t_opt,
-                flbiginit = flag,
-            )
-            push!(res, d1)
-            if length(res) >= 2
-                @test res[end-1] == res[end]
-            end
-        end
+        ordalg = t_alg == NoTimeAlg ? 0 : 2
+        _, d1 = test_poisson2dadv(
+            sz,
+            interp,
+            T(0.01),
+            5,
+            StdPoisson2d,
+            0,
+            t_alg,
+            ordalg;
+            flbiginit = flag,
+        )
+        push!(res, d1)
         flag = t_alg == ABTimeAlg_init
     end
 end

@@ -12,7 +12,7 @@ end
 """
 $(SIGNATURES)
 
-    initcoef!(pv::RotationVar{T, Nsp, Nv}, self::AdvectionData{T, Nsp, Nv, Nsum})
+    initcoef!(pv::RotationVar{T, N}, self::AdvectionData{T, N})
 
 Implementation of the interface function that is called at the begining of each advection
     This is implementation for Vlasov-Poisson equation
@@ -20,8 +20,8 @@ Implementation of the interface function that is called at the begining of each 
 """
 function initcoef!(
     pv::RotationVar{T,N},
-    self::AdvectionData{T,N,timeopt,NoTimeAlg},
-) where {T,N,timeopt}
+    self::    AdvectionData{T,N,NoTimeAlg},
+) where {T,N}
     st_cur, st_other = getst(self).perm
     mesh_cur = self.adv.t_mesh[st_cur]
     mesh_other = self.adv.t_mesh[st_other]
@@ -36,10 +36,10 @@ $(SIGNATURES)
 function initcoef!(
     pv::RotationVar{T,2},
     self::Union{
-        AdvectionData{T,2,timeopt,ABTimeAlg_ip},
-        AdvectionData{T,2,timeopt,ABTimeAlg_new},
+        AdvectionData{T,2,ABTimeAlg_ip},
+        AdvectionData{T,2,ABTimeAlg_new},
     },
-) where {T,timeopt}
+) where {T}
     adv = self.adv
     sz = sizeall(adv)
     buf1 = -getcur_t(self) / step(adv.t_mesh[1]) * adv.t_mesh[2].points

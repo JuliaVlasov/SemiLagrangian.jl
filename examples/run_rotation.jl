@@ -19,9 +19,6 @@ using LinearAlgebra
 # using Plots
 
 # +
-import Base.Threads: @spawn, @sync, nthreads, threadid
-include("../src/mpiinterface.jl")
-# include("../src/nompiinterface.jl")
 include("../src/advection.jl")
 include("../src/rotation.jl")
 include("../src/spline.jl")
@@ -34,12 +31,10 @@ include("../src/interpolation.jl")
 using DoubleFloats
 
 function printout(
-    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum},
     str,
-) where {T,Nsp,Nv,Nsum,timeopt}
-    if timeopt != MPIOpt || advd.adv.mpid.ind == 1
-        println(str)
-    end
+) where {T,Nsp,Nv,Nsum}
+    println(str)
 end
 
 """
@@ -63,10 +58,10 @@ function exact!(f, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}, tf::T) where {T
 end
 
 function trace_diffrotation(
-    advd::Advection1dData{T,Nsp,Nv,Nsum,timeopt},
+    advd::Advection1dData{T,Nsp,Nv,Nsum},
     t::T,
     n,
-) where {T,Nsp,Nv,Nsum,timeopt}
+) where {T,Nsp,Nv,Nsum}
     if t == 0
         printout(advd, "#nt\ttime\tnorm_2\tnorm_inf")
     end
@@ -93,7 +88,7 @@ function rotation(advd::Advection1dData, nbdt)
     return println("#  end")
     # printall(cl_obs)
 end
-function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrange(T, 21))
+function rotation1_1(T::DataType, nbdt; sz = (64, 64), interp = Lagrange(T, 21))
     dt = T(2big(pi) / nbdt)
 
     spmin, spmax, nsp = T(-5), T(5), sz[1]
@@ -108,7 +103,6 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
         (interp,),
         (interp,),
         dt;
-        timeopt = timeopt,
         tab_fct = [tan, sin, tan],
     )
 
@@ -125,14 +119,7 @@ function rotation1_1(T::DataType, nbdt, timeopt; sz = (64, 64), interp = Lagrang
     printout(advd, "# v : from $(Float64(mesh_v.start)) to $(Float64(mesh_v.stop))")
     printout(advd, "# interpolation : $(get_type(interp)) order=$(get_order(interp))")
     printout(advd, "# type=$T precision = $(precision(T))")
-    printout(advd, "# timeopt=$timeopt")
-    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
-        printout(advd, "# nb threads : $(Threads.nthreads())")
-    elseif timeopt == MPIOpt
-        printout(advd, "# nb process : $(adv.mpid.nb)")
-    else
-        printout(advd, "# monothread version")
-    end
+    printout(advd, "# monothread version")
     printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
     # advdata = Advection1dData(adv, data, pvar)
@@ -143,6 +130,4 @@ end
 T = Double64
 nbdt = 1000
 dt = T(2big(pi)) / nbdt
-# landau1_1(T, 50, NoTimeOpt, sz=(64,128))
-#rotation1_1(T, nbdt, MPIOpt, sz=(256,256), interp=Lagrange(T, 101))
-rotation1_1(T, nbdt, MPIOpt; sz = (256, 256), interp = Lagrange(T, 5))
+rotation1_1(T, nbdt; sz = (256, 256), interp = Lagrange(T, 5))

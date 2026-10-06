@@ -19,9 +19,6 @@ using SemiLagrangian:
     Advection,
     AdvectionData,
     advection!,
-    NoTimeOpt,
-    SimpleThreadsOpt,
-    SplitThreadsOpt,
     PrepareFftBig,
     standardsplit,
     strangsplit,
@@ -122,7 +119,7 @@ end
     @test resref == compute_ee(t_mesh, t)
 end
 
-function test_poisson_real(T::DataType, timeopt)
+function test_poisson_real(T::DataType)
     dt = T(1 // 10)
     nbdt = 10
     epsilon = 0.5
@@ -136,7 +133,7 @@ function test_poisson_real(T::DataType, timeopt)
 
     interp = Lagrange(9, T)
 
-    adv = Advection((mesh_sp, mesh_v), [interp, interp], dt, tabst; timeopt = timeopt)
+    adv = Advection((mesh_sp, mesh_v), [interp, interp], dt, tabst)
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
     fct_v(v) = exp(-v^2 / 2) / sqrt(2T(pi))
@@ -217,10 +214,8 @@ end
     test_poisson(Double64)
 end
 
-@testset "Poisson Threads" begin
-    res = test_poisson_real(Float64, NoTimeOpt)
-    # @test res == test_poisson_real(Float64, SimpleThreadsOpt)
-    # @test res == test_poisson_real(Float64, SplitThreadsOpt)
+@testset "Poisson serial" begin
+    test_poisson_real(Float64)
 end
 
 function test_split(T, nbdt, split, order)

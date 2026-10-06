@@ -564,10 +564,7 @@ function interpolate!(
     bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
     interp_t::AbstractVector{I};
     tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
-    #    itr::AbstractArray=CartesianIndices(fi)
+    cache::CachePrecal{T,N} = CachePrecal(interp_t, zero(T)),
 ) where {T,N,I<:AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
@@ -575,9 +572,7 @@ function interpolate!(
         ),
     )
 
-    isthreads = !ismissing(cachethreads)
     sz = size(fp)
-    #    @show "interpolate!", sz
     res = sol(interp_t, fi)
 
     order = get_order.(interp_t)
@@ -594,27 +589,8 @@ function interpolate!(
         return fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N2)...] .* tab)
     end
     ci = CartesianIndices(sz)
-    if isthreads
-        if ismissing(t_split)
-            #            println("SimpleThreads")
-            @threads for ind in ci
-                local cache = cachethreads[Threads.threadid()]
-                fct(ind, cache)
-            end
-        else
-            #            println("SplitThreads")
-            @threads for it in t_split
-                local cache = cachethreads[Threads.threadid()]
-                for ind in ci[it]
-                    fct(ind, cache)
-                end
-            end
-        end
-    else
-        local cache = CachePrecal(interp_t, zero(T))
-        for ind in ci
-            fct(ind, cache)
-        end
+    for ind in ci
+        fct(ind, cache)
     end
 
     return true
@@ -628,9 +604,7 @@ function autointerp!(
     from::Array{OpTuple{N,T},N},
     nb::Int,
     interp_t::AbstractVector{I};
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
+    cache::CachePrecal{T} = CachePrecal(interp_t, zero(T)),
 ) where {N,T,I<:AbstractInterpolation}
     if nb < 1
         to .= from
@@ -642,9 +616,7 @@ function autointerp!(
             from,
             fmr,
             interp_t;
-            mpid = mpid,
-            t_split = t_split,
-            cachethreads = cachethreads,
+            cache = cache,
         )
         if i != nb
             fmr .= to
@@ -661,9 +633,7 @@ function interpbufc!(
     bufdec::Array{OpTuple{N,T},N},
     interp_t::AbstractVector{I},
     nb::Int = length(t_buf);
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
+    cache::CachePrecal{T} = CachePrecal(interp_t, zero(T)),
 ) where {N,T,I<:AbstractInterpolation{T}}
 
     for i = 0:(nb-1)
@@ -673,9 +643,7 @@ function interpbufc!(
             copy(buf),
             bufdec,
             interp_t;
-            mpid = mpid,
-            t_split = t_split,
-            cachethreads = cachethreads,
+            cache = cache,
         )
     end
 

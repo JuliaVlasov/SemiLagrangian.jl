@@ -1,20 +1,16 @@
 using LinearAlgebra
 using DoubleFloats
-# using SemiLagMPI
-using MPI
 using SemiLagrangian
 
-function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
-    if timeopt != MPIOpt || advd.adv.mpid.ind == 1
-        println(str)
-    end
+function printout(advd::AdvectionData, str)
+    println(str)
 end
 printout(str) = println(str)
 
 # function trace_energy(
-#     advd::AdvectionData{T,N,timeopt},
+#     advd::AdvectionData,
 #     t,
-# ) where {T,N,timeopt}
+# )
 #     compute_charge!(advd)
 #     compute_elfield!(advd)
 #     # clockend(cl_obs,6)
@@ -59,7 +55,6 @@ end
 
 function landau2(
     t_max::T,
-    timeopt,
     dt::T,
     sz,
     interp::AbstractInterpolation,
@@ -82,7 +77,6 @@ function landau2(
         dt,
         tabst;
         tab_coef = nosplit(dt),
-        timeopt = timeopt,
         timealg = type,
         ordalg = typeadd,
     )
@@ -110,7 +104,6 @@ function landau2(
         # dt,
         # tabst_2,
         # tab_coef=hamsplit_3_11(dt), 
-        # timeopt = timeopt)
 
         # pvar_2 = getpoissonvar(adv_2)
 
@@ -134,7 +127,6 @@ end
 
 function landau1_1(
     t_max::T,
-    timeopt,
     dt::T,
     sz,
     interp::AbstractInterpolation,
@@ -157,7 +149,6 @@ function landau1_1(
         dt,
         tabst;
         tab_coef = tab_coef,
-        timeopt = timeopt,
     )
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -180,7 +171,7 @@ function landau1_1(
     return landau(advd, nbdt)
 end
 
-function run_mesure(t_max::T, timeopt, sz, interp, epsilon) where {T}
+function run_mesure(t_max::T, sz, interp, epsilon) where {T}
     # tabsplit = [standardsplit, strangsplit, triplejumpsplit, order6split, hamsplit_3_11]
     # tabsplit = [standardsplit, strangsplit, triplejumpsplit, table2split]
     tabsplit = [standardsplit, strangsplit, hamsplit_3_11]
@@ -224,36 +215,30 @@ function run_mesure(t_max::T, timeopt, sz, interp, epsilon) where {T}
         nbdt = tabnbdt[inbdt]
         dt = t_max / nbdt
         res[itc+1, inbdt] = if itc <= lenitc
-            landau1_1(t_max, timeopt, dt, sz, interp, tc(dt), epsilon)
+            landau1_1(t_max, dt, sz, interp, tc(dt), epsilon)
         else
-            landau2(t_max, timeopt, dt, sz, interp, tp, epsilon, typadd)
+            landau2(t_max, dt, sz, interp, tp, epsilon, typadd)
         end
-        if timeopt != MPIOpt || MPI.Comm_rank(MPI.COMM_WORLD) == 1
-            println("# sz=$sz t_max=$t_max interp=$interp")
-            for txt in tabtxt
-                print("# $txt\t")
+        println("# sz=$sz t_max=$t_max interp=$interp")
+        for txt in tabtxt
+            print("# $txt\t")
+        end
+        println("")
+        for j = 1:size(res, 2), i = 1:size(res, 1)
+            print("$(res[i,j])")
+            if i == size(res, 1)
+                print("\n")
+            else
+                print("\t")
             end
-            println("")
-            for j = 1:size(res, 2), i = 1:size(res, 1)
-                print("$(res[i,j])")
-                if i == size(res, 1)
-                    print("\n")
-                else
-                    print("\t")
-                end
-            end
+        end
 
-            println("free memory : $(Sys.free_memory()/2^30)")
-            flush(stdout)
-        end
+        println("free memory : $(Sys.free_memory()/2^30)")
+        flush(stdout)
     end
 end
-# to run with mpi here is the command for n process (n must be a number) from SemiLagrangian.jl :
-# ./mpiexec.loc n notebooks/run_mesures_poisson.jl
-# else run like this :
+# run like this :
 # julia --project=.  notebooks/run_mesures_poisson.jl
 
 T = Double64
-#run_mesure(T(1), NoTimeOpt, (128,128), Lagrange(11,T), T(0.5))
-#run_mesure(T(1), MPIOpt, (128,128), Lagrange(11,T), T(0.5))
-run_mesure(T(1), SimpleThreadsOpt, (128, 128), Lagrange(11, T), T(0.5))
+run_mesure(T(1), (128, 128), Lagrange(11, T), T(0.5))

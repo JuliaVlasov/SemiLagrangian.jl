@@ -20,14 +20,12 @@ using SemiLagrangian
 using ProgressMeter
 using Plots
 
-function printout(advd::AdvectionData{T,N,timeopt}, str) where {T,N,timeopt}
-    if timeopt != MPIOpt || advd.adv.mpid.ind == 1
-        println(str)
-    end
+function printout(advd::AdvectionData, str)
+    println(str)
 end
 printout(str) = println(str)
 
-function trace_energy(advd::AdvectionData{T,N,timeopt}, t) where {T,N,timeopt}
+function trace_energy(advd::AdvectionData, t)
     if t == 0
         printout(advd, "#time\tel-energy\tkinetic-energy\tglobal-energy")
     end
@@ -43,7 +41,7 @@ function trace_energy(advd::AdvectionData{T,N,timeopt}, t) where {T,N,timeopt}
     return energyall
 end
 
-function run_simulation(T::DataType, nbdt, timeopt, sz, dt, interpall, split, tabst)
+function run_simulation(T::DataType, nbdt, sz, dt, interpall, split, tabst)
     
     epsilon = T(0.5)
     dt = T(dt)
@@ -66,7 +64,6 @@ function run_simulation(T::DataType, nbdt, timeopt, sz, dt, interpall, split, ta
         dt,
         tabst;
         tab_coef = split(dt),
-        timeopt = timeopt,
     )
 
     fct_sp(x) = epsilon * cos(x / 2) + 1
@@ -94,14 +91,7 @@ function run_simulation(T::DataType, nbdt, timeopt, sz, dt, interpall, split, ta
     printout(advd, "# tab_coef : $split")
     printout(advd, "# tabst : $tabst")
     printout(advd, "# type=$T precision = $(precision(T))")
-    printout(advd, "# timeopt=$timeopt")
-    if timeopt == SimpleThreadsOpt || timeopt == SplitThreadsOpt
-        printout(advd, "# nb threads : $(Threads.nthreads())")
-    elseif timeopt == MPIOpt
-        printout(advd, "# nb process : $(adv.mpid.nb)")
-    else
-        printout(advd, "# monothread version")
-    end
+    printout(advd, "# monothread version")
     printout(advd, "typeof(data)=$(typeof(data)) size(data)=$(size(data))")
 
     maxdiff = 0
@@ -118,7 +108,6 @@ end
 
 T = Float64
 nbdt = 50
-timeopt = NoTimeOpt
 sz = (32, 32, 32, 32)
 dt = big"0.1"
 interpall = ntuple(x -> Lagrange(19, T), 4)
@@ -129,40 +118,37 @@ tabst = [
         ([1, 2, 4, 3], 1, 2, true),
         ([2, 1, 3, 4], 1, 2, true),
     ]
-@time result = run_simulation(T, nbdt, timeopt, sz, dt, interpall, split, tabst)
+@time result = run_simulation(T, nbdt, sz, dt, interpall, split, tabst)
 
 t = LinRange(0, nbdt * dt, nbdt)
 plot(t, result)
 
-run_simulation(Float64, 50, SimpleThreadsOpt)
+run_simulation(Float64, 50, (32, 32, 32, 32), big"0.1", ntuple(x -> Lagrange(19, Float64), 4), strangsplit, tabst)
 
-run_simulation(Float64, 50, SplitThreadsOpt)
+run_simulation(Float64, 50, (32,32,32,32), big"0.1", ntuple(x -> Lagrange(19, Float64), 4), strangsplit, tabst)
 
-run_simulation(Float64, 50, MPIOpt, sz=(32,32,32,32))
+run_simulation(BigFloat, 10000, (64,64,64,64), big"0.01", ntuple(x -> Lagrange(19, BigFloat), 4), strangsplit, tabst)
 
-run_simulation(BigFloat, 10000, MPIOpt, sz=(64,64,64,64), dt=big"0.01")
-
-run_simulation(BigFloat, 10000, MPIOpt, sz=(32,32,32,32), dt=big"0.01")
+run_simulation(BigFloat, 10000, (32,32,32,32), big"0.01", ntuple(x -> Lagrange(19, BigFloat), 4), strangsplit, tabst)
 
 T = Float64
-run_simulation(T, 10000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.01", interp=BSplineLU(27,32,T))
+run_simulation(T, 10000, (32,32,32,32), big"0.01", ntuple(x -> BSplineLU(27,32,T), 4), strangsplit, tabst)
 
-@time run_simulation(T, 1000, NoTimeOpt, sz=(32,32,32,32), dt=big"0.1", interp=Lagrange(5, T))
+@time run_simulation(T, 1000, (32,32,32,32), big"0.1", ntuple(x -> Lagrange(5, T), 4), strangsplit, tabst)
 
-@time run_simulation(T, 30, NoTimeOpt, sz=(32,64,36,40), dt=big"0.1")
+@time run_simulation(T, 30, (32,64,36,40), big"0.1", ntuple(x -> Lagrange(19, T), 4), strangsplit, tabst)
 
 sz = (32, 32, 20, 22)
 
 @time run_simulation(
     T,
     10,
-    MPIOpt,
     sz = sz,
     dt = big"0.1",
     interpall = ntuple(x -> BSplineLU(13, sz[x], T), 4),
 )
 
-@time run_simulation(T, 640, NoTimeOpt, sz=(32,32,128,128), dt=big"0.125", interp=Lagrange(5, T))
+@time run_simulation(T, 640, (32,32,128,128), big"0.125", ntuple(x -> Lagrange(5, T), 4), strangsplit, tabst)
 
 c = BigFloat(2)^(1 // 3)
 c1 = 1 / (2(2 - c))
@@ -175,7 +161,6 @@ T = Float64
 @time run_simulation(
     T,
     5,
-    NoTimeOpt,
     sz = (32, 32, 32, 32),
     dt = T(0.01),
     interpall = ntuple(x -> Lagrange(9, T), 4),
@@ -184,7 +169,6 @@ T = Float64
 @time run_simulation(
     T,
     10,
-    NoTimeOpt,
     sz = (32, 32, 32, 32),
     dt = T(0.005),
     interpall = ntuple(x -> Lagrange(9, T), 4),
@@ -203,11 +187,10 @@ tabst = map(
 @time run_simulation(
     T,
     30,
-    NoTimeOpt,
     sz = (32, 64, 36, 40),
     dt = big"0.1",
     interpall = ntuple(x -> Lagrange(7, T), 4),
     tabst = tabst,
 )
 # -
-@time run_simulation(T, 10000, MPIOpt; sz = (64, 64, 64, 64), dt = big"0.01", interp = Lagrange(27, T))
+@time run_simulation(T, 10000, (64, 64, 64, 64), big"0.01", ntuple(x -> Lagrange(27, T), 4), strangsplit, tabst)

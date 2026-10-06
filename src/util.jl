@@ -22,19 +22,6 @@ Base.length(::OpTuple{N}) where {N} = N
 Base.getindex(ot::OpTuple, ind...) = getindex(ot.v, ind...)
 Base.mod(v1::OpTuple, v2::OpTuple) = OpTuple(mod.(v1.v, v2.v))
 
-# contruct nb iterators thta is the split of 1:lgtot iterator
-function splititr(nb, lgtot)
-    lg, r = divrem(lgtot, nb)
-    return vcat(
-        map(x -> ((x-1)*(lg+1)+1):(x*(lg+1)), 1:r),
-        map(x -> ((x-1)*lg+r+1):(x*lg+r), (r+1):nb),
-    )
-end
-
-function splitvec(nb, v)
-    return map(x -> v[x], splititr(nb, length(v)))
-end
-
 # construct the permutation of size n that is the transposition of a and b
 function transposition(a, b, n)
     p = collect(1:n)

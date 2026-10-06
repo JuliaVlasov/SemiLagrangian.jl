@@ -1,7 +1,54 @@
 using LinearAlgebra
-using Polynomials
 using SemiLagrangian:
-    Hermite, PrecalHermite, L, Lprim, K, H, bplus, bminus, _getpolylagrange
+    Polynomial,
+    derivative,
+    Hermite,
+    HermiteCache,
+    hermite_interp,
+    hermite_interp!,
+    PrecalHermite,
+    L,
+    Lprim,
+    K,
+    H,
+    bplus,
+    bminus,
+    _getlagrangecoefficients
+
+lagrange_polynomial_reference(k, order, origin) =
+    Polynomial(_getlagrangecoefficients(k, order, origin))
+
+@testset "Hermite one-shot interpolation" begin
+    x = [0.0, 0.15, 0.4, 0.8, 1.1, 1.7, 2.0]
+    f(x) = x^3 - 2x^2 + 4x - 1
+    df(x) = 3x^2 - 4x + 4
+    y = f.(x)
+    dy = df.(x)
+    targets = reshape([0.0, 0.25, 0.7, 1.3, 2.0], 1, :)
+    expected = f.(targets)
+
+    @test hermite_interp(x, y, dy, targets) ≈ expected
+    @test hermite_interp(x, y, dy, 0.7) ≈ f(0.7)
+
+    output = similar(expected)
+    @test hermite_interp!(output, x, y, dy, targets) === output
+    @test output ≈ expected
+
+    cache = HermiteCache(x)
+    @test hermite_interp(cache, y, dy, targets) ≈ expected
+    cached_output = similar(expected)
+    @test hermite_interp!(cached_output, cache, y, dy, targets) === cached_output
+    @test cached_output ≈ expected
+
+    y2 = sin.(x)
+    dy2 = cos.(x)
+    @test hermite_interp(cache, y2, dy2, targets) ≈ sin.(targets) atol = 5e-4
+
+    @test_throws DomainError hermite_interp(cache, y, dy, -0.1)
+    @test_throws DimensionMismatch hermite_interp(cache, y[1:end-1], dy, targets)
+    @test_throws DimensionMismatch hermite_interp!(zeros(2), cache, y, dy, targets)
+    @test_throws ArgumentError HermiteCache([0.0, 1.0, 1.0])
+end
 
 function getbp(i, rp, sp)
     res = big(1 // 1)
@@ -28,12 +75,12 @@ function test_precalhermite(ord)
     sbm = 0 // 1
 
     for i = (-d):(d+1)
-        @test L(ph, i) == _getpolylagrange(i + d, ord, -d)
+        basis = lagrange_polynomial_reference(i + d, ord, -d)
+        @test L(ph, i) == basis
         @test Lprim(ph, i) == derivative(L(ph, i))(i)
-        @test K(ph, i) == _getpolylagrange(i + d, ord, -d)^2 * Polynomial([-i, 1 // 1])
+        @test K(ph, i) == basis^2 * Polynomial([-i, 1 // 1])
         @test H(ph, i) ==
-              _getpolylagrange(i + d, ord, -d)^2 *
-              (1 - 2 * Lprim(ph, i) * Polynomial([-i, 1 // 1]))
+              basis^2 * (1 - 2 * Lprim(ph, i) * Polynomial([-i, 1 // 1]))
         if i != 0
             @test bplus(ph, i) == getbp(i, ph.rplus, ph.splus)
             @test bminus(ph, -i) == -getbp(i, ph.rplus, ph.splus)

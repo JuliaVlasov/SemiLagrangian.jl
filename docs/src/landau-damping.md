@@ -68,10 +68,17 @@ changing only the interpolation method used for both advection directions:
 - **FastInterpolations cubic** — periodic cubic interpolation from
   FastInterpolations.jl.
 
-The run uses 64 position points, 128 velocity points, a time step of 0.1,
-and 1,000 steps. The logarithmic plot compares electric-field energy over
-time, and the script reports elapsed time for each method. Timings are
-indicative: they depend on the machine and include compilation overhead.
+The run uses 64 position points, 128 velocity points, a time step of 0.05,
+and 2,000 steps. The smaller step keeps the largest spatial characteristic
+shift below one grid cell for the local Fast Lagrange interpolator:
+\(\Delta t\,v_{\max}/(2\Delta x) < 1\). Its interpolation weights are
+intended for fractional shifts of about one cell or less; using a larger
+shift directly makes the high-order polynomial weights unstable. The number
+of steps is doubled to keep the final simulation time unchanged.
+
+The logarithmic plot compares electric-field energy over time, and the script
+reports elapsed time for each method. Timings are indicative: they depend on
+the machine and include compilation overhead.
 
 ## Running the example
 

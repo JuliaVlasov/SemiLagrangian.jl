@@ -1,13 +1,11 @@
 
-using Polynomials
-
 function _L(i, ord)
     ord % 2 == 1 || throw(DomainError("ord=$ord must be odd"))
     d = div(ord, 2)
-    result = Polynomials.Polynomial([big(1 // 1)])
+    result = Polynomial([big(1 // 1)])
     for j = (-d):(d+1)
         if j != i
-            result *= Polynomials.Polynomial([-j, 1 // 1] .// (i - j))
+            result *= Polynomial([-j, 1 // 1] .// (i - j))
         end
     end
     return result

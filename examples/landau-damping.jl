@@ -101,7 +101,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
 end
 
 nx, nv = 64, 128
-dt, nt = 0.1, 1000
+# Keep the final time fixed while choosing dt so FastLagrange's characteristic
+# shift in x stays within one grid cell: dt * maximum(abs, v) / (2dx) < 1.
+dt, nt = 0.05, 2000
 # Keep the simulation parameters fixed and vary only the interpolation method.
 methods = [
     ("Spectral", Spectral(nx), Spectral(nv)),

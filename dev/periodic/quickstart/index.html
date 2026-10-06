@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started · SemiLagrangian.jl</title><meta name="title" content="Getting Started · SemiLagrangian.jl"/><meta property="og:title" content="Getting Started · SemiLagrangian.jl"/><meta property="twitter:title" content="Getting Started · SemiLagrangian.jl"/><meta name="description" content="Documentation for SemiLagrangian.jl."/><meta property="og:description" content="Documentation for SemiLagrangian.jl."/><meta property="twitter:description" content="Documentation for SemiLagrangian.jl."/><meta property="og:url" content="https://juliavlasov.github.io/SemiLagrangian.jl/periodic/quickstart/"/><meta property="twitter:url" content="https://juliavlasov.github.io/SemiLagrangian.jl/periodic/quickstart/"/><link rel="canonical" href="https://juliavlasov.github.io/SemiLagrangian.jl/periodic/quickstart/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="SemiLagrangian.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">SemiLagrangian.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Quickstart</span><ul><li><a class="tocitem" href="../../rotation/">Rotation</a></li><li><a class="tocitem" href="../../vlasov-poisson/">Vlasov-Poisson</a></li><li><a class="tocitem" href="../../translation/">Translation</a></li><li><a class="tocitem" href="../../surfacequasigeostrophic/">Surface Quasi-Geostrosphic</a></li></ul></li><li><a class="tocitem" href="../../landau-damping/">Landau damping comparison</a></li><li><a class="tocitem" href="../../meshes/">Meshes</a></li><li><span class="tocitem">Interpolations</span><ul><li><a class="tocitem" href="../../interpolations/">Interpolations</a></li><li><a class="tocitem" href="../../lagrange/">Lagrange interpolation</a></li><li><a class="tocitem" href="../../bspline/">B-spline</a></li><li><a class="tocitem" href="../../hermite/">Hermite</a></li><li><a class="tocitem" href="../../fast-interpolations/">FastInterpolations.jl</a></li></ul></li><li><span class="tocitem">Periodic interpolation</span><ul><li><a class="tocitem" href="../">1D Periodic Interpolation on Uniform Grids</a></li><li class="is-active"><a class="tocitem" href>Getting Started</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Basic-Usage"><span>Basic Usage</span></a></li><li><a class="tocitem" href="#Common-Pitfalls"><span>Common Pitfalls</span></a></li><li><a class="tocitem" href="#Next-Steps"><span>Next Steps</span></a></li><li><a class="tocitem" href="#Performance-Considerations"><span>Performance Considerations</span></a></li></ul></li><li><a class="tocitem" href="../methods/">Interpolation Methods</a></li><li><a class="tocitem" href="../vlasov-poisson/">Vlasov-Poisson 1D1V Simulation Example</a></li><li><a class="tocitem" href="../95-reference/">Reference</a></li></ul></li><li><a class="tocitem" href="../../poisson/">Poisson solver</a></li><li><a class="tocitem" href="../../advection/">Advection</a></li><li><a class="tocitem" href="../../modele_2d/">Two dimensions</a></li><li><a class="tocitem" href="../../contents/">Contents</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Periodic interpolation</a></li><li class="is-active"><a href>Getting Started</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Getting Started</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaVlasov/SemiLagrangian.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaVlasov/SemiLagrangian.jl/blob/master/docs/src/periodic/quickstart.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Getting-Started"><a class="docs-heading-anchor" href="#Getting-Started">Getting Started</a><a id="Getting-Started-1"></a><a class="docs-heading-anchor-permalink" href="#Getting-Started" title="Permalink"></a></h1><p>Quick start guide for using the periodic interpolation methods in <code>SemiLagrangian</code>.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>The periodic interpolation methods are part of <code>SemiLagrangian</code>:</p><pre><code class="language-julia hljs">using SemiLagrangian</code></pre><h2 id="Basic-Usage"><a class="docs-heading-anchor" href="#Basic-Usage">Basic Usage</a><a id="Basic-Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Usage" title="Permalink"></a></h2><h3 id="1.-Simple-Example-with-Lagrange-Interpolation"><a class="docs-heading-anchor" href="#1.-Simple-Example-with-Lagrange-Interpolation">1. Simple Example with Lagrange Interpolation</a><a id="1.-Simple-Example-with-Lagrange-Interpolation-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Simple-Example-with-Lagrange-Interpolation" title="Permalink"></a></h3><pre><code class="language-julia hljs">using SemiLagrangian
+using Plots  # optional, for visualization
+
+# Create a periodic grid
+n = 100
+x = 2π .* (0:n-1) ./ n
+
+# Create a smooth function
+f = sin.(x)
+
+# Create output array
+f_interp = zeros(n)
+
+# Create interpolation object with 5-point stencil (order-4 polynomial)
+lagr = PeriodicLagrange(n, 5)
+
+# Interpolate with shift of 0.5 grid points
+interpolate!(f_interp, lagr, f, 0.5)
+
+println(\&quot;Interpolated values computed: \&quot;, length(f_interp), \&quot; points\&quot;)</code></pre><h3 id="2.-Comparing-Different-Methods"><a class="docs-heading-anchor" href="#2.-Comparing-Different-Methods">2. Comparing Different Methods</a><a id="2.-Comparing-Different-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Comparing-Different-Methods" title="Permalink"></a></h3><p>Interpolate the same function using all four methods:</p><pre><code class="language-julia hljs">using SemiLagrangian
+
+n = 100
+x = 2π .* (0:n-1) ./ n
+f = sin.(x)
+shift = 0.3
+
+# Output vectors
+f_lagr = zeros(n)
+f_bspl = zeros(n)
+f_spec = zeros(n)
+f_fast = zeros(n)
+
+# Create interpolators
+lagr = PeriodicLagrange(n, 7)
+bspl = PeriodicBSpline(n, 4)
+spec = Spectral(n)
+fast = FastLagrange(7)
+
+# Perform interpolation
+interpolate!(f_lagr, lagr, f, shift)
+interpolate!(f_bspl, bspl, f, shift)
+interpolate!(f_spec, spec, f, shift)
+interpolate!(f_fast, fast, f, shift)
+
+# Compare errors with analytical shifted solution
+x_shifted = mod.(x .- shift, 2π)
+f_exact = sin.(x_shifted)
+
+err_lagr = maximum(abs.(f_lagr .- f_exact))
+err_bspl = maximum(abs.(f_bspl .- f_exact))
+err_spec = maximum(abs.(f_spec .- f_exact))
+err_fast = maximum(abs.(f_fast .- f_exact))
+
+println(\&quot;Maximum absolute errors:\&quot;)
+println(\&quot;  Lagrange:    \&quot;, err_lagr)
+println(\&quot;  BSpline:     \&quot;, err_bspl)
+println(\&quot;  Spectral:    \&quot;, err_spec)
+println(\&quot;  FastLagrange:\&quot;, err_fast)</code></pre><h3 id="3.-Multiple-Interpolations"><a class="docs-heading-anchor" href="#3.-Multiple-Interpolations">3. Multiple Interpolations</a><a id="3.-Multiple-Interpolations-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Multiple-Interpolations" title="Permalink"></a></h3><p>Efficiently perform many interpolations by reusing objects:</p><pre><code class="language-julia hljs">using SemiLagrangian
+
+n = 1000
+f = randn(n)  # random data
+
+# Create interpolator once
+lagr = PeriodicLagrange(n, 5)
+
+# Perform many interpolations efficiently
+shifts = range(0, 2π, length=100)
+results = []
+
+for shift in shifts
+    f_interp = zeros(n)
+    interpolate!(f_interp, lagr, f, shift)
+    push!(results, f_interp)
+end
+
+println(\&quot;Computed \&quot;, length(results), \&quot; interpolations\&quot;)</code></pre><h3 id="4.-Cosine-Interpolation-Example"><a class="docs-heading-anchor" href="#4.-Cosine-Interpolation-Example">4. Cosine Interpolation Example</a><a id="4.-Cosine-Interpolation-Example-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Cosine-Interpolation-Example" title="Permalink"></a></h3><pre><code class="language-julia hljs">using SemiLagrangian
+
+# High-frequency cosine function
+n = 128
+x = 2π .* (0:n-1) ./ n
+k = 10  # wave number
+f = cos.(k .* x)
+
+# Try different methods
+f_interp = zeros(n)
+
+# Spectral method
+spec = Spectral(n)
+interpolate!(f_interp, spec, f, 0.25)
+
+# Compute exact solution
+x_shifted = mod.(x .- 0.25, 2π)
+f_exact = cos.(k .* x_shifted)
+
+error = maximum(abs.(f_interp .- f_exact))
+println(\&quot;Spectral method error: \&quot;, error)</code></pre><h3 id="5.-Large-scale-Problem"><a class="docs-heading-anchor" href="#5.-Large-scale-Problem">5. Large-scale Problem</a><a id="5.-Large-scale-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Large-scale-Problem" title="Permalink"></a></h3><pre><code class="language-julia hljs">using SemiLagrangian, BenchmarkTools
+
+# Large problem
+n = 10_000
+f = randn(n)
+
+# Time different methods
+lagr = PeriodicLagrange(n, 5)
+bspl = PeriodicBSpline(n, 4)
+spec = Spectral(n)
+fast = FastLagrange(7)
+
+f_out = zeros(n)
+shift = 0.25
+
+println(\&quot;Performance comparison for n=$n, shift=$shift:\&quot;)
+@time interpolate!(f_out, lagr, f, shift)
+@time interpolate!(f_out, bspl, f, shift)
+@time interpolate!(f_out, spec, f, shift)
+@time interpolate!(f_out, fast, f, shift)</code></pre><h2 id="Common-Pitfalls"><a class="docs-heading-anchor" href="#Common-Pitfalls">Common Pitfalls</a><a id="Common-Pitfalls-1"></a><a class="docs-heading-anchor-permalink" href="#Common-Pitfalls" title="Permalink"></a></h2><h3 id="1.-Mutable-Output-Array"><a class="docs-heading-anchor" href="#1.-Mutable-Output-Array">1. Mutable Output Array</a><a id="1.-Mutable-Output-Array-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Mutable-Output-Array" title="Permalink"></a></h3><p>The output array is modified <strong>in-place</strong>. Make sure to provide a pre-allocated array:</p><pre><code class="language-julia hljs">lagr = PeriodicLagrange(100, 5)
+u = randn(100)
+
+# ✓ Correct
+u_out = zeros(100)
+interpolate!(u_out, lagr, u, 0.5)
+
+# ✗ Wrong - will not work as expected
+result = interpolate!(nothing, lagr, u, 0.5)  # Error!</code></pre><h3 id="2.-Array-Size-Mismatch"><a class="docs-heading-anchor" href="#2.-Array-Size-Mismatch">2. Array Size Mismatch</a><a id="2.-Array-Size-Mismatch-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Array-Size-Mismatch" title="Permalink"></a></h3><p>All arrays must have the same length:</p><pre><code class="language-julia hljs">lagr = PeriodicLagrange(100, 5)
+u = randn(100)
+
+# ✓ Correct
+u_out = zeros(100)
+interpolate!(u_out, lagr, u, 0.5)
+
+# ✗ Wrong - length mismatch
+u_out_wrong = zeros(50)
+interpolate!(u_out_wrong, lagr, u, 0.5)  # Error!</code></pre><h3 id="3.-FastLagrange-Stability"><a class="docs-heading-anchor" href="#3.-FastLagrange-Stability">3. FastLagrange Stability</a><a id="3.-FastLagrange-Stability-1"></a><a class="docs-heading-anchor-permalink" href="#3.-FastLagrange-Stability" title="Permalink"></a></h3><p>Remember that <code>FastLagrange</code> is unstable for large shifts:</p><pre><code class="language-julia hljs">fast = FastLagrange(7)
+u = randn(100)
+u_out = zeros(100)
+
+# ✓ Good - small shift
+interpolate!(u_out, fast, u, 0.1)
+
+# ⚠️ Warning - large shift, inaccurate results
+interpolate!(u_out, fast, u, 10.5)  # Large shift, results unreliable!</code></pre><h3 id="4.-BSpline-Order-Must-Be-Even"><a class="docs-heading-anchor" href="#4.-BSpline-Order-Must-Be-Even">4. BSpline Order Must Be Even</a><a id="4.-BSpline-Order-Must-Be-Even-1"></a><a class="docs-heading-anchor-permalink" href="#4.-BSpline-Order-Must-Be-Even" title="Permalink"></a></h3><pre><code class="language-julia hljs"># ✓ Correct
+bspl = PeriodicBSpline(100, 4)  # order 4 is even
+
+# ✗ Wrong - odd order not allowed
+# bspl = PeriodicBSpline(100, 5)  # error!</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li>See <a href="../methods/#Interpolation-Methods">Interpolation Methods</a> for detailed method descriptions</li><li>Check the <a href="../95-reference/#reference">Reference</a> for API documentation</li><li>Look at examples in the <code>examples/</code> directory</li><li>Read the original Fortran documentation from <a href="https://selalib.github.io">SeLaLib</a></li></ul><h2 id="Performance-Considerations"><a class="docs-heading-anchor" href="#Performance-Considerations">Performance Considerations</a><a id="Performance-Considerations-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-Considerations" title="Permalink"></a></h2><ol><li><p><strong>FFT-based vs Local Methods</strong></p><ul><li>Spectral, Lagrange, BSpline: Use FFT, good for multiple interpolations</li><li>FastLagrange: Direct computation, good for single interpolations</li></ul></li><li><p><strong>Memory Usage</strong></p><ul><li>Spectral: ~2n complex numbers (FFT workspace)</li><li>Lagrange: ~2n complex numbers (FFT workspace)</li><li>BSpline: ~2n complex numbers (FFT workspace)</li><li>FastLagrange: ~stencil_size floats (minimal overhead)</li></ul></li><li><p><strong>Accuracy vs Speed Trade-off</strong></p><ul><li>Higher polynomial order → better accuracy but slower</li><li>For most problems, order 5-7 is a good balance</li><li>Use FastLagrange only for performance-critical small-shift cases</li></ul></li></ol></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« 1D Periodic Interpolation on Uniform Grids</a><a class="docs-footer-nextpage" href="../methods/">Interpolation Methods »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 6 October 2026 11:47">Tuesday 6 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

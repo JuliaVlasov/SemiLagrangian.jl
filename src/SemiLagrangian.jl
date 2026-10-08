@@ -39,7 +39,6 @@ include("splitting.jl")
 include("advection.jl")
 include("rotation.jl")
 include("translation.jl")
-include("quasigeostrophic.jl")
 include("periodic_interpolation/bsplines.jl")
 include("periodic_interpolation/spectral.jl")
 include("periodic_interpolation/fast_lagrange.jl")
@@ -67,7 +66,7 @@ export TimeOptimization,
     ABTimeAlg_init,
     ABTimeAlg_new
 
-export sizeall, getdata, OpTuple, getgeovar, initdata!
+export sizeall, getdata, OpTuple
 export Spectral, FastLagrange, CubicSpline, PeriodicLagrange, PeriodicBSpline
 
 end

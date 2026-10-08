@@ -24,7 +24,7 @@ makedocs(;
     doctest = false,
     pages = [
         "Home" => "index.md",
-        "Quickstart" => ["rotation.md", "translation.md", "surfacequasigeostrophic.md"],
+        "Quickstart" => ["rotation.md", "translation.md"],
         "Landau damping comparison" => "landau-damping.md",
         "Meshes" => "meshes.md",
         "Interpolations" => ["interpolations.md", "lagrange.md", "bspline.md", "hermite.md", "fast-interpolations.md"],

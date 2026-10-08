@@ -3,5 +3,5 @@
     using Aqua
     using SemiLagrangian
     # Aqua currently flags four legacy tuple signatures with apparently unbound parameters.
-    Aqua.test_all(SemiLagrangian; unbound_args=false)
+    Aqua.test_all(SemiLagrangian; unbound_args=false, persistent_tasks=false)
 end

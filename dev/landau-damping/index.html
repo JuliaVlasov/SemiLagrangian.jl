@@ -27,7 +27,6 @@ using LinearAlgebra
 using Plots
 using SemiLagrangian
 
-include(joinpath(@__DIR__, &quot;uniform_mesh.jl&quot;))
 include(joinpath(@__DIR__, &quot;compute_rho.jl&quot;))
 include(joinpath(@__DIR__, &quot;compute_e.jl&quot;))
 
@@ -51,14 +50,18 @@ function interpolate_column!(out, ::FastInterpolationsCubic, values, alpha, xi)
     )
 end
 
-function advection!(f, mesh::UniformMesh, velocity, dt, interpolant)
-    xi = 1.0:mesh.nx
+function advect_direction!(f, mesh::UniformMesh, velocity, dt, interpolant)
+    if !(interpolant isa FastInterpolationsCubic)
+        return advection!(f, mesh, velocity, dt, interpolant; dim = 1)
+    end
+
+    xi = 1.0:length(mesh)
     fp = similar(view(f, :, 1))
 
     for j in eachindex(velocity)
         fi = view(f, :, j)
         # Trace characteristics backward to obtain the shift in grid-cell units.
-        alpha = -dt * velocity[j] / mesh.dx
+        alpha = -dt * velocity[j] / step(mesh)
         interpolate_column!(fp, interpolant, fi, alpha, xi)
         fi .= fp
     end
@@ -68,9 +71,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
     meshx = UniformMesh(0.0, 4π, nx)
     meshv = UniformMesh(-6.0, 6.0, nv)
 
-    x = meshx.x
-    v = meshv.x
-    dx = meshx.dx
+    x = meshx.points
+    v = meshv.points
+    dx = step(meshx)
     # Store f with position along rows and velocity along columns.
     f = (1.0 .+ 0.001 .* cos.(0.5 .* x)) ./ sqrt(2π) .*
         transpose(exp.(-0.5 .* v .^ 2))
@@ -85,7 +88,7 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
     for it in 1:nt
         # Strang splitting: half-step in x, full-step in v, then half-step in x.
         # Recompute the electric field between the two advection directions.
-        advection!(f, meshx, v, 0.5dt, interpolant_x)
+        advect_direction!(f, meshx, v, 0.5dt, interpolant_x)
         rho = compute_rho(meshv, f)
         e = compute_e(meshx, rho)
         push!(energy, sum(abs2, e) * dx)
@@ -93,9 +96,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
         push!(time, (it - 0.5) * dt)
         # Transpose so that velocity is the interpolated (row) direction.
         transpose!(fᵗ, f)
-        advection!(fᵗ, meshv, e, dt, interpolant_v)
+        advect_direction!(fᵗ, meshv, e, dt, interpolant_v)
         transpose!(f, fᵗ)
-        advection!(f, meshx, v, 0.5dt, interpolant_x)
+        advect_direction!(f, meshx, v, 0.5dt, interpolant_x)
     end
 
     return time, energy
@@ -131,4 +134,4 @@ for (name, time, energy) in results
     plot!(comparison_plot, time, energy; label=name)
 end
 comparison_plot
-</code></pre><p>Run the comparison from the repository root with:</p><pre><code class="language-sh hljs">julia --project examples/landau-damping.jl</code></pre><pre><code class="language-julia hljs">include(joinpath(@__DIR__, &quot;..&quot;, &quot;..&quot;, &quot;examples&quot;, &quot;landau-damping.jl&quot;))</code></pre><img src="64bb632a.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../translation/">« Translation</a><a class="docs-footer-nextpage" href="../meshes/">Meshes »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Thursday 8 October 2026 14:53">Thursday 8 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p>Run the comparison from the repository root with:</p><pre><code class="language-sh hljs">julia --project examples/landau-damping.jl</code></pre><pre><code class="language-julia hljs">include(joinpath(@__DIR__, &quot;..&quot;, &quot;..&quot;, &quot;examples&quot;, &quot;landau-damping.jl&quot;))</code></pre><img src="40816650.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../translation/">« Translation</a><a class="docs-footer-nextpage" href="../meshes/">Meshes »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 20 October 2026 13:50">Tuesday 20 October 2026</span>. Using Julia version 1.13.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

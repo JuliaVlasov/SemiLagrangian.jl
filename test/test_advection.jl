@@ -1,234 +1,48 @@
+using SemiLagrangian: advection!, interpolate!, Lagrange, UniformMesh
 
-using DoubleFloats
-using Random
+@testset "directional advection" begin
+    T = Float64
+    n = 64
+    mesh = UniformMesh(T(0), T(1), n)
+    interp = Lagrange(5, T)
+    initial = sin.(2T(pi) .* mesh.points)
+    expected = similar(initial)
+    shift = -T(0.35)
 
-using SemiLagrangian:
-    Advection,
-    AdvectionData,
-    getstcoef,
-    advection!,
-    sizeall,
-    getext,
-    getdata,
-    getcur_t,
-    getindsplit,
-    _getcurrentindice,
-    getprecal,
-    getitr,
-    gett_split,
-    nextstate!,
-    UniformMesh,
-    totuple,
-    tovector,
-    Lagrange,
-    getinterp
+    interpolate!(expected, initial, shift, interp)
+    result = copy(initial)
+    @test advection!(result, mesh, T(0.35), T(1) / n, interp) === result
+    @test result ≈ expected
 
-function initmesh(t_deb, t_end, t_size)
-    t_step = (t_end - t_deb) ./ t_size
-    return totuple(UniformMesh.(t_deb, t_end, t_size)), t_step
-end
-
-function test_adv(T::DataType)
-    println("trace1")
-    t_debsp = T.([-1, -10, -3])
-    t_endsp = T.([3, 6, 5])
-    t_szsp = (16, 8, 32)
-    t_debv = T.([-3, -9, 1])
-    t_endv = T.([1, 7, 1])
-    t_szv = (4, 8, 4)
-    base_dt = one(T) / 80
-
-    Nsum = 6
-
-    t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
-    t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
-
-    interp = Lagrange(3, T)
-    adv = Advection(
-        (t_meshsp..., t_meshv...),
-        map(x -> Lagrange(3, T), 1:6),
-        base_dt,
-        [
-            ([1, 2, 3, 6, 5, 4], 1, 1, true),
-            ([2, 1, 3, 4, 6, 5], 1, 1, true),
-            ([3, 2, 1, 4, 5, 6], 1, 1, true), # space states
-            ([4, 5, 6, 1, 2, 3], 1, 2, true),
-            ([5, 4, 6, 1, 2, 3], 1, 2, true),
-            ([6, 5, 4, 1, 2, 3], 1, 2, true), # velocity states
-        ],
-    )
-    println("trace2")
-
-    sref = (t_szsp..., t_szv...)
-    @test sref == sizeall(adv)
-
-    tab = rand(T, sizeall(adv))
-
-    advd = AdvectionData(adv, tab, TestExtData())
-
-    @test advd.state_gen == 1
-
-    @test advd.parext == getext(advd)
-    @test advd.data == getdata(advd)
-    @test adv.tab_coef[1] == getcur_t(adv, 1)
-    @test adv.tab_coef[3] == getcur_t(adv, 1)
-    @test adv.tab_coef[1] == getcur_t(adv, 2)
-    @test adv.tab_coef[1] == getcur_t(adv, 3)
-    @test adv.tab_coef[2] == getcur_t(adv, 4)
-    @test adv.tab_coef[2] == getcur_t(adv, 5)
-    @test adv.tab_coef[2] == getcur_t(adv, 6)
-
-    @test getcur_t(advd) == advd.adv.tab_coef[1]
-
-    println("trace3")
-
-    t_coef = [1, 1, 1, 2, 2, 2, 3, 3, 3, 1]
-    #    t_dim = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1]
-    t_indice = [1, 2, 3, 4, 5, 6, 1, 2, 3, 1]
-    t_v = [false, false, false, true, true, true, false, false, false, false]
-    t_result = [true, true, true, true, true, true, true, true, false, true]
-    # resfirst = [4, 4, 4, (4, 1, 1), (4, 1, 1), (4, 1, 1), 4, 4, 4, 4]
-    # ressecond = [
-    #     (:, 3, 1, 4, 1, 1),
-    #     (3, :, 1, 1, 4, 1),
-    #     (3, 1, :, 1, 1, 4),
-    #     (4, 1, 1, :, 3, 1),
-    #     (4, 1, 1, 3, :, 1),
-    #     (4, 1, 1, 3, 1, :),
-    #     (:, 3, 1, 4, 1, 1),
-    #     (3, :, 1, 1, 4, 1),
-    #     (3, 1, :, 1, 1, 4),
-    #     (:, 3, 1, 4, 1, 1),
-    # ]
-
-    for i = 1:length(t_coef)
-        @test getstcoef(advd) == t_coef[i]
-        @test advd.state_gen == (i - 1) % 9 + 1
-        @test t_indice[i] == _getcurrentindice(advd)
-
-        @test getcur_t(advd) == adv.tab_coef[t_coef[i]]
-        t = adv.t_interp
-        @test t[t_indice[i]] == getinterp(advd)[1]
-
-        # itrfirst = getitrfirst(advd)
-        # (res, _) = Iterators.peel(Iterators.drop(itrfirst,3))
-
-        # @test resfirst[i] == res
-
-        # itrsecond = getitrsecond(advd,res)
-
-        # (res2, _) = Iterators.peel(Iterators.drop(itrsecond,2))
-
-        # @test ressecond[i] == res2
-
-        #        x = t_indice[i]
-        #    @time @test addcolon.(x, Iterators.product(refitr[vcat(1:(x-1),(x+1):Nsum)]...)) == getitr(advd)
-
-        ret = nextstate!(advd)
-        @test ret == t_result[i]
+    mesh_y = UniformMesh(T(-1), T(1), 32)
+    data = [sin(2T(pi) * x) * cos(T(pi) * y) for x in mesh.points, y in mesh_y.points]
+    original = copy(data)
+    velocity = collect(range(T(-0.5), T(0.5); length = size(data, 1)))
+    out = similar(data)
+    for i in axes(data, 1)
+        interpolate!(
+            view(out, i, :),
+            view(original, i, :),
+            -velocity[i] * T(0.1) / step(mesh_y),
+            interp,
+        )
     end
+    @test advection!(data, mesh_y, velocity, T(0.1), interp; dim = 2) === data
+    @test data ≈ out
+
+    pointwise_velocity = [T(0.2) + T(0.1) * x for x in mesh.points, _ in mesh_y.points]
+    pointwise_result = copy(original)
+    @test advection!(
+        pointwise_result,
+        mesh,
+        pointwise_velocity,
+        T(0.05),
+        interp;
+        dim = 1,
+    ) === pointwise_result
+    @test all(isfinite, pointwise_result)
+
+    @test_throws DimensionMismatch advection!(copy(initial), mesh_y, one(T), T(0.1), interp)
+    @test_throws DimensionMismatch advection!(copy(initial), mesh, ones(3), T(0.1), interp)
+    @test_throws ArgumentError advection!(copy(initial), mesh, one(T), T(0.1), interp; dim = 2)
 end
-
-struct TestExtData <: SemiLagrangian.AbstractExtDataAdv end
-
-# @testset "test Advection1d Float" begin
-
-#     test_adv(Float64)
-
-# end
-# @testset "test Advection1d BigFloat" begin
-
-#     test_adv(BigFloat)
-
-# end
-# @testset "test Advection1d Double64" begin
-
-#     test_adv(Double64)
-
-# end
-# function test_itr(T::DataType)
-#     t_debsp = T.([-1, -10, -3])
-#     t_endsp = T.([3, 6, 5])
-#     t_szsp = (16, 8, 32)
-#     t_debv = T.([-3, -9, 1])
-#     t_endv = T.([1, 7, 1])
-#     t_szv = (4, 8, 4)
-#     base_dt = one(T) / 80
-
-#     Nsum = 6
-
-#     t_meshsp, t_stepsp = initmesh(t_debsp, t_endsp, t_szsp)
-#     t_meshv, t_stepv = initmesh(t_debv, t_endv, t_szv)
-
-#     interp = Lagrange(3, T)
-#     adv = Advection1d(
-#         t_meshsp,
-#         t_meshv,
-#         ntuple(x -> Lagrange(3, T), 3),
-#         ntuple(x -> Lagrange(3, T), 3),
-#         base_dt,
-#     )
-
-#     sref = (t_szsp..., t_szv...)
-
-#     refitr = ntuple(x -> 1:sref[x], size(sref, 1))
-
-#     tab = rand(T, sizeall(adv))
-
-#     @show size(tab)
-
-
-#     #    @show advd.t_itrfirst
-
-#     resfirst = [
-#         CartesianIndex(2, 17, 1, 2, 1),
-#         CartesianIndex(2, 9, 3, 1, 1),
-#         CartesianIndex(2, 1, 2, 3, 1),
-#         CartesianIndex(2, 1, 5, 3, 1),
-#         CartesianIndex(2, 1, 9, 5, 1),
-#         CartesianIndex(2, 1, 5, 3, 1),
-#         CartesianIndex(2, 17, 1, 2, 1),
-#         CartesianIndex(2, 9, 3, 1, 1),
-#         CartesianIndex(2, 1, 2, 3, 1),
-#         CartesianIndex(2, 17, 1, 2, 1),
-#     ]
-#     ressecond = [
-#         CartesianIndex(6, 21, 1, 3, 1),
-#         CartesianIndex(6, 11, 1, 2, 1),
-#         CartesianIndex(6, 5, 2, 5, 1),
-#         CartesianIndex(6, 1, 6, 5, 1),
-#         CartesianIndex(2, 2, 11, 1, 2),
-#         CartesianIndex(6, 1, 6, 5, 1),
-#         CartesianIndex(6, 21, 1, 3, 1),
-#         CartesianIndex(6, 11, 1, 2, 1),
-#         CartesianIndex(6, 5, 2, 5, 1),
-#         CartesianIndex(6, 21, 1, 3, 1),
-#     ]
-
-#     for i = 1:length(resfirst)
-#         itr = getitr(advd)
-
-#         (res, _) = Iterators.peel(Iterators.drop(itr, 1153))
-
-#         #        @show res
-
-#         @test resfirst[i] == res
-
-#         (res2, _) = Iterators.peel(Iterators.drop(itr, 2213))
-
-#         #        @show res2
-
-#         @test ressecond[i] == res2
-
-#         nextstate!(advd)
-#     end
-
-# end
-
-@testset "test advection" begin
-    test_adv(Float64)
-end
-# @testset "test itr" begin
-#     test_itr(Float64)
-#     test_itr(BigFloat)
-# end

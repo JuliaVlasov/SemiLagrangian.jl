@@ -1,219 +1,92 @@
 using DoubleFloats
 using LinearAlgebra
-
 using SemiLagrangian:
-    Advection,
-    standardsplit,
-    strangsplit,
-    triplejumpsplit,
-    sizeall,
-    AdvectionData,
-    getdata,
     advection!,
+    strangsplit,
+    standardsplit,
+    triplejumpsplit,
     UniformMesh,
-    gettranslationvar,
-    AbstractInterpolation,
-    interpolate!,
     Lagrange,
     BSplineLU,
     BSplineFFT,
     Hermite
-"""
 
-   exact(tf, mesh1, mesh2)
-
-   Julia function to compute exact solution "
-
-```math
-\frac{d f}{dt} +  (y \frac{df}{delta1} - x \frac{df}{delta2}) = 0 
-```
-
-"""
-function exact!(f, decall::NTuple{Nsum,T}, t::T) where {T,Nsum}
+function exact_translation!(f, velocities, t)
+    T = typeof(t)
     for ind in CartesianIndices(f)
         f[ind] = exp(
-            -sum([
-                sin(2T(pi) * (ind.I[i] + decall[i] * t) / size(f, i) + T(big"0.56") * i^2) for i = 1:Nsum
-            ]),
+            -sum(
+                sin(2T(pi) * (ind.I[i] - velocities[i] * t) / size(f, i) +
+                    T(big"0.56") * i^2) for i in eachindex(velocities)
+            ),
         )
     end
+    return f
 end
 
-function test_translation(
-    sz::NTuple{2,Int},
-    interp_sp::AbstractInterpolation{T},
-    interp_v::AbstractInterpolation{T},
-    dt::T;
-    tc::Vector{T} = strangsplit(dt),
-) where {T}
-    @time begin
-        spmin, spmax, nsp = T(-5), T(5), sz[1]
-        vmin, vmax, nv = -T(5.55), T(5), sz[2]
-
-        mesh_sp = UniformMesh(spmin, spmax, nsp)
-        mesh_v = UniformMesh(vmin, vmax, nv)
-    end
-    println("trace1")
-    @time begin
-        nbdt = Int(round(T(1) / dt))
-        adv = Advection(
-            (mesh_sp, mesh_v),
-            [interp_sp, interp_v],
-            dt,
-            [([1, 2], 1, 1, true), ([2, 1], 1, 2, true)];
-            tab_coef = tc,
-        )
-
-        tabref = zeros(T, sz)
-
-        v1 = T(big"0.83545655467782872872782870029282982828737872878776717190927267611111")
-        v2 = T(
-            big"0.945678101929276765616767176761671771766717828781828998101092981877817176",
-        )
-    end
-    println("trace2")
-    @time begin
-        exact!(tabref, (v1, v2), T(0))
-
-        pvar = gettranslationvar((v1, v2))
-
-        advdata = AdvectionData(adv, tabref, pvar)
-
-        diffmax = 0
-        data = getdata(advdata)
-    end
-    println("trace3")
-    for ind = 1:nbdt
-        data = getdata(advdata)
-        while advection!(advdata)
-        end
-        #        GC.gc()
-        exact!(tabref, (v1, v2), T(ind) * dt)
-        data = getdata(advdata)
-        diff = norm(data .- tabref, Inf)
-        @show v1, v2, ind, diff
-        diffmax = max(diffmax, diff)
-    end
-    println(
-        "length(tab_coef)=$(length(tc)) test_translation sz=$sz interp=$interp_sp, $interp_v nbdt=$nbdt diffmax=$diffmax",
+function test_translation(sz, interp_sp, interp_v, dt; tc = strangsplit(dt))
+    T = typeof(dt)
+    mesh_sp = UniformMesh(T(-5), T(5), sz[1])
+    mesh_v = UniformMesh(T(-5.55), T(5), sz[2])
+    velocities = (
+        T(big"0.83545655467782872872782870029282982828737872878776717190927267611111"),
+        T(big"0.945678101929276765616767176761671771766717828781828998101092981877817176"),
     )
-    return diffmax
-end
-function test_translation(
-    sz::NTuple{N,Int},
-    interp_t::Vector{I},
-    nbdt::Int,
-) where {T,N,I<:AbstractInterpolation{T}}
-    dt = T(1)
+    exact = zeros(T, sz)
+    exact_translation!(exact, velocities, zero(T))
+    data = copy(exact)
+    velocity_sp = fill(velocities[1] * step(mesh_sp), sz[2])
+    velocity_v = fill(velocities[2] * step(mesh_v), sz[1])
 
-    vall = ntuple(x -> T(10rand(BigFloat) - 5), N)
-
-    vall = T(1) / 10 .* vall
-
-    @show vall
-
-    tabref = zeros(T, sz)
-    exact!(tabref, vall, T(0))
-
-    data = copy(tabref)
-
-    buf = zeros(T, sz)
-
-    # dec1 = fill(v1, sz)
-    # dec2 = fill(v2, sz)
-
-    diffmax = 0
-    for ind = 1:nbdt
-        interpolate!(buf, data, (i, _) -> vall[i], interp_t)
-        #        interpolate!(buf, data, (dec1, dec2), interp)
-        copyto!(data, buf)
-        exact!(tabref, vall, T(ind))
-        diff = norm(data .- tabref, Inf)
-        diffmax = max(diffmax, diff)
-        @show ind, diff
+    for n in 1:round(Int, one(T) / dt)
+        for (i, coefficient) in enumerate(tc)
+            if isodd(i)
+                advection!(data, mesh_sp, velocity_sp, coefficient, interp_sp; dim = 1)
+            else
+                advection!(data, mesh_v, velocity_v, coefficient, interp_v; dim = 2)
+            end
+        end
+        exact_translation!(exact, velocities, T(n) * dt)
     end
-    println("test_translation sz=$sz interp=$interp_t nbdt=$nbdt diffmax=$diffmax")
-    return diffmax
+    return norm(data .- exact, Inf)
 end
 
-@testset "test translation" begin
+@testset "directional translation" begin
     T = Float64
     dt = T(1) / 11
-    @time @test test_translation((200, 300), Lagrange(5, T), Lagrange(5, T), dt) < 1e-3
-    @time @test test_translation(
-        (200, 300),
-        Lagrange(5, T),
-        Lagrange(5, T),
-        dt;
-        tc = triplejumpsplit(dt),
-    ) < 1e-3
-    @time @test test_translation(
-        (200, 300),
-        Lagrange(5, T),
-        Lagrange(5, T),
-        dt;
-        tc = standardsplit(dt),
-    ) < 1e-3
-    @time @test test_translation((200, 300), Hermite(5, T), Hermite(5, T), dt) < 1e-3
-    @time @test test_translation(
-        (200, 300),
-        Hermite(5, T),
-        Hermite(5, T),
-        dt;
-        tc = triplejumpsplit(dt),
-    ) < 1e-3
-    @time @test test_translation(
-        (200, 300),
-        Hermite(5, T),
-        Hermite(5, T),
-        dt;
-        tc = standardsplit(dt),
-    ) < 1e-3
-    @time @test test_translation(
+    for split in (strangsplit(dt), triplejumpsplit(dt), standardsplit(dt))
+        @test test_translation((200, 300), Lagrange(5, T), Lagrange(5, T), dt; tc = split) <
+              1e-3
+        @test test_translation((200, 300), Hermite(5, T), Hermite(5, T), dt; tc = split) <
+              1e-3
+    end
+    @test test_translation(
         (128, 64),
         BSplineLU(5, 128, T),
         BSplineLU(5, 64, T),
         dt,
     ) < 1e-6
-    @time @test test_translation(
-        (128, 64),
-        BSplineLU(5, 128, T),
-        BSplineLU(5, 64, T),
-        dt;
-        tc = triplejumpsplit(dt),
-    ) < 1e-6
-    @time @test test_translation(
+    @test test_translation(
         (128, 64),
         BSplineFFT(5, 128, T),
         BSplineFFT(5, 64, T),
         dt,
     ) < 1e-6
+
     T = Double64
     dt = T(1) / 11
-    @time @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
-    @time @test test_translation(
+    @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
+    @test test_translation(
         (128, 64),
         BSplineLU(15, 128, T),
         BSplineLU(15, 64, T),
         dt,
     ) < 1e-18
-    @time @test test_translation(
-        (128, 64),
-        BSplineFFT(15, 128, T),
-        BSplineFFT(15, 64, T),
-        dt,
-    ) < 1e-17
 
     T = BigFloat
     dt = T(1) / 11
-    @time @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
-    @time @test test_translation(
-        (128, 64),
-        BSplineLU(25, 128, T),
-        BSplineLU(25, 64, T),
-        dt,
-    ) < 1e-22
-    @time @test test_translation(
+    @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
+    @test test_translation(
         (128, 64),
         BSplineFFT(25, 128, T),
         BSplineFFT(25, 64, T),

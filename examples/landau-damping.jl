@@ -26,7 +26,6 @@ using LinearAlgebra
 using Plots
 using SemiLagrangian
 
-include(joinpath(@__DIR__, "uniform_mesh.jl"))
 include(joinpath(@__DIR__, "compute_rho.jl"))
 include(joinpath(@__DIR__, "compute_e.jl"))
 
@@ -50,14 +49,18 @@ function interpolate_column!(out, ::FastInterpolationsCubic, values, alpha, xi)
     )
 end
 
-function advection!(f, mesh::UniformMesh, velocity, dt, interpolant)
-    xi = 1.0:mesh.nx
+function advect_direction!(f, mesh::UniformMesh, velocity, dt, interpolant)
+    if !(interpolant isa FastInterpolationsCubic)
+        return advection!(f, mesh, velocity, dt, interpolant; dim = 1)
+    end
+
+    xi = 1.0:length(mesh)
     fp = similar(view(f, :, 1))
 
     for j in eachindex(velocity)
         fi = view(f, :, j)
         # Trace characteristics backward to obtain the shift in grid-cell units.
-        alpha = -dt * velocity[j] / mesh.dx
+        alpha = -dt * velocity[j] / step(mesh)
         interpolate_column!(fp, interpolant, fi, alpha, xi)
         fi .= fp
     end
@@ -67,9 +70,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
     meshx = UniformMesh(0.0, 4π, nx)
     meshv = UniformMesh(-6.0, 6.0, nv)
 
-    x = meshx.x
-    v = meshv.x
-    dx = meshx.dx
+    x = meshx.points
+    v = meshv.points
+    dx = step(meshx)
     # Store f with position along rows and velocity along columns.
     f = (1.0 .+ 0.001 .* cos.(0.5 .* x)) ./ sqrt(2π) .*
         transpose(exp.(-0.5 .* v .^ 2))
@@ -84,7 +87,7 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
     for it in 1:nt
         # Strang splitting: half-step in x, full-step in v, then half-step in x.
         # Recompute the electric field between the two advection directions.
-        advection!(f, meshx, v, 0.5dt, interpolant_x)
+        advect_direction!(f, meshx, v, 0.5dt, interpolant_x)
         rho = compute_rho(meshv, f)
         e = compute_e(meshx, rho)
         push!(energy, sum(abs2, e) * dx)
@@ -92,9 +95,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
         push!(time, (it - 0.5) * dt)
         # Transpose so that velocity is the interpolated (row) direction.
         transpose!(fᵗ, f)
-        advection!(fᵗ, meshv, e, dt, interpolant_v)
+        advect_direction!(fᵗ, meshv, e, dt, interpolant_v)
         transpose!(f, fᵗ)
-        advection!(f, meshx, v, 0.5dt, interpolant_x)
+        advect_direction!(f, meshx, v, 0.5dt, interpolant_x)
     end
 
     return time, energy

@@ -1,18 +1,9 @@
-include("../src/mesh.jl")
-include("../src/advection.jl")
-include("../src/lagrange.jl")
-# include("../src/lagrange2d.jl")
-# include("../src/advection2d.jl")
-include("../src/bspline.jl")
-include("../src/bsplinelu.jl")
-include("../src/bsplinefft.jl")
-include("../src/interpolation.jl")
-
 using LinearAlgebra
 using Plots
+using SemiLagrangian
 
 function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
-    f = zeros(T, (mesh1.length, mesh2.length))
+    f = zeros(T, (length(mesh1), length(mesh2)))
     for (i, x) in enumerate(mesh1.points), (j, y) in enumerate(mesh2.points)
         xn = cos(tf) * x + sin(tf) * y
         yn = -sin(tf) * x + cos(tf) * y
@@ -23,16 +14,10 @@ function exact(tf::T, mesh1::UniformMesh{T}, mesh2::UniformMesh{T}) where {T}
 end
 
 function fctadv(interp, mesh1, mesh2, v1, v2, refdeb, refend, dt)
-    adv_x1 = Advection1d(mesh1, interp)
-    adv_x2 = Advection1d(mesh2, interp)
-
     f = copy(refdeb)
-    ft = copy(refdeb)
-    advection!(adv_x1, f, v1, tan(dt / 2))
-    transpose!(ft, f)
-    advection!(adv_x2, ft, v2, sin(dt))
-    transpose!(f, ft)
-    advection!(adv_x1, f, v1, tan(dt / 2))
+    advection!(f, mesh1, v1, tan(dt / 2), interp; dim = 1)
+    advection!(f, mesh2, v2, sin(dt), interp; dim = 2)
+    advection!(f, mesh1, v1, tan(dt / 2), interp; dim = 1)
 
     return norm(f - refend, Inf)
 end
@@ -61,9 +46,9 @@ function fctmain(sz, dt::T, ordmax) where {T}
 
     for order = 3:2:ordmax
         println("order=$order")
-        lag = Lagrange(BigFloat, order)
-        splu = BSplineLU(order, mesh1.length, zero(T))
-        spfft = BSplineFFT(order, mesh1.length, zero(T))
+        lag = Lagrange(order, T)
+        splu = BSplineLU(order, length(mesh1), zero(T))
+        spfft = BSplineFFT(order, length(mesh1), zero(T))
 
         y[ind, 1] = fctadv(lag, mesh1, mesh2, v1, v2, refdeb, refend, dt)
         y[ind, 2] = fctadv(splu, mesh1, mesh2, v1, v2, refdeb, refend, dt)
@@ -90,7 +75,7 @@ function fctmain(sz, dt::T, ordmax) where {T}
     return Plots.savefig(p, "out/result2_$(sz)_$(prec)_$(ordmax).pdf")
 end
 
-function fctinter(interp::InterpolationType, sz, dec)
+function fctinter(interp::AbstractInterpolation, sz, dec = big"0.351726155665655665187291927162514231451")
     fct(x) = cos(2big(pi) * x)
     mesh = big.(1:sz) / sz
     deb = fct.(mesh)
@@ -115,7 +100,7 @@ function fctmain2(sz, ordmax)
 
     for order = 3:ordmax
         println("order=$order")
-        lag = Lagrange(BigFloat, order)
+        lag = Lagrange(order, BigFloat)
         splu = BSplineLU(order, sz, big"0.")
         #        spfft = BSplineFFT(order, sz, big"0.")
 
@@ -156,7 +141,7 @@ function fctmain_gnuplot(sz, ordmax)
     println("# order\tLagrange\tformule\t(formule-lag)\tBSplineLU")
     dec = big"0.351726155665655665187291927162514231451"
     for order = 3:ordmax
-        lag = Lagrange(BigFloat, order)
+        lag = Lagrange(order, BigFloat)
         splu = BSplineLU(order, sz, big"0.")
         reslag = fctinter(lag, sz, dec)
         ressplu = fctinter(splu, sz, dec)
@@ -177,7 +162,7 @@ function fctmainsize_gnuplot(szlist, orderlist)
     for sz in szlist
         print("$sz")
         for order in orderlist
-            lag = Lagrange(BigFloat, order)
+            lag = Lagrange(order, BigFloat)
             splu = BSplineLU(order, sz, big"0.")
             reslag = fctinter(lag, sz, dec)
             ressplu = fctinter(splu, sz, dec)

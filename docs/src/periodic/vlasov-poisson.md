@@ -89,39 +89,6 @@ using SemiLagrangian
 using LinearAlgebra
 import Statistics: mean
 
-struct UniformMesh
-    xmin::Float64
-    xmax::Float64
-    nx::Int
-    dx::Float64
-    x::Vector{Float64}
-    function UniformMesh(xmin, xmax, nx)
-        dx = (xmax - xmin) / nx
-        x = LinRange(xmin, xmax, nx + 1)[1:(end - 1)]
-        return new(xmin, xmax, nx, dx, x)
-    end
-end
-
-function advection!(
-        f::Array{Float64, 2},
-        p::Int64, mesh::UniformMesh, v::Vector{Float64},
-        nv::Int64, dt::Float64
-    )
-
-    nx = mesh.nx
-    dx = mesh.dx
-
-    fp = zeros(nx)
-    for j in 1:nv
-        fi = view(f, :, j)
-        alpha = - dt * v[j] / dx
-        interpolant = FastLagrange(p)
-        interpolate!(fp, interpolant, fi, alpha)
-        f[:, j] .= fp
-    end
-
-    return
-end
 ```
 
 
@@ -131,15 +98,15 @@ function compute_rho(
         f::Array{Float64, 2}
     )
 
-    dv = meshv.dx
+    dv = step(meshv)
     rho = dv * sum(f, dims = 2)
     return vec(rho .- mean(rho))
 end
 
 " compute Ex using that -ik*Ex = rho "
 function compute_e(meshx::UniformMesh, rho::Vector{Float64})
-    nx = meshx.nx
-    k = 2pi / (meshx.xmax - meshx.xmin)
+    nx = length(meshx)
+    k = 2pi / meshx.width
     modes = zeros(Float64, nx)
     modes .= k * fftfreq(nx, nx)
     modes[1] = 1.0
@@ -164,29 +131,30 @@ function landau(dt, nt::Int64)
     vmin, vmax = -6.0, 6.0
     meshx = UniformMesh(xmin, xmax, nx)
     meshv = UniformMesh(vmin, vmax, nv)
-    x = meshx.x
-    v = meshv.x
-    dx = meshx.dx
+    x = meshx.points
+    v = meshv.points
+    dx = step(meshx)
 
     eps, kx = 0.001, 0.5
     f = zeros(Float64, (nx, nv))
     f .= (1.0 .+ eps * cos.(kx * x)) / sqrt(2π) .* transpose(exp.(-0.5 * v .^ 2))
     fᵗ = zeros(Float64, (nv, nx))
+    interpolant = FastLagrange(p)
 
     rho = compute_rho(meshv, f)
     e = compute_e(meshx, rho)
     ℰ = Float64[0.5 * log(sum(e .* e) * dx)]
     t = Float64[0.0]
     for it in 1:nt
-        advection!(f, p, meshx, v, nv, 0.5dt)
+        advection!(f, meshx, v, 0.5dt, interpolant; dim = 1)
         rho = compute_rho(meshv, f)
         e = compute_e(meshx, rho)
         push!(ℰ, 0.5 * log(sum(e .* e) * dx))
         push!(t, (it - 0.5) * dt)
         transpose!(fᵗ, f)
-        advection!(fᵗ, p, meshv, e, nx, dt)
+        advection!(fᵗ, meshv, e, dt, interpolant; dim = 1)
         transpose!(f, fᵗ)
-        advection!(f, p, meshx, v, nv, 0.5dt)
+        advection!(f, meshx, v, 0.5dt, interpolant; dim = 1)
     end
 
     return t, ℰ

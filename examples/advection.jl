@@ -66,45 +66,17 @@ fct3(x) = exp(-((x - 0.4)/0.1)^2)
 
 nx = 128
 mesh = UniformMesh(0., 1., nx)
-fp = fct3.(mesh.points)
-fi = copy(fp)
-order = 5
-interp = Lagrange(order, Float64)
-
-
-# +
-function advection!(fp, fi, mesh, interp, v, dt)
-
-    dec = - v * dt / mesh.step
-    decint = floor(Int, dec)
-    value = dec - decint
-    
-    if get_order(interp) % 2 == 0 && value > 0.5
-        value -= 1
-        decint += 1
-    end
-        
-    precal =  [fct(value) for fct in interp.tabfct]    
-    
-    interpolate!(fp, fi, decint, precal, interp)
-    
-end
-# -
+fi = fct3.(mesh.points)
 
 v, dt = 1.0, 1.0
 nsteps = 100
 dt = 0.2 / nsteps
 order = 5
-fp = fct3.(mesh.points)
-fi = copy(fp)
-plot(mesh.points, fp, xlims=(0,1))
+plot(mesh.points, fi, xlims=(0,1))
 interp = Lagrange(order, Float64)
 interp = BSplineLU(order, nx, Float64)
 interp = BSplineFFT(order, nx, Float64)
 for i in 1:nsteps
-    advection!(fp, fi, mesh, interp, v, dt)
-    fi .= fp
+    advection!(fi, mesh, v, dt, interp)
 end
-plot!(mesh.points, fp, xlims=(0,1))
-
-
+plot!(mesh.points, fi, xlims=(0,1))

@@ -5,8 +5,7 @@ function compute_rho(
         f::Array{Float64, 2}
     )
 
-    dv = meshv.dx
+    dv = step(meshv)
     rho = dv * sum(f, dims = 2)
     return vec(rho .- mean(rho))
 end
-

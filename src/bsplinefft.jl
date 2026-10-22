@@ -1,8 +1,6 @@
 
 """
-$(TYPEDEF)
-
-    BSplineFFT{T, order} <: AbstractInterpolation{T, CircEdge, order}
+    BSplineFFT{T, order} <: AbstractInterpolation{T, PeriodicBC, order}
     BSplineFFT( order::Int, n::Int, T::DataType=Float64)
 
 Type containing spline coefficients for b-spline interpolation based on fft, using the fact that b-spline matrix is a circulant matrix
@@ -22,7 +20,7 @@ Type containing spline coefficients for b-spline interpolation based on fft, usi
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct BSplineFFT{T,order} <: BSpline{T,CircEdge,order}
+struct BSplineFFT{T,order} <: BSpline{T,PeriodicBC,order}
     c_fft::Vector{Complex{T}}
     parfft::PrepareFftBig
     tabfct::Vector{Polynomial{T}}
@@ -43,16 +41,10 @@ struct BSplineFFT{T,order} <: BSpline{T,CircEdge,order}
     BSplineFFT(o::Int, n::Int, _::T) where {T} = BSplineFFT(o, n, T)
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol(bsp::BSplineFFT{T}, b::AbstractVector{T}) where {T}
     return real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol!(Y::AbstractVector{T}, bsp::BSplineFFT{T}, b::AbstractVector{T}) where {T}
     return Y .= real(ifftgen(bsp.parfft, fftgen(bsp.parfft, b) ./ bsp.c_fft))
 end

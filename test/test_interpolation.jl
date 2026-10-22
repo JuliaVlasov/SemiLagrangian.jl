@@ -12,20 +12,19 @@ using SemiLagrangian:
     getprecal,
     get_allprecal,
     get_order,
-    EdgeType,
-    InsideEdge,
-    CircEdge,
+    ExtrapolationBC,
+    PeriodicBC,
     interpolatemod!,
     getinverse,
     OpTuple
 
 function test_interp(
-    interp::AbstractInterpolation{Rational{BigInt},edge},
+    interp::AbstractInterpolation{Rational{BigInt},bc},
     dec,
     sz,
-) where {edge}
+) where {bc}
     @time @testset "test interpolation  $interp dec=$dec" begin
-        fct = if edge == CircEdge
+        fct = if bc === PeriodicBC
             order = 3
             getbspline(big(order), 0)
         else
@@ -35,7 +34,7 @@ function test_interp(
         mesh = collect((order + 1) * big.(0:(sz-1))) // sz
         deb = fct.(mesh)
         #       println("deb=$deb")
-        ref = if edge == CircEdge
+        ref = if bc === PeriodicBC
             decf = mod(dec, 1 // 1)
             decint = div(dec, 1 // 1)
             circshift(fct.(mesh .+ (order + 1) * decf // sz), (-decint,))
@@ -44,7 +43,7 @@ function test_interp(
         end
         res = zeros(Rational{BigInt}, sz)
         interpolate!(res, deb, dec, interp)
-        if edge == CircEdge
+        if bc === PeriodicBC
             res2 = zeros(Rational{BigInt}, sz)
             decint = convert(Int, floor(dec))
             decfloat = dec - decint
@@ -64,7 +63,7 @@ function test_interp(
         # for i=1:sz
         #     println("i=$i diff=$(convert(Float64,diff[i])), $(diff[i])")
         # end
-        fl = edge != CircEdge || isbspline(interp)
+        fl = bc !== PeriodicBC || isbspline(interp)
         println("fl=$fl isbspline=$(isbspline(interp))")
         if fl
             @test res == ref
@@ -84,7 +83,7 @@ function test_inv0(
     t_interp::Vector{I},
     dec::NTuple{N,T},
     sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     for ind in CartesianIndices(sz)
@@ -121,7 +120,7 @@ function test_interp2d(
     t_interp::Vector{I},
     coeff::T,
     sz::Tuple{Int,Int},
-) where {T,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,I<:AbstractInterpolation{T,PeriodicBC}}
     prec = 1000 * eps(T)
     @show prec
     ref = zeros(T, sz)
@@ -183,7 +182,7 @@ function test_inv(
     t_interp::Vector{I},
     coeff::T,
     sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -268,7 +267,7 @@ function test_invfmr(
     t_interp::Vector{I},
     coeff::T,
     sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -380,7 +379,7 @@ function test_getinv(
     t_interp::Vector{I},
     coeff::T,
     sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -422,19 +421,19 @@ end
 end
 
 function test_interpfloat(
-    interp::AbstractInterpolation{T,edge},
+    interp::AbstractInterpolation{T,bc},
     sz,
     tol,
     nb = 100,
-) where {T,edge}
+) where {T,bc}
     tabdec =
         T.([
             big"0.345141526199181716726626262655544",
             -big"0.3859416191876155241320011187619",
             -big"1.28561390114441619187615524132001118762519",
             -big"0.885901390114441619187615524132001118762519",
-            -big"5.678513256790098898776656565545454544544545", # only for edge==CircEdge
-            big"4.9876651456677809099887665655556565565656565", # only for edge==CircEdge
+            -big"5.678513256790098898776656565545454544544545", # periodic BC only
+            big"4.9876651456677809099887665655556565565656565", # periodic BC only
             big"0.186666659416191876155241320011187619",
             big"0.590999232323232323232365566787878898898",
             big"1.231098015934444444444444788888888878878",
@@ -459,10 +458,10 @@ function test_interpfloat(
                 value -= 1
                 decint += 1
             end
-            if edge != CircEdge && abs(decint) > 2
+            if bc !== PeriodicBC && abs(decint) > 2
                 continue
             end
-            precal = if edge == CircEdge
+            precal = if bc === PeriodicBC
                 getprecal(interp, value)
             else
                 get_allprecal(interp, decint, value)
@@ -472,7 +471,7 @@ function test_interpfloat(
                 ref = fct.(mesh .+ i * dec / sz)
                 interpolate!(fp, fi, decint, precal, interp)
                 nmax = max(nmax, float(norm(fp - ref, Inf)))
-                if isbspline(interp) && edge != CircEdge
+                if isbspline(interp) && bc !== PeriodicBC
                     @show typeof(interp), i_fct, dec, sz, nb, nmax
                 else
                     @test isapprox(fp, ref, atol = tol)
@@ -485,26 +484,30 @@ end
 T = Double64
 test_interp2d([Lagrange(11, T), Lagrange(11, T)], T(1.25), (128, 100))
 
-test_interp(Lagrange(3, Rational{BigInt}; edge = InsideEdge), big"3" // 1024, 128)
+test_interp(
+    Lagrange(3, Rational{BigInt}; bc = ExtrapolationBC()),
+    big"3" // 1024,
+    128,
+)
 
-test_interp(Lagrange(3, Rational{BigInt}; edge = CircEdge), 128)
+test_interp(Lagrange(3, Rational{BigInt}; bc = PeriodicBC()), 128)
 
 test_interp(BSplineLU(3, 128, Rational{BigInt}), 128)
 
-test_interpfloat(Lagrange(3, BigFloat; edge = CircEdge), 128, 1e-3, 100)
-test_interpfloat(Lagrange(3, Float64; edge = CircEdge), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, BigFloat; bc = PeriodicBC()), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, Float64; bc = PeriodicBC()), 128, 1e-3, 100)
 
-test_interpfloat(Lagrange(7, BigFloat; edge = InsideEdge), 128, 1e-3, 3)
-test_interpfloat(Lagrange(7, Float64; edge = InsideEdge), 128, 1e-3, 3)
+test_interpfloat(Lagrange(7, BigFloat; bc = ExtrapolationBC()), 128, 1e-3, 3)
+test_interpfloat(Lagrange(7, Float64; bc = ExtrapolationBC()), 128, 1e-3, 3)
 
-test_interpfloat(Lagrange(21, BigFloat; edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(9, Float64; edge = CircEdge), 256, 1e-10)
+test_interpfloat(Lagrange(21, BigFloat; bc = PeriodicBC()), 256, 1e-20)
+test_interpfloat(Lagrange(9, Float64; bc = PeriodicBC()), 256, 1e-10)
 
-test_interpfloat(Lagrange(4, BigFloat; edge = CircEdge), 256, 1e-5)
-test_interpfloat(Lagrange(4, Float64; edge = CircEdge), 256, 1e-5)
+test_interpfloat(Lagrange(4, BigFloat; bc = PeriodicBC()), 256, 1e-5)
+test_interpfloat(Lagrange(4, Float64; bc = PeriodicBC()), 256, 1e-5)
 
-test_interpfloat(Lagrange(22, BigFloat; edge = CircEdge), 256, 1e-20)
-test_interpfloat(Lagrange(12, Float64; edge = CircEdge), 256, 1e-10)
+test_interpfloat(Lagrange(22, BigFloat; bc = PeriodicBC()), 256, 1e-20)
+test_interpfloat(Lagrange(12, Float64; bc = PeriodicBC()), 256, 1e-10)
 
 test_interpfloat(BSplineLU(3, 256, BigFloat), 256, 1e-5)
 test_interpfloat(BSplineLU(3, 256, Float64), 256, 1e-5)

@@ -1,4 +1,5 @@
-using FastInterpolations
+import FastInterpolations
+using FastInterpolations: cubic_interp
 
 @testset "FastInterpolations periodic cubic interpolation" begin
     n = 64
@@ -11,9 +12,14 @@ using FastInterpolations
         xi,
         u,
         xi .+ alpha;
-        bc=PeriodicBC(endpoint=:exclusive),
+        bc=FastInterpolations.PeriodicBC(endpoint=:exclusive),
     )
 
     @test result ≈ expected atol=1e-5
-    @test cubic_interp(xi, u, xi; bc=PeriodicBC(endpoint=:exclusive)) ≈ u atol=1e-12
+    @test cubic_interp(
+        xi,
+        u,
+        xi;
+        bc=FastInterpolations.PeriodicBC(endpoint=:exclusive),
+    ) ≈ u atol=1e-12
 end

@@ -110,8 +110,7 @@ dt, nt = 0.05, 2000
 # Keep the simulation parameters fixed and vary only the interpolation method.
 methods = [
     ("Spectral", Spectral(nx), Spectral(nv)),
-    ("Periodic Lagrange", PeriodicLagrange(nx, 7), PeriodicLagrange(nv, 7)),
-    ("Periodic B-spline", PeriodicBSpline(nx, 6), PeriodicBSpline(nv, 6)),
+    ("Lagrange FFT", LagrangeFFT(nx, 7), LagrangeFFT(nv, 7)),
     ("Fast Lagrange", FastLagrange(7), FastLagrange(7)),
     ("FastInterpolations cubic", FastInterpolationsCubic(), FastInterpolationsCubic()),
 ]

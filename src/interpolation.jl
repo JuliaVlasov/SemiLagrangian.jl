@@ -1,41 +1,99 @@
 using LinearAlgebra
 import Base: isless
-@enum EdgeType CircEdge = 1 InsideEdge = 2
 
 """
-$(SIGNATURES)
+Abstract supertype for the boundary conditions used by line interpolants.
 
-Abstract supertype for all interpolation type
+A boundary condition decides how an interpolation stencil of `order + 1`
+points is built when it reaches the ends of the data line. The concrete
+subtypes are [`PeriodicBC`](@ref) and [`ExtrapolationBC`](@ref). It is used as the
+`bc` type parameter of [`AbstractInterpolation`](@ref) and selected with the
+`bc` keyword of the constructors, for example
+`Lagrange(5; bc = ExtrapolationBC())`.
+"""
+abstract type AbstractBoundaryCondition end
+
+"""
+    PeriodicBC()
+
+Periodic boundary condition: the data line is considered as one period of a
+periodic function, so interpolation stencils wrap around the ends of the line
+(the point after the last one is the first one). This is the default boundary
+condition of [`Lagrange`](@ref), [`Hermite`](@ref) and [`BSplineLU`](@ref),
+and the only one supported by [`BSplineFFT`](@ref).
+
+# Example
+```julia
+interp = Lagrange(5; bc = PeriodicBC())
+```
+"""
+struct PeriodicBC <: AbstractBoundaryCondition end
+
+"""
+    ExtrapolationBC()
+
+Non-periodic boundary condition: interpolation stencils never leave the data
+line. Near the ends the stencil is shifted inside the line and the
+interpolating polynomial is used to extrapolate, so the result is less
+accurate close to the boundaries than in the interior. This is the boundary
+condition to use for non-periodic variables (for example a velocity
+coordinate).
+
+# Example
+```julia
+interp = Lagrange(5; bc = ExtrapolationBC())
+```
+"""
+struct ExtrapolationBC <: AbstractBoundaryCondition end
+
+"""
+Abstract supertype of all the line interpolation methods
+([`Lagrange`](@ref), [`Hermite`](@ref), [`BSplineLU`](@ref), [`BSplineFFT`](@ref)).
+
+An interpolation of order `order` evaluates the function at a shifted position
+using a stencil of `order + 1` grid points. The shift is split into an integer
+part (in grid cells) and a fractional part in `[0, 1)`; the weights of the
+stencil only depend on the fractional part and are given by a table of
+polynomial functions.
 
 # Type parameters
-- `T` : type of number on witch interpolation works
-- `edge` : type of edge treatment
-- `order` : order of interpolation
+- `T` : type of number on which the interpolation works (`Float64`, `BigFloat`, ...)
+- `bc` : boundary condition type, [`PeriodicBC`](@ref) or [`ExtrapolationBC`](@ref)
+- `order` : order of the interpolation (stencil of `order + 1` points)
 
-# Implementation constraint
-- `tabfct::Vector` : this attribut must be on the implementation, it is a table of function of size order+1
+# Implementation constraints
+- `tabfct::Vector` : this field must be present in the implementation, it is a
+  table of `order + 1` functions of the fractional shift that give the weights
+  of the stencil.
+- Methods needing a preprocessing of the line (such as B-splines, which solve
+  a linear system to get the spline coefficients) must specialize `sol`,
+  `sol!` and `issolidentity`.
 """
-abstract type AbstractInterpolation{T,edge,order} end
+abstract type AbstractInterpolation{T,bc,order} end
 
 """
-$(SIGNATURES)
    
-Return the order of interpolation implementation       
+Return the order of the interpolation `interp`, i.e. the stencil used contains
+`order + 1` grid points.
+
+# Example
+```julia
+get_order(Lagrange(5))  # returns 5
+```
 """
-get_order(_::AbstractInterpolation{T,edge,order}) where {T,edge,order} = order
+get_order(_::AbstractInterpolation{T,bc,order}) where {T,bc,order} = order
 
 """
-$(SIGNATURES)
+Interface method that transforms the data line before the stencil weights are
+applied. By default it does nothing and returns the line unchanged. B-spline
+interpolations override it to compute the spline coefficients from the values.
 
-Interface method to transform the treated line, by default this method does nothing
-
-# Arguments :
+# Arguments
 - `_::AbstractInterpolation` : interpolation implementation
-- `line::AbstractVector` : line to transform
+- `b::AbstractArray` : line (or array, treated line by line) to transform
 
-# Return :
-The transformed line
-
+# Returns
+The transformed line.
 """
 sol(_::AbstractInterpolation, b::AbstractArray) = b
 
@@ -80,7 +138,10 @@ end
 
 
 """
-$(SIGNATURES)
+Apply the preprocessing `sol` of each interpolation of `interp_t` to the
+array `b`, one dimension after the other (`interp_t[i]` acts along dimension
+`i`). If all the interpolations are the identity transformation, `b` is
+returned without copy, otherwise a new array is returned.
 """
 function sol(
     interp_t::AbstractVector{I},
@@ -118,10 +179,16 @@ end
 end
 
 """
-$(SIGNATURES)
+Return the stencil weights for [`ExtrapolationBC`](@ref) interpolation.
+
+The shift is `decint + decfloat` grid cells, with `decint` an integer and
+`decfloat` the fractional part. Near the ends of the line the stencil is
+shifted inside the data, so several different sets of weights are needed; this
+function returns the vector of all of them (`order + 1` vectors of
+`order + 1` weights).
 """
 function get_allprecal(
-    interp::AbstractInterpolation{T,InsideEdge,order},
+    interp::AbstractInterpolation{T,ExtrapolationBC,order},
     decint::Int,
     decfloat::T,
 ) where {T,order}
@@ -132,7 +199,8 @@ function get_allprecal(
 end
 
 """
-$(TYPEDEF)
+Internal helper used to sort complex displacements by integer part and then by
+fractional part when inverting a displacement field.
 """
 struct ValInv{T}
     a::Int
@@ -145,7 +213,8 @@ struct ValInv{T}
 end
 
 """
-$(SIGNATURES)
+Order two `ValInv` first by their integer part `a` and then by their
+fractional part `b`.
 """
 function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
     return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
@@ -156,17 +225,20 @@ function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tup
 end
 
 """
-$(SIGNATURES)
+Shift the data `fi` by an offset and store the result in `fp`, for an
+interpolation with [`PeriodicBC`](@ref). The offset is given as an integer
+number of cells `decint` and the stencil weights `precal` for the fractional
+part, computed beforehand with `getprecal(interp, frac)`. Precomputing them
+avoids recomputing the weights when the same shift is applied many times.
 
-apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
-decint and precal are precompute with getprecal method, the TypeEdge is CircEdge
+After the call `fp[i]` approximates `fi` evaluated at `x_i + (decint + frac) dx`.
 
 # Arguments
 - `fp::AbstractVector` : output vector
 - `fi::AbstractVector` : input vector
 - `decint` : offset in units of dx
 - `precal::Vector` : vector of length order+1 precompute with getprecal(interp, dec) (dec is the offset)
-- `interp::AbstractInterpolation{T, CircEdge, order}` : interpolation implementation, note that TypeEdge is CircEdge
+- `interp::AbstractInterpolation{T, PeriodicBC, order}` : interpolation implementation
 - `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
 
 # Returns :
@@ -177,7 +249,7 @@ function interpolate!(
     fi::AbstractVector{T},
     decint::Int,
     precal::Vector{T},
-    interp::AbstractInterpolation{T,CircEdge,order},
+    interp::AbstractInterpolation{T,PeriodicBC,order},
     tabmod = gettabmod(length(fi)),
 ) where {T,order}
     res = sol(interp, fi)
@@ -193,7 +265,8 @@ function interpolate!(
 end
 
 """
-$(SIGNATURES)
+Same as the periodic method with precomputed weights, taking a vector of
+interpolations and using its first element.
 """
 @inline function interpolate!(
     fp::AbstractVector{T},
@@ -202,12 +275,22 @@ $(SIGNATURES)
     precal::Vector{T},
     tinterp::Vector{I},
     tabmod = gettabmod(length(fi)),
-) where {T,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,I<:AbstractInterpolation{T,PeriodicBC}}
     return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1])
 end
 
 """
-$(SIGNATURES)
+Multidimensional version of the periodic interpolation with precomputed
+weights: `fp[i] = fi(x_i + decint + frac)` for every index `i`, with a tensor
+product stencil.
+
+# Arguments
+- `fp::AbstractArray{T,N}` : output array
+- `fi::AbstractArray{T,N}` : input array (same size as `fp`)
+- `decint::NTuple{N,Int}` : integer part of the shift along each dimension, in grid cells
+- `precal::Array{T,N}` : tensor product of the stencil weights of each dimension
+- `interp::Vector` : the `N` interpolations (periodic boundary condition), one per dimension
+- `tabmod` : precomputed index tables used to wrap indices (see `gettabmod`)
 """
 function interpolate!(
     fp::AbstractArray{T,N},
@@ -216,7 +299,7 @@ function interpolate!(
     precal::Array{T,N},
     interp::Vector{I},
     tabmod = gettabmod.(size(fi)),
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     res = sol(interp, fi)
     sz = size(fi)
     order = get_order.(interp)
@@ -231,17 +314,19 @@ function interpolate!(
 end
 
 """
-$(SIGNATURES)
-
-apply an offset to the function fi interpolate by interp struct, the result is in fp vector,
-decint and precal are precompute with getprecal method, the TypeEdge is InsideEdge, it is a marginal case
+Shift the data `fi` by an offset and store the result in `fp`, for an
+interpolation with [`ExtrapolationBC`](@ref). The offset is given as an integer
+number of cells `decint` and the sets of stencil weights `allprecal` computed
+beforehand with `get_allprecal(interp, decint, frac)`. Several sets are needed
+because the stencil is moved inside the line near its ends, where the result
+is extrapolated.
 
 # Arguments
 - `fp::AbstractVector` : output vector
 - `fi::AbstractVector` : input vector
 - `decint` : offset in units of dx
 - `allprecal::Vector{Vector{T}}` : vector of vector of length order+1 precompute with getprecal(interp, dec) (dec is the offset)
-- `interp::AbstractInterpolation{T, InsideEdge, order}` : interpolation implementation, note that TypeEdge is CircEdge
+- `interp::AbstractInterpolation{T, ExtrapolationBC, order}` : interpolation implementation
 - `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
 
 # Returns :
@@ -252,7 +337,7 @@ function interpolate!(
     fi::AbstractVector{T},
     decint::Int,
     allprecal::Vector{Vector{T}},
-    interp::AbstractInterpolation{T,InsideEdge,order},
+    interp::AbstractInterpolation{T,ExtrapolationBC,order},
     tabmod = gettabmod(length(fi));
 ) where {T,order}
     res = sol(interp, fi)
@@ -286,28 +371,41 @@ function interpolate!(
 end
 
 """
-$(SIGNATURES)
-
-apply the offset dec to the function fi interpolate by interp struct, the result is in fp Vector
+Shift the data `fi` by `dec` grid cells and store the result in `fp`:
+`fp[i]` approximates the function sampled by `fi` at `x_i + dec * dx`.
+This is the simplest entry point: the integer and fractional parts of `dec`
+are separated and the stencil weights are computed for you. The boundary
+condition is the one of `interp` ([`PeriodicBC`](@ref) or
+[`ExtrapolationBC`](@ref)). To apply the same shift many times, use the
+variants taking precomputed weights.
 
 # Arguments
 - `fp` : output vector of length n
 - `fi` : input vector of length n
-- `dec` : offset in units of dx
+- `dec` : offset in units of `dx` (grid cells), positive or negative, may be larger than 1
 - `interp::AbstractInterpolation` : interpolation implementation
 
-# Returns :
-- No return
+# Returns
+Nothing useful; the result is stored in `fp`.
+
+# Example
+```julia
+n = 64
+x = range(0, 1; length = n + 1)[1:n]
+fi = sin.(2π .* x)
+fp = similar(fi)
+interpolate!(fp, fi, 0.3, Lagrange(5))  # fp ≈ sin.(2π .* (x .+ 0.3 / n))
+```
 """
 function interpolate!(
     fp,
     fi,
     dec,
-    interp::AbstractInterpolation{T,edge,order},
-) where {T,edge,order}
+    interp::AbstractInterpolation{T,BC,order},
+) where {T,BC,order}
     decint = convert(Int, floor(dec))
     decfloat = dec - decint
-    if edge == CircEdge
+    if BC === PeriodicBC
         return interpolate!(fp, fi, decint, getprecal(interp, decfloat), interp)
     else
         return interpolate!(fp, fi, decint, get_allprecal(interp, decint, decfloat), interp)
@@ -315,7 +413,16 @@ function interpolate!(
 end
 
 """
-$(TYPEDEF)
+Cache of the stencil weights of `N` interpolations (one per dimension). The
+weights depend only on the fractional part of the shift, so they are
+recomputed only when the shift changes between two calls to `getprecal`.
+In multithreaded loops, use one cache per thread.
+
+# Fields
+- `interps` : interpolations used along each dimension
+- `cache_alpha` : last shift for which the weights were computed
+- `cache_int` : integer part of `cache_alpha`
+- `precal` : tensor product of the stencil weights of each dimension
 """
 mutable struct CachePrecal{T,N,I}
     interps::Vector{I}
@@ -349,7 +456,8 @@ mutable struct CachePrecal{T,N,I}
 end
 
 """
-$(SIGNATURES)
+Return `(integer_part, weights)` for the shift `alpha` (one value per
+dimension), updating the cache only if `alpha` changed.
 """
 @inline function getprecal(self::CachePrecal{T,N}, alpha::NTuple{N,T}) where {T,N}
     if alpha != self.cache_alpha
@@ -362,21 +470,23 @@ $(SIGNATURES)
 end
 
 """
-$(SIGNATURES)
+Same as above for a two-dimensional shift given as a complex number
+`alpha_1 + i alpha_2`.
 """
 @inline function getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real}
     return getprecal(self, reim(alpha))
 end
 
 """
-$(SIGNATURES)
+Same as above for a shift given as an `OpTuple`.
 """
 @inline function getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real}
     return getprecal(self, alpha.v)
 end
 
 """
-$(SIGNATURES)
+Return `(integer_part, weights)` for the scalar shift `alpha`, updating the
+cache only if `alpha` changed.
 """
 @inline function getprecal(self::CachePrecal{T,1}, alpha::T) where {T}
     if alpha != self.cache_alpha
@@ -389,14 +499,26 @@ $(SIGNATURES)
 end
 
 """
-$(SIGNATURES)
+Same as above for a one-dimensional shift given as a 1-tuple.
 """
 @inline function getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where {T}
     return getprecal(self, alpha[1])
 end
 
 """
-$(SIGNATURES)
+Multidimensional periodic interpolation where the shift depends on the grid
+point: `dec(ind)` returns the shift (a tuple, a complex number or an
+`OpTuple`, in grid cells) to apply at the `CartesianIndex` `ind`.
+
+# Arguments
+- `fp` : output array
+- `fi` : input array (same size as `fp`)
+- `dec::Function` : maps a `CartesianIndex` to the shift at this point
+- `interp_t::AbstractVector` : the `N` interpolations, one per dimension
+
+# Keyword arguments
+- `tabmod` : precomputed index tables used to wrap indices
+- `cache::CachePrecal` : cache of the stencil weights
 """
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{Complex{T},N}},
@@ -429,7 +551,9 @@ function interpolate!(
 end
 
 """
-$(SIGNATURES)
+Internal helper: periodic interpolation of `fi` with the displacement field
+`bufc` (one array per dimension), the displacements being taken modulo the
+mesh length `lgmesh`.
 """
 function interpolatemod!(
     fp::AbstractArray{T,N},
@@ -437,7 +561,7 @@ function interpolatemod!(
     bufc::Tuple{Array{T,N},Array{T,N}},
     interp_t::AbstractVector{I},
     lgmesh::Union{T,UniformMesh{T}},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     (N == 2 && N == length(interp_t)) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -491,12 +615,13 @@ function interpolatemod!(
 end
 
 """
-$(SIGNATURES)
+Internal helper: compute by fixed-point iterations the inverse displacement
+field of `dec` (one array per dimension), using the periodic interpolation `interp`.
 """
 function getinverse(
     dec::NTuple{N,Array{T,N}},
     interp::Vector{I},
-) where {T,N,I<:AbstractInterpolation{T,CircEdge}}
+) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
     sz = size(dec[1])
     res = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
     decinv = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
@@ -556,7 +681,20 @@ end
 
 
 """
-$(SIGNATURES)
+Multidimensional periodic interpolation with the shift of each grid point
+stored in the array `bufdec`: `fp[i] = fi(x_i + bufdec[i])`. Returns `true`.
+
+# Arguments
+- `fp` : output array
+- `fi` : input array (same size as `fp`)
+- `bufdec` : array of shifts (in grid cells), one per grid point
+- `interp_t::AbstractVector` : the `N` interpolations, one per dimension
+
+# Keyword arguments
+- `tabmod` : precomputed index tables used to wrap indices
+- `mpid` : unused, kept for compatibility
+- `t_split::Tuple` : if given together with `cachethreads`, split of the indices between threads
+- `cachethreads::Vector{CachePrecal}` : one weight cache per thread; when given the loop is multithreaded
 """
 function interpolate!(
     fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
@@ -621,7 +759,9 @@ function interpolate!(
 end
 
 """
-$(SIGNATURES)
+Apply `nb` successive interpolations of `from` with the displacement
+field `from` itself (`to` receives the result). If `nb < 1`, `to` is a copy of
+`from`.
 """
 function autointerp!(
     to::Array{OpTuple{N,T},N},
@@ -654,7 +794,8 @@ end
 
 
 """
-$(SIGNATURES)
+Interpolate in place the `nb` last arrays of `t_buf` with the displacement
+field `bufdec`.
 """
 function interpbufc!(
     t_buf::Vector{Array{OpTuple{N,T},N}},

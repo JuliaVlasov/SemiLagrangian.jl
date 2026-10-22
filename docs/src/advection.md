@@ -26,15 +26,24 @@ The departure-point shift in grid units is `-dt * velocity / step(mesh)`.
 Velocity may be a scalar, an array with one value per transverse line, or an
 array matching the data shape for pointwise velocities (the latter requires
 an `AbstractInterpolation`). The mesh length must match the selected data
-dimension. Interpolation edge behavior is determined by the interpolant.
+dimension. Interpolation boundary behavior is determined by its boundary
+condition.
 
-Compose a Strang-split step explicitly by applying the x direction for half a
-step, the v direction for a full step, then x for half a step. More advanced
-splitting coefficients are available from the `strangsplit`, `triplejumpsplit`,
-and related helpers.
+For repeated two-operator compositions, describe the directional operators
+once and let `split_advection!` alternate them according to a splitting
+coefficient vector. The first operator is applied at odd stages; the second at
+even stages. This works with `strangsplit`, `triplejumpsplit`, and the other
+coefficient helpers.
+
+```julia
+op_x = AdvectionOperator(mesh_x, vx, interp_x; dim = 1)
+op_v = AdvectionOperator(mesh_v, electric_field, interp_v; dim = 2)
+split_advection!(f, op_x, op_v, strangsplit(0.01))
+```
 
 ```@autodocs
 Modules = [SemiLagrangian]
+Private = false
 Order   = [:type, :function]
 Pages   = ["splitting.jl", "advection.jl"]
 ```

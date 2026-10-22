@@ -7,7 +7,6 @@ using SemiLagrangian:
     tovector,
     tupleshape,
     getextarray,
-    CircEdge,
     AbstractInterpolation,
     interpolatemod!
 

@@ -79,6 +79,52 @@ function advection!(
     return data
 end
 
+"""
+    AdvectionOperator(mesh, velocity, interpolant; dim=1)
+
+Describe one directional advection operator for use with [`split_advection!`](@ref).
+"""
+struct AdvectionOperator{M<:UniformMesh,V,I}
+    mesh::M
+    velocity::V
+    interpolant::I
+    dim::Int
+end
+
+function AdvectionOperator(mesh::UniformMesh, velocity, interpolant; dim::Integer = 1)
+    return AdvectionOperator(mesh, velocity, interpolant, Int(dim))
+end
+
+"""
+    split_advection!(data, first, second, coefficients)
+
+Apply a two-operator splitting in place. Stages alternate between `first` and
+`second`, beginning with `first`; `coefficients` are the time steps for the
+individual stages, such as the result of `strangsplit(dt)`.
+"""
+function split_advection!(
+    data::AbstractArray,
+    first::AdvectionOperator,
+    second::AdvectionOperator,
+    coefficients::AbstractVector{<:Real},
+)
+    isempty(coefficients) && throw(ArgumentError("coefficients must not be empty"))
+
+    for (stage, coefficient) in enumerate(coefficients)
+        operator = isodd(stage) ? first : second
+        advection!(
+            data,
+            operator.mesh,
+            operator.velocity,
+            coefficient,
+            operator.interpolant;
+            dim = operator.dim,
+        )
+    end
+
+    return data
+end
+
 _interpolate_advection_line!(output, input, shift, interpolant::AbstractInterpolation) =
     interpolate!(output, input, shift, interpolant)
 
@@ -92,6 +138,18 @@ function _interpolate_variable_advection_line!(
     interpolant::AbstractInterpolation,
 )
     return interpolate!(output, input, i -> (shifts[i],), [interpolant])
+end
+
+function _interpolate_variable_advection_line!(
+    output,
+    input,
+    shifts,
+    interpolant::LagrangeFFT,
+)
+    throw(ArgumentError(
+        "pointwise velocity fields are not supported by LagrangeFFT; " *
+        "use a scalar or per-line velocity",
+    ))
 end
 
 function _interpolate_variable_advection_line!(output, input, shifts, interpolant)

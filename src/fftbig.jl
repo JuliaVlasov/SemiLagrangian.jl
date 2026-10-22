@@ -1,6 +1,4 @@
 """
-$(SIGNATURES)
-
 function that reverse the order of the pos lowest bits
 """
 function _reverse_num(num, pos)
@@ -15,8 +13,6 @@ function _reverse_num(num, pos)
 end
 
 """
-$(TYPEDEF)
-
     PrepareFftBig( size_fft::Unsigned, [T=BigFloat])
 
 Immutable structure to operate fft transform, 
@@ -89,9 +85,6 @@ function PrepareFftBig(s::Integer, x::T; kwargs...) where {T<:AbstractFloat}
     return PrepareFftBig((s,), x; kwargs...)
 end
 
-"""
-$(SIGNATURES)
-"""
 function fftbig!(
     par::PrepareFftBig{T,NUMDIMS,DIMS},
     signal;

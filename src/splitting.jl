@@ -1,21 +1,40 @@
 """
-$(SIGNATURES)
+    nosplit(dt)
+
+Trivial splitting with a single stage of length `dt`. Returns `dt * [1]`.
+Useful when only one operator is advanced.
 """
 nosplit(dt::T) where {T} = dt * [1]
 """
-$(SIGNATURES)
+    standardsplit(dt)
+
+Lie (first-order) splitting: the coefficients `dt * [1, 1]` advance the first
+operator and then the second one, each for the full time step `dt`.
 """
 standardsplit(dt::T) where {T} = dt * [1, 1]
 """
-$(SIGNATURES)
+    strangsplit(dt)
+
+Strang (second-order) splitting: returns `dt * [1/2, 1, 1/2]`, i.e. a half step
+of the first operator, a full step of the second one, then a half step of the
+first one again.
 """
 strangsplit(dt::T) where {T} = dt * [1 // 2, 1 // 1, 1 // 2]
 """
-$(SIGNATURES)
+    magicsplit(dt)
+
+"Magic" splitting for rotations: returns `[tan(dt/2), sin(dt), tan(dt/2)]`.
+These coefficients decompose a rotation of angle `dt` into three shears and
+are exact for a rotation advection (the splitting error vanishes), unlike
+[`strangsplit`](@ref).
 """
 magicsplit(dt::T) where {T} = [tan(dt / 2), sin(dt), tan(dt / 2)]
 """
-$(SIGNATURES)
+    triplejumpsplit(dt)
+
+Fourth-order splitting obtained by the triple-jump composition of the Strang
+scheme. Returns the 7 coefficients (stages alternate between the first and
+the second operator).
 """
 function triplejumpsplit(dt::T) where {T}
     c = T(2)^(1 // 3)
@@ -27,7 +46,11 @@ function triplejumpsplit(dt::T) where {T}
 end
 
 """
-$(SIGNATURES)
+    order6split(dt)
+
+Sixth-order splitting with 23 stages (tabulated coefficients, adjusted so that
+the sums of the coefficients of each operator are exact). Returns the vector
+of stage lengths multiplied by `dt`.
 """
 function order6split(dt::T) where {T}
     order6 = [
@@ -63,7 +86,11 @@ function order6split(dt::T) where {T}
 end
 
 """
-$(SIGNATURES)
+    hamsplit_3_11(dt, fltrace = false)
+
+Sixth-order splitting scheme with 11 stages (symmetric), whose coefficients
+depend on powers of `dt` and are computed in high precision. Returns the vector
+of 11 stage lengths.
 """
 function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
     a = [
@@ -104,7 +131,10 @@ function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
 end
 
 """
-$(SIGNATURES)
+    table2split(dt)
+
+Symmetric splitting scheme with 9 stages built from tabulated coefficients that
+depend on `dt`. Returns the vector of 9 stage lengths.
 """
 function table2split(dt::T) where {T}
     a = [big"1.079852426382430882456991", -big"0.579852426382430882456991", 0]

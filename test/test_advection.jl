@@ -1,4 +1,11 @@
-using SemiLagrangian: advection!, interpolate!, Lagrange, UniformMesh
+using SemiLagrangian:
+    advection!,
+    split_advection!,
+    AdvectionOperator,
+    strangsplit,
+    interpolate!,
+    Lagrange,
+    UniformMesh
 
 @testset "directional advection" begin
     T = Float64
@@ -45,4 +52,36 @@ using SemiLagrangian: advection!, interpolate!, Lagrange, UniformMesh
     @test_throws DimensionMismatch advection!(copy(initial), mesh_y, one(T), T(0.1), interp)
     @test_throws DimensionMismatch advection!(copy(initial), mesh, ones(3), T(0.1), interp)
     @test_throws ArgumentError advection!(copy(initial), mesh, one(T), T(0.1), interp; dim = 2)
+
+    dt = T(0.1)
+    velocity_x = collect(range(-T(0.5), T(0.5); length = size(data, 2)))
+    operator_x = AdvectionOperator(mesh, velocity_x, interp; dim = 1)
+    velocity_y = collect(range(-T(0.5), T(0.5); length = n))
+    operator_y = AdvectionOperator(mesh_y, velocity_y, interp; dim = 2)
+    coefficients = strangsplit(dt)
+    expected_split = copy(original)
+    for (stage, coefficient) in enumerate(coefficients)
+        if isodd(stage)
+            advection!(expected_split, mesh, velocity_x, coefficient, interp; dim = 1)
+        else
+            advection!(
+                expected_split,
+                mesh_y,
+                velocity_y,
+                coefficient,
+                interp;
+                dim = 2,
+            )
+        end
+    end
+    split_result = copy(original)
+    @test split_advection!(split_result, operator_x, operator_y, coefficients) ===
+          split_result
+    @test split_result ≈ expected_split
+    @test_throws ArgumentError split_advection!(
+        copy(original),
+        operator_x,
+        operator_y,
+        T[],
+    )
 end

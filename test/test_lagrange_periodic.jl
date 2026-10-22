@@ -9,7 +9,7 @@ using Test
 
     for order in [3, 5, 7, 9]
 
-        interpolant = PeriodicLagrange(nx, order)
+        interpolant = LagrangeFFT(nx, order)
         interpolate!(u_out, interpolant, u, 0.0)
         @test maximum(abs.(u_out - u)) < 1e-14
 

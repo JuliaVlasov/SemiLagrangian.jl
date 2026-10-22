@@ -1,40 +1,3 @@
-"""
-    FastLagrange interpolation module
-
-    Provides local Lagrange polynomial interpolation over periodic domains using
-    fixed-width stencils of 3, 5, 7, 9, or 11 points. Boundary points are handled
-    via periodic (circular) wrapping of the input array.
-
-    # ⚠️ Numerical Stability Disclaimer
-
-    This implementation uses **local** (finite-stencil) Lagrange interpolation and is
-    **not numerically stable** for large shifts or high-order stencils on coarse grids.
-
-    The key limitations are:
-
-    - **Locality**: Only a small neighbourhood of `2s` points (where `s` is half the
-      stencil width) contributes to each interpolated value. If the function varies
-      significantly between those points, accuracy degrades rapidly.
-    - **Runge's phenomenon**: For large offsets `|p|`, the Lagrange weights grow in
-      magnitude and oscillate in sign, leading to catastrophic cancellation.
-      Best results are obtained for `p ∈ [-1, 1]` (i.e. interpolating within one
-      grid cell of the reference point).
-    - **No global spectral accuracy**: Unlike the FFT-based circulant approach
-      (`lagrange.jl`), this method does not leverage the global smoothness of the
-      function. It is designed for speed, not for maximum accuracy on smooth periodic
-      functions.
-
-    Use this module when performance is critical and the shift `p` is small (ideally
-    sub-cell). For large shifts or high accuracy requirements on smooth functions,
-    prefer the spectral circulant approach.
-
-    # Precomputed inverse constants
-
-    The `inv_*` constants below are reciprocals of the factorial-based denominators
-    that appear in the Lagrange weight formulas. Precomputing them avoids repeated
-    division at runtime.
-"""
-
 # ---------------------------------------------------------------------------
 # Precomputed reciprocals of Lagrange denominator factorials
 # These are used in the weight (coefficient) functions below to replace
@@ -65,7 +28,32 @@ export FastLagrange
 """
     FastLagrange(stencil)
 
-Interpolation object for local Lagrange interpolation on a periodic 1D grid.
+    Provides local Lagrange polynomial interpolation over periodic domains using
+    fixed-width stencils of 3, 5, 7, 9, or 11 points. Boundary points are handled
+    via periodic (circular) wrapping of the input array.
+
+    # ⚠️ Numerical Stability Disclaimer
+
+    This implementation uses **local** (finite-stencil) Lagrange interpolation and is
+    **not numerically stable** for large shifts or high-order stencils on coarse grids.
+
+    The key limitations are:
+
+    - **Locality**: Only a small neighbourhood of `2s` points (where `s` is half the
+      stencil width) contributes to each interpolated value. If the function varies
+      significantly between those points, accuracy degrades rapidly.
+    - **Runge's phenomenon**: For large offsets `|p|`, the Lagrange weights grow in
+      magnitude and oscillate in sign, leading to catastrophic cancellation.
+      Best results are obtained for `p ∈ [-1, 1]` (i.e. interpolating within one
+      grid cell of the reference point).
+    - **No global spectral accuracy**: Unlike the FFT-based circulant approach
+      (`lagrange.jl`), this method does not leverage the global smoothness of the
+      function. It is designed for speed, not for maximum accuracy on smooth periodic
+      functions.
+
+    Use this type when performance is critical and the shift `p` is small (ideally
+    sub-cell). For large shifts or high accuracy requirements on smooth functions,
+    prefer the spectral circulant approach.
 
 # Arguments
 - `stencil::Int`: Number of grid points used per interpolation. Must be one of

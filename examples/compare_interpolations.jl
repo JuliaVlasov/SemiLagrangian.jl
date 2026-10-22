@@ -11,15 +11,14 @@ result = zeros(n)
 
 methods = [
     "Spectral" => (out -> interpolate!(out, Spectral(n), u, alpha)),
-    "Periodic Lagrange" => (out -> interpolate!(out, PeriodicLagrange(n, 7), u, alpha)),
-    "Periodic B-spline" => (out -> interpolate!(out, PeriodicBSpline(n, 6), u, alpha)),
+    "Lagrange FFT" => (out -> interpolate!(out, LagrangeFFT(n, 7), u, alpha)),
     "Fast Lagrange" => (out -> interpolate!(out, FastLagrange(7), u, alpha)),
     "FastInterpolations cubic" => (
         out -> (out .= cubic_interp(
             xi,
             u,
             xi .+ alpha;
-            bc=PeriodicBC(endpoint=:exclusive),
+            bc=FastInterpolations.PeriodicBC(endpoint=:exclusive),
         ))
     ),
 ]

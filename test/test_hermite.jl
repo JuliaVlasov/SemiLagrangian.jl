@@ -3,6 +3,7 @@ using SemiLagrangian:
     Polynomial,
     derivative,
     Hermite,
+    ExtrapolationBC,
     HermiteCache,
     hermite_interp,
     hermite_interp!,
@@ -19,6 +20,9 @@ lagrange_polynomial_reference(k, order, origin) =
     Polynomial(_getlagrangecoefficients(k, order, origin))
 
 @testset "Hermite one-shot interpolation" begin
+    extrapolation_interp = Hermite(5; bc = ExtrapolationBC())
+    @test extrapolation_interp isa Hermite{Float64,ExtrapolationBC,5}
+
     x = [0.0, 0.15, 0.4, 0.8, 1.1, 1.7, 2.0]
     f(x) = x^3 - 2x^2 + 4x - 1
     df(x) = 3x^2 - 4x + 4

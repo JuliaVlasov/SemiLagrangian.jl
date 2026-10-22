@@ -1,8 +1,5 @@
 import Base: ==
 
-"""
-$(SIGNATURES)
-"""
 function decLULu(iscirc, band, lastcols, lastrows)
     wd = size(band, 1)
     kl, ku = get_kl_ku(wd)
@@ -62,8 +59,6 @@ function decLULu(iscirc, band, lastcols, lastrows)
 end
 
 """
-$(TYPEDEF)
-
     struct LuSpline{T}
     LuSpline(n, t::Vector{T}; iscirc=true, isLU=true) where{T}
 
@@ -173,9 +168,6 @@ function ==(la::LuSpline{T}, lb::LuSpline{T}) where {T}
     )
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol!(X::AbstractVector{I}, spA::LuSpline{T}, Y::AbstractVector{I}) where {T,I}
     szb = size(spA.band, 2)
     n = spA.iscirc ? size(spA.lastrows, 2) : szb
@@ -219,9 +211,6 @@ function sol!(X::AbstractVector{I}, spA::LuSpline{T}, Y::AbstractVector{I}) wher
     return X, Y
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol(spA::LuSpline{T}, b::AbstractVector) where {T}
     return sol!(zeros(eltype(b), size(b, 1)), spA, copy(b))
 end
@@ -229,15 +218,13 @@ end
 get_order(sp::LuSpline) = sp.ku + sp.kl + 1
 
 """
-$(TYPEDEF)
-
-    BSplineLU{T, edge, order} <: AbstractInterpolation{T, edge, order}
+    BSplineLU{T, bc, order} <: AbstractInterpolation{T, bc, order}
 
 Type containing spline coefficients for b-spline interpolation
 
 # Type parameters
 - `T` : the type of data that is interpolate
-- `edge::TypeEdge=CircEdge` : true if function is circular
+- `bc::PeriodicBC` : periodic boundary condition
 - `order::Int` : order of lagrange interpolation
 
 # Implementation :
@@ -250,7 +237,7 @@ Type containing spline coefficients for b-spline interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 """
-struct BSplineLU{T,edge,order} <: BSpline{T,edge,order}
+struct BSplineLU{T,bc,order} <: BSpline{T,bc,order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
     function BSplineLU(order::Int, n::Int, T::DataType = Float64)
@@ -262,23 +249,17 @@ struct BSplineLU{T,edge,order} <: BSpline{T,edge,order}
         bspline = getbspline(order, 0)
         tabfct_rat = map(x -> bspline[order-x](Polynomial([order - x, 1])), 0:order)
         ls = LuSpline(n, convert.(T, bspline.(1:order)); iscirc = true, isLU = true)
-        return new{T,CircEdge,order}(ls, convert.(Polynomial{T}, tabfct_rat))
+        return new{T,PeriodicBC,order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
     function BSplineLU(o::Int, n::Int, elt::T; kwargs...) where {T<:Number}
         return BSplineLU(o, n, T; kwargs...)
     end
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol!(X::AbstractVector{I}, bsp::BSplineLU{T}, Y::AbstractVector{I}) where {T,I}
     return sol!(X, bsp.ls, Y)[1]
 end
 
-"""
-$(SIGNATURES)
-"""
 function sol(bsp::BSplineLU{T}, b::AbstractVector{I}) where {T<:Number,I}
     return sol!(zeros(I, length(b)), bsp, copy(b))
 end

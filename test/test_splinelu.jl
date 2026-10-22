@@ -1,7 +1,7 @@
 using LinearAlgebra
 using Random
 using SemiLagrangian:
-    CircEdge, get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
+    PeriodicBC, get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
 import SemiLagrangian: sol, sol!
 
 Random.seed!(5431221)
@@ -169,7 +169,7 @@ function test_interface()
         (_1, _2, order) = getpar(bsp)
         @test i == get_order(bsp)
         @test i == order
-        @test getpar(bsp) == (BigFloat, CircEdge, order)
+        @test getpar(bsp) == (BigFloat, PeriodicBC, order)
     end
 end
 

@@ -37,7 +37,7 @@ end
 ?Lagrange
 
 function test_dirac_lagrange(order, len, nb, modval)
-    lag = Lagrange(BigFloat, CircEdge, order)
+    lag = Lagrange(order, BigFloat; bc = PeriodicBC())
     return test_dirac(lag, order, len, nb, modval)
 end
 test_dirac_lagrange(31, 256, 500, 50)
@@ -55,5 +55,4 @@ end
 
 test_dirac_splu(31, 256, 500, 50)
 test_dirac_spfft(31, 256, 500, 50)
-
 

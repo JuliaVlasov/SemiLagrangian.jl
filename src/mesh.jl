@@ -1,21 +1,21 @@
 
 """
-$(TYPEDEF)
-
     UniformMesh{T}
     UniformMesh(start::T, stop::T, length::Int) where {T}
 
-1D uniform mesh data.
+One-dimensional uniform mesh over the half-open interval `[start, stop)`.
+The mesh stores `length` equally spaced points, omitting the right endpoint,
+so `width(mesh) == length(mesh) * step(mesh)`.
 
 # Arguments
-- `start::T` : beginning of the mesh
-- `stop::T` : end of the mesh
+- `start::T` : left boundary of the mesh
+- `stop::T` : right boundary (not itself a mesh point)
 - `length::Int` : number of cells of the mesh
 
-# Implementation
-- `step::T`  : size step
-- `points::Vector{T}`: Array with node positions
-- `width::T` : Distance between left and right edges.
+# Fields
+- `step::T` : spacing between consecutive points
+- `points::Vector{T}` : mesh point coordinates
+- `width::T` : distance between the left and right boundaries
 
 """
 struct UniformMesh{T}
@@ -33,79 +33,80 @@ struct UniformMesh{T}
 end
 
 """
-$(SIGNATURES)
-
     Base.step(mesh::UniformMesh)
 
-Get the step of the mesh
+Return the spacing between consecutive mesh points.
 
 # Argument
 - `mesh::UniformMesh` : the mesh
 
 # Return
-- `step` : the step of the mesh that is the difference between two contiguous points
+- `step` : difference between consecutive mesh points
 """
 Base.step(mesh::UniformMesh) = mesh.step
 
 """
-$(SIGNATURES)
+    start(mesh::UniformMesh)
+
+Return the left boundary of `mesh`, equal to its first stored point.
 """
 start(mesh::UniformMesh) = mesh.points[1]
 
 """
-$(SIGNATURES)
+    stop(mesh::UniformMesh)
+
+Return the right boundary of `mesh`, one step beyond its final stored point.
+The right boundary is excluded from `mesh.points`.
 """
 stop(mesh::UniformMesh) = mesh.points[end] + mesh.step
 
 
 """
-$(SIGNATURES)
-
     Base.length(mesh::UniformMesh)
 
-Get the length of the mesh
+Return the number of mesh points (equivalently, cells).
 
 # Argument
 - `mesh::UniformMesh` : the mesh
 
 # Return
-- `length` : the length of the mesh that is the number of points and cells
+- `length` : number of points and cells
 """
 Base.length(mesh::UniformMesh) = length(mesh.points)
 """
     points(mesh::UniformMesh)
 
-Get the points of the mesh
+Return the coordinates of the mesh points.
 
 # Argument
 - `mesh::UniformMesh` : the mesh
 
 # Return
-- `points` : the points of the mesh that is the vector of all points of the mesh except the last
+- `points` : vector of `length(mesh)` coordinates, excluding the right boundary
 """
 points(mesh::UniformMesh) = mesh.points
 """
     width(mesh::UniformMesh)
 
-Get the width of the mesh
+Return the distance between the left and right boundaries.
 
 # Argument
 - `mesh::UniformMesh` : the mesh
 
 # Return
-- `width` : the width that is step*length or distance between left and right edges.
+- `width` : domain width, equal to `length(mesh) * step(mesh)`
 """
 width(mesh::UniformMesh) = mesh.width
 """
     vec_k_fft(mesh::UniformMesh{T}) where{T}
 
-Get the fft coefficients of the mesh
+Return the Fourier wavenumbers in the ordering used by `FFTW.fftfreq`.
 
 # Argument
 - `mesh::UniformMesh{T}` : the mesh
 
 # Return
-- fft coefficients
+- `Vector{T}` of wavenumbers, scaled for the mesh's physical width
 """
 function vec_k_fft(mesh::UniformMesh{T}) where {T}
     nx = length(mesh)
@@ -114,13 +115,22 @@ function vec_k_fft(mesh::UniformMesh{T}) where {T}
     return res
 end
 
+"""
+    newval(valref, val, borne, width)
+
+Choose the periodic representative of `val` nearest to `valref`, using a
+period of `width` and a half-period bound `borne`. Used internally when
+unwrapping periodic values.
+"""
 @inline function newval(valref, val, borne, width)
     diff = val - valref
     return abs(diff) >= borne ? valref + mod(diff + borne, width) - borne : val
 end
 
 """
-$(SIGNATURES)
+    traitmodend!(period, values)
+
+Wrap every value in `values` modulo `period`, in place, and return `values`.
 """
 function traitmodend!(
     lg::T2,
@@ -130,7 +140,11 @@ function traitmodend!(
 end
 
 """
-$(SIGNATURES)
+    traitmodbegin!(period, values)
+
+Unwrap periodic values in an array by adjusting adjacent values to the
+nearest representative within half a period of their predecessor. Mutates
+`values` and returns `true` if any value was changed, otherwise `false`.
 """
 function traitmodbegin!(
     lg::T2,
@@ -166,14 +180,20 @@ function traitmodbegin!(
 end
 
 """
-$(SIGNATURES)
+    traitmodbegin!(mesh::UniformMesh, values)
+
+Unwrap periodic values in `values` using `width(mesh)` as the period. Mutates
+`values` and returns whether any value changed.
 """
 function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N}
     return traitmodbegin!(width(mesh), f)
 end
 
 """
-$(SIGNATURES)
+    traitmodend!(mesh::UniformMesh, values)
+
+Wrap `values` into the interval `[start(mesh), stop(mesh))` in place and
+return the array.
 """
 function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
     strt = start(mesh)
@@ -183,11 +203,18 @@ function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
 end
 
 """
-$(SIGNATURES)
+    stdtomesh(mesh::UniformMesh, values)
+
+Convert standard mesh coordinates (grid units, with zero at the first point)
+to physical coordinates. Supports scalars, arrays, and compatible tuples.
 """
 stdtomesh(mesh::UniformMesh{T}, v) where {T} = mesh.step * v .+ mesh.points[1]
 
 """
-$(SIGNATURES)
+    meshtostd(mesh::UniformMesh, values)
+
+Convert physical coordinates to standard mesh coordinates (grid units, with
+zero at the first point). This is the inverse coordinate transformation of
+[`stdtomesh`](@ref).
 """
 meshtostd(mesh::UniformMesh{T}, v) where {T} = (v .- mesh.points[1]) / mesh.step

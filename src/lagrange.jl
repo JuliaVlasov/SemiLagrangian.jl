@@ -25,13 +25,11 @@ end
 (polynomial::LagrangePolynomial)(x) = evalpoly(x, polynomial.coefficients)
 
 """
-$(TYPEDEF)
-
 Type containing the Lagrange basis polynomials for interpolation.
 
 # Type parameters
 - `T` : the type of data that is interpolate
-- `edge::EdgeType` : type of edge traitment
+- `bc` : boundary condition type
 - `order::Int`: order of lagrange interpolation
 
 # Implementation :
@@ -42,21 +40,25 @@ Type containing the Lagrange basis polynomials for interpolation.
 - `[T::DataType=Float64]` : The type values to interpolate 
 
 # Keywords arguments :
-- `edge::EdgeType=CircEdge` : type of edge traitment
+- `bc::AbstractBoundaryCondition=PeriodicBC()` : boundary condition
 
 """
-struct Lagrange{T,edge,order} <: AbstractInterpolation{T,edge,order}
+struct Lagrange{T,bc,order} <: AbstractInterpolation{T,bc,order}
 
     tabfct::Vector{LagrangePolynomial{T}}
 
-    function Lagrange(order::Int, T::DataType = Float64; edge::EdgeType = CircEdge)
+    function Lagrange(
+        order::Int,
+        T::DataType = Float64;
+        bc::Union{PeriodicBC,ExtrapolationBC} = PeriodicBC(),
+    )
 
         origin = -div(order, 2)
 
         tabfct_rat = [_getlagrangecoefficients(i, order, origin) for i = 0:order]
 
         tabfct = [LagrangePolynomial(convert.(T, coefficients)) for coefficients in tabfct_rat]
-        return new{T,edge,order}(tabfct)
+        return new{T,typeof(bc),order}(tabfct)
 
     end
 

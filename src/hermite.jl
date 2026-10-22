@@ -35,9 +35,7 @@ end
 
 
 """
-$(TYPEDEF)
-
-$(TYPEDFIELDS)
+Precomputed tables used by the Hermite interpolation.
 """
 struct PrecalHermite{ord,d}
     L::Vector{Polynomial{Rational{BigInt}}}
@@ -90,16 +88,18 @@ bplus(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.bplus[1-ph.rplus+i]
 bminus(ph::PrecalHermite{ord,d}, i) where {ord,d} = ph.bminus[1-ph.rminus+i]
 
 """
-$(TYPEDEF)
+    Hermite(order::Int, T::DataType = Float64; bc = PeriodicBC(), flbis = false)
 
-$(TYPEDFIELDS)
+Hermite interpolation of the given `order` for numbers of type `T`, with
+boundary condition `bc` ([`PeriodicBC`](@ref) or [`ExtrapolationBC`](@ref)).
+`order` must be congruent to 1 modulo 4 (or to 3 modulo 4 when `flbis = true`).
 """
-struct Hermite{T,edge,order} <: AbstractInterpolation{T,edge,order}
+struct Hermite{T,bc,order} <: AbstractInterpolation{T,bc,order}
     tabfct::Vector{Polynomial{T}}
     function Hermite(
         order::Int,
         T::DataType = Float64;
-        edge::EdgeType = CircEdge,
+        bc::Union{PeriodicBC,ExtrapolationBC} = PeriodicBC(),
         flbis = false,
     )
         if flbis
@@ -126,6 +126,6 @@ struct Hermite{T,edge,order} <: AbstractInterpolation{T,edge,order}
                 tabfct[decal+i+k] += bminus(ph, k) * K(ph, i)
             end
         end
-        return new{T,edge,order}(tabfct)
+        return new{T,typeof(bc),order}(tabfct)
     end
 end

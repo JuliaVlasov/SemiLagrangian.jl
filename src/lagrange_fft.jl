@@ -13,8 +13,9 @@ properties to efficiently compute interpolated values via convolution in Fourier
 - `nx::Int`: Grid size (number of points)
 - `order::Int`: Stencil width (number of points). Supports odd orders: 3, 5, 7, 9, 11
 
-`LagrangeFFT` is a subtype of [`AbstractInterpolation`](@ref) with the
-[`PeriodicBC`](@ref) boundary condition and `Float64` numbers. It supports the
+`LagrangeFFT` is a subtype of [`AbstractInterpolation`](@ref) (through the
+internal `AbstractShiftInterpolation`) with the [`PeriodicBC`](@ref) boundary
+condition and `Float64` numbers. It supports the
 in-place call `interpolate!(u_out, lagr, u, alpha)` as well as
 `interpolate!(u_out, u, alpha, lagr)`, with one constant shift for the whole
 line.
@@ -31,7 +32,7 @@ line.
 lagr = LagrangeFFT(100, 5)  # 100 grid points, order-4 polynomial
 ```
 """
-struct LagrangeFFT{order} <: AbstractInterpolation{Float64,PeriodicBC,order}
+struct LagrangeFFT{order} <: AbstractShiftInterpolation{order}
 
     nx :: Int
     order :: Int
@@ -43,11 +44,6 @@ struct LagrangeFFT{order} <: AbstractInterpolation{Float64,PeriodicBC,order}
         new{order}(nx, order, zeros(nx), zeros(ComplexF64, nx), zeros(ComplexF64, nx))
 
 end
-
-# `LagrangeFFT` is an `AbstractInterpolation` with periodic boundary conditions,
-# but it applies a single shift to the whole line through an FFT instead of
-# using a stencil table, so the generic entry points are forwarded to it.
-interpolate!(fp, fi, dec::Real, interp::LagrangeFFT) = interpolate!(fp, interp, fi, dec)
 
 """
     interpolate!(u_out, lagr::LagrangeFFT, u, alpha)

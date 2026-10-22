@@ -144,10 +144,10 @@ function _interpolate_variable_advection_line!(
     output,
     input,
     shifts,
-    interpolant::LagrangeFFT,
+    interpolant::AbstractShiftInterpolation,
 )
     throw(ArgumentError(
-        "pointwise velocity fields are not supported by LagrangeFFT; " *
+        "pointwise velocity fields are not supported by this interpolant; " *
         "use a scalar or per-line velocity",
     ))
 end

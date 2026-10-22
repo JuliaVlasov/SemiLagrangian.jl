@@ -22,7 +22,7 @@ for very smooth data but assumes periodicity.
 spec = Spectral(100)  # spectral interpolation on 100-point grid
 ```
 """
-struct Spectral
+struct Spectral{order} <: AbstractShiftInterpolation{order}
 
     nx::Int
     eigvals::Vector{ComplexF64}
@@ -33,7 +33,7 @@ struct Spectral
         ufft = zeros(ComplexF64, nx)
         eigvals = zeros(ComplexF64, nx)
 
-        new(nx, eigvals, ufft)
+        new{nx - 1}(nx, eigvals, ufft)
 
     end
 

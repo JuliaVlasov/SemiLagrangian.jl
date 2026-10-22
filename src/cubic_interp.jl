@@ -27,7 +27,7 @@ cs = CubicSpline(n)
 interpolate!(u_out, cs, u, 0.5)  # shift by 0.5 grid points
 ```
 """
-struct CubicSpline
+struct CubicSpline <: AbstractShiftInterpolation{3}
     nx :: Int
     CubicSpline(nx) = new(nx)
 end

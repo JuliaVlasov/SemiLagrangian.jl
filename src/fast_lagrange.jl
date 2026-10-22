@@ -68,8 +68,9 @@ export FastLagrange
 | 9       | 8               | 4          |
 | 11      | 10              | 5          |
 """
-struct FastLagrange
+struct FastLagrange{order} <: AbstractShiftInterpolation{order}
     stencil::Int
+    FastLagrange(stencil::Int) = new{stencil - 1}(stencil)
 end
 
 # ---------------------------------------------------------------------------

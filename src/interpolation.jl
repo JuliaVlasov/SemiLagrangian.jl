@@ -72,6 +72,17 @@ polynomial functions.
 abstract type AbstractInterpolation{T,bc,order} end
 
 """
+Abstract supertype of the periodic interpolants that apply one constant shift to
+a whole line (`LagrangeFFT`, `Spectral`, `FastLagrange`, `CubicSpline`).
+
+They are [`AbstractInterpolation`](@ref)s with `Float64` numbers and
+[`PeriodicBC`](@ref), but have no stencil table: they implement
+`interpolate!(output, interpolant, input, shift)` directly, and the generic
+`interpolate!(output, input, shift, interpolant)` forwards to it.
+"""
+abstract type AbstractShiftInterpolation{order} <: AbstractInterpolation{Float64,PeriodicBC,order} end
+
+"""
    
 Return the order of the interpolation `interp`, i.e. the stencil used contains
 `order + 1` grid points.
@@ -821,3 +832,6 @@ function interpbufc!(
     end
 
 end
+
+interpolate!(fp, fi, dec::Real, interp::AbstractShiftInterpolation) =
+    interpolate!(fp, interp, fi, dec)

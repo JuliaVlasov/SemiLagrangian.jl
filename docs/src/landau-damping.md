@@ -113,6 +113,22 @@ julia --project examples/landau-damping.jl
 include(joinpath(@__DIR__, "..", "..", "examples", "landau-damping.jl"))
 ```
 
+## Using advection operators
+
+The separate [`landau-damping-split.jl`](https://github.com/JuliaVlasov/SemiLagrangian.jl/blob/master/examples/landau-damping-split.jl)
+example uses `AdvectionOperator` and `split_advection!` with spectral
+interpolation. It performs the first position half-step with `advection!`,
+then recomputes the electric field before applying the velocity step and final
+position half-step with `split_advection!`. The velocity operator is recreated
+each step with the updated field; a single call for all three stages would
+instead keep the field fixed.
+
+Run it from the repository root with:
+
+```sh
+julia --project=docs examples/landau-damping-split.jl
+```
+
 ## References
 
 - Vlasov-Poisson system: Krall & Trivelpiece (1973)

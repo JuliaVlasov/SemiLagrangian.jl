@@ -24,6 +24,9 @@ using FFTW
 using LinearAlgebra
 using Plots
 using SemiLagrangian
+using TimerOutputs
+
+const to = TimerOutput()
 
 include(joinpath(@__DIR__, "compute_rho.jl"))
 include(joinpath(@__DIR__, "compute_e.jl"))
@@ -56,9 +59,9 @@ function landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
         # This field is evaluated at the midpoint and drives the velocity step.
         push!(time, (it - 0.5) * dt)
         # Transpose so that velocity is the interpolated (row) direction.
-        transpose!(fᵗ, f)
+	permutedims!(fᵗ, f, [2,1])
         advection!(fᵗ, meshv, e, dt, interpolant_v; dim = 1)
-        transpose!(f, fᵗ)
+	permutedims!(f, fᵗ, [2,1])
         advection!(f, meshx, v, 0.5dt, interpolant_x; dim = 1)
     end
 
@@ -79,9 +82,11 @@ methods = [
 
 results = map(methods) do (name, interpolant_x, interpolant_v)
     @info "Landau damping with $name interpolation"
-    @time time, energy = landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
+    @timeit to name time, energy = landau(nx, nv, dt, nt, interpolant_x, interpolant_v)
     (name, time, energy)
 end
+
+show(to)
 
 comparison_plot = plot(;
     xlabel = "Time",

@@ -16,9 +16,8 @@ properties to efficiently compute interpolated values via convolution in Fourier
 `LagrangeFFT` is a subtype of [`AbstractInterpolation`](@ref) (through the
 internal `AbstractShiftInterpolation`) with the [`PeriodicBC`](@ref) boundary
 condition and `Float64` numbers. It supports the
-in-place call `interpolate!(u_out, lagr, u, alpha)` as well as
-`interpolate!(u_out, u, alpha, lagr)`, with one constant shift for the whole
-line.
+in-place call `interpolate!(u_out, u, alpha, lagr)`, with one constant shift
+for the whole line.
 
 # Fields
 - `nx::Int`: Grid size
@@ -46,17 +45,17 @@ struct LagrangeFFT{order} <: AbstractShiftInterpolation{order}
 end
 
 """
-    interpolate!(u_out, lagr::LagrangeFFT, u, alpha)
+    interpolate!(u_out, u, alpha, lagr::LagrangeFFT)
 
 Interpolate array `u` by a displacement `alpha` (in grid units) using global Lagrange
 polynomials via FFT convolution.
 
 # Arguments
 - `u_out::AbstractVector`: Output array (will be modified in-place)
-- `lagr::LagrangeFFT`: FFT-based periodic Lagrange interpolation object
 - `u::AbstractVector`: Input array (periodic boundary conditions assumed)
-- `alpha::Float64`: Shift amount in grid-point units. Can be any real number; periodic
+- `alpha::Real`: Shift amount in grid-point units. Can be any real number; periodic
   boundary conditions handle wrapping.
+- `lagr::LagrangeFFT`: FFT-based periodic Lagrange interpolation object
 
 # Description
 This function computes the interpolated values using:
@@ -71,10 +70,10 @@ For smooth periodic functions, this provides spectral (exponential) accuracy.
 lagr = LagrangeFFT(100, 5)
 f = sin.(2π .* (0:99) ./ 100)
 f_interp = zeros(100)
-interpolate!(f_interp, lagr, f, 0.5)  # shift by 0.5 grid points
+interpolate!(f_interp, f, 0.5, lagr)  # shift by 0.5 grid points
 ```
 """
-function interpolate!(u_out, self::LagrangeFFT, u, alpha::Real)
+function interpolate!(u_out, u, alpha::Real, self::LagrangeFFT)
 
     nx = length(u)
     d = self.order ÷ 2 - 1

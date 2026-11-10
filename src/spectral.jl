@@ -40,16 +40,16 @@ struct Spectral{order} <: AbstractShiftInterpolation{order}
 end
 
 """
-    interpolate!(u_out, spec::Spectral, u, alpha)
+    interpolate!(u_out, u, alpha, spec::Spectral)
 
 Interpolate array `u` by a displacement `alpha` (in grid units) using pure spectral
 (Fourier-based) interpolation.
 
 # Arguments
 - `u_out::AbstractVector`: Output array (will be modified in-place)
-- `spec::Spectral`: Spectral interpolation object
 - `u::AbstractVector`: Input array (periodic boundary conditions assumed)
-- `alpha::Float64`: Shift amount in grid-point units
+- `alpha::Real`: Shift amount in grid-point units
+- `spec::Spectral`: Spectral interpolation object
 
 # Description
 This method uses Fourier space phase shifting:
@@ -65,12 +65,13 @@ smooth data; sharp features or discontinuities will exhibit Gibbs phenomena.
 spec = Spectral(100)
 f = sin.(2π .* (0:99) ./ 100)
 f_interp = zeros(100)
-interpolate!(f_interp, spec, f, 0.25)  # shift by 0.25 grid points
+interpolate!(f_interp, f, 0.25, spec)  # shift by 0.25 grid points
 ```
 """
-function interpolate!(u_out, interpolant::Spectral, u, alpha::Float64)
+function interpolate!(u_out, u, alpha::Real, interpolant::Spectral)
 
     nx = interpolant.nx
+    alpha = Float64(alpha)
     interpolant.ufft .= u
     fft!(interpolant.ufft)
 

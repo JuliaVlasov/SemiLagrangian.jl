@@ -9,10 +9,10 @@ using Test
 
     interpolant = Spectral(N)
 
-    interpolate!(u_out, interpolant, u, 0.0)
+    interpolate!(u_out, u, 0.0, interpolant)
     @test maximum(abs.(u_out - u)) < 1.0e-14
 
-    interpolate!(u_out, interpolant, u, alpha)
+    interpolate!(u_out, u, alpha, interpolant)
     @test maximum(abs.(u_out - expected)) < 1.0e-14
 
 end

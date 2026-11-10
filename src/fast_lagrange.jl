@@ -26,34 +26,34 @@ const inv_3628800 = 1.0 / 3628800.0  # 1/10!
 export LocalLagrange
 
 """
-    LocalLagrange(stencil)
+$(TYPEDEF)
 
-    Provides local Lagrange polynomial interpolation over periodic domains using
-    fixed-width stencils of 3, 5, 7, 9, or 11 points. Boundary points are handled
-    via periodic (circular) wrapping of the input array.
+Provides local Lagrange polynomial interpolation over periodic domains using
+fixed-width stencils of 3, 5, 7, 9, or 11 points. Boundary points are handled
+via periodic (circular) wrapping of the input array.
 
-    # ⚠️ Numerical Stability Disclaimer
+# ⚠️ Numerical Stability Disclaimer
 
-    This implementation uses **local** (finite-stencil) Lagrange interpolation and is
-    **not numerically stable** for large shifts or high-order stencils on coarse grids.
+This implementation uses **local** (finite-stencil) Lagrange interpolation and is
+**not numerically stable** for large shifts or high-order stencils on coarse grids.
 
-    The key limitations are:
+The key limitations are:
 
-    - **Locality**: Only a small neighbourhood of `2s` points (where `s` is half the
-      stencil width) contributes to each interpolated value. If the function varies
-      significantly between those points, accuracy degrades rapidly.
-    - **Runge's phenomenon**: For large offsets `|p|`, the Lagrange weights grow in
-      magnitude and oscillate in sign, leading to catastrophic cancellation.
-      Best results are obtained for `p ∈ [-1, 1]` (i.e. interpolating within one
-      grid cell of the reference point).
-    - **No global spectral accuracy**: Unlike the FFT-based circulant approach
-      (`lagrange.jl`), this method does not leverage the global smoothness of the
-      function. It is designed for speed, not for maximum accuracy on smooth periodic
-      functions.
+- **Locality**: Only a small neighbourhood of `2s` points (where `s` is half the
+  stencil width) contributes to each interpolated value. If the function varies
+  significantly between those points, accuracy degrades rapidly.
+- **Runge's phenomenon**: For large offsets `|p|`, the Lagrange weights grow in
+  magnitude and oscillate in sign, leading to catastrophic cancellation.
+  Best results are obtained for `p ∈ [-1, 1]` (i.e. interpolating within one
+  grid cell of the reference point).
+- **No global spectral accuracy**: Unlike the FFT-based circulant approach
+  (`lagrange.jl`), this method does not leverage the global smoothness of the
+  function. It is designed for speed, not for maximum accuracy on smooth periodic
+  functions.
 
-    Use this type when performance is critical and the shift `p` is small (ideally
-    sub-cell). For large shifts or high accuracy requirements on smooth functions,
-    prefer the spectral circulant approach.
+Use this type when performance is critical and the shift `p` is small (ideally
+sub-cell). For large shifts or high accuracy requirements on smooth functions,
+prefer the spectral circulant approach.
 
 # Arguments
 - `stencil::Int`: Number of grid points used per interpolation. Must be one of
@@ -70,7 +70,8 @@ export LocalLagrange
 """
 struct LocalLagrange{order} <: AbstractShiftInterpolation{order}
     stencil::Int
-    LocalLagrange(stencil::Int) = new{stencil - 1}(stencil)
+    pp::Vector{Float64} 
+    LocalLagrange(stencil::Int) = new{stencil - 1}(stencil, zeros(stencil))
 end
 
 # ---------------------------------------------------------------------------
@@ -78,7 +79,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    lagr_3pt_coeff!(pp, p)
+$(SIGNATURES)
 
 Compute the 3-point Lagrange interpolation weights for fractional offset `p`
 and store them in the pre-allocated vector `pp` (length ≥ 3).
@@ -97,7 +98,7 @@ The weights satisfy: f(p) ≈ pp[1]*f(-1) + pp[2]*f(0) + pp[3]*f(+1).
 end
 
 """
-    lagr_3pt(fm1, f0, f1, p, pp)
+$(SIGNATURES)
 
 Evaluate the 3-point Lagrange interpolant at offset `p` given function values
 at stencil nodes {-1, 0, +1}. Coefficients `pp` must have been filled by
@@ -113,7 +114,7 @@ at stencil nodes {-1, 0, +1}. Coefficients `pp` must have been filled by
 end
 
 """
-    lagr_3pt_vec!(fi, fp, p, pp)
+$(SIGNATURES)
 
 Apply 3-point Lagrange interpolation to the **interior** of array `fi`
 (indices 2 to n-1), storing results in `fp`. Boundary points are not filled
@@ -138,7 +139,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    lagr_5pt_coeff!(pp, p)
+$(SIGNATURES)
 
 Compute the 5-point Lagrange interpolation weights for fractional offset `p`.
 Stencil nodes are at relative positions {-2, -1, 0, +1, +2}.
@@ -162,7 +163,7 @@ Stencil: {i-2, i-1, i, i+1, i+2}.
 end
 
 """
-    lagr_5pt_vec!(fi, fp, p, pp)
+$(SIGNATURES)
 
 Apply 5-point Lagrange interpolation to interior points (indices 3 to n-2).
 """
@@ -184,7 +185,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    lagr_7pt_coeff!(pp, p)
+$(SIGNATURES)
 
 Compute the 7-point Lagrange interpolation weights for fractional offset `p`.
 Stencil nodes at relative positions {-3, -2, -1, 0, +1, +2, +3}.
@@ -200,7 +201,7 @@ Stencil nodes at relative positions {-3, -2, -1, 0, +1, +2, +3}.
 end
 
 """
-    lagr_7pt(fm3, fm2, fm1, f0, f1, f2, f3, p, pp)
+$(SIGNATURES)
 
 Evaluate the 7-point Lagrange interpolant at offset `p`.
 Stencil: {i-3, ..., i+3}.
@@ -216,7 +217,7 @@ Stencil: {i-3, ..., i+3}.
 end
 
 """
-    lagr_7pt_vec!(fi, fp, p, pp)
+$(SIGNATURES)
 
 Apply 7-point Lagrange interpolation to interior points (indices 4 to n-3).
 """
@@ -240,7 +241,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    lagr_9pt_coeff!(pp, p)
+$(SIGNATURES)
 
 Compute the 9-point Lagrange interpolation weights for fractional offset `p`.
 Stencil nodes at relative positions {-4, -3, -2, -1, 0, +1, +2, +3, +4}.
@@ -262,7 +263,7 @@ with the products over squared differences written as `(p² - k²)` for efficien
 end
 
 """
-    lagr_9pt(fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, p, pp)
+$(SIGNATURES)
 
 Evaluate the 9-point Lagrange interpolant at offset `p`.
 Stencil: {i-4, ..., i+4}.
@@ -280,7 +281,7 @@ Stencil: {i-4, ..., i+4}.
 end
 
 """
-    lagr_9pt_vec!(fi, fp, p, pp)
+$(SIGNATURES)
 
 Apply 9-point Lagrange interpolation to interior points (indices 5 to n-4).
 """
@@ -306,7 +307,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    lagr_11pt_coeff!(pp, p)
+$(SIGNATURES)
 
 Compute the 11-point Lagrange interpolation weights for fractional offset `p`.
 Stencil nodes at relative positions {-5, ..., 0, ..., +5}.
@@ -337,7 +338,7 @@ Stencil nodes at relative positions {-5, ..., 0, ..., +5}.
 end
 
 """
-    lagr_11pt(fm5, fm4, fm3, fm2, fm1, f0, f1, f2, f3, f4, f5, p, pp)
+$(SIGNATURES)
 
 Evaluate the 11-point Lagrange interpolant at offset `p`.
 Stencil: {i-5, ..., i+5}.
@@ -357,7 +358,7 @@ Stencil: {i-5, ..., i+5}.
 end
 
 """
-    lagr_11pt_vec!(fi, fp, p, pp)
+$(SIGNATURES)
 
 Apply 11-point Lagrange interpolation to interior points (indices 6 to n-5).
 """
@@ -385,7 +386,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    interpolate!(fp, interpolant::LocalLagrange, fi, p)
+$(SIGNATURES)
 
 Interpolate the periodic array `fi` at offset `p` (in grid-spacing units)
 and store the result in `fp`.
@@ -399,11 +400,11 @@ explicitly wrapped index expressions.
 
 # Arguments
 - `fp`:           Output array (length n, modified in-place)
-- `interpolant`:  `LocalLagrange` object specifying the stencil width
 - `fi`:           Input array (length n, periodic)
 - `p`:            Fractional shift in units of the grid spacing `dx`.
                   Accuracy is best for `p ∈ [-1, 1]`; large values lead to
                   weight blow-up and loss of precision (see module disclaimer).
+- `interpolant`:  `LocalLagrange` object specifying the stencil width
 
 # Supported stencil widths
 `3`, `5`, `7`, `9`, `11`  (polynomial orders 2, 4, 6, 8, 10 respectively)
@@ -414,16 +415,14 @@ n   = 128
 fi  = sin.(2π .* (0:n-1) ./ n)
 fp  = similar(fi)
 lag = LocalLagrange(7)
-pp  = zeros(7)
-lagr_7pt_coeff!(pp, 0.3)
-interpolate!(fp, lag, fi, 0.3)
+interpolate!(fp, fi, 0.3, lag)
 ```
 """
-function interpolate!(fp, interpolant::LocalLagrange, fi, p::Real)
+function interpolate!(fp, fi, p::Real, interpolant::LocalLagrange)
 
     n = length(fi)
     stencil = interpolant.stencil
-    pp = zeros(stencil)
+    pp = interpolant.pp
 
     return if stencil == 7
         lagr_7pt_coeff!(pp, p)

@@ -236,24 +236,31 @@ Type containing spline coefficients for b-spline interpolation
 - `order` : the order of interpolation
 - `[T::DataType=Float64]` : The type values to interpolate 
 
+Even orders use a centered half-cell spline basis. The interpolation
+coefficients are computed using a periodic system for both odd and even orders.
 """
 struct BSplineLU{T, bc, order} <: BSpline{T, bc, order}
     ls::LuSpline{T}
     tabfct::Vector{Polynomial{T}}
     function BSplineLU(order::Int, n::Int, T::DataType = Float64)
-        (order % 2 == 0) && throw(
-            ArgumentError(
-                "order=$order BSplineLU for even  order is not implemented n=$n",
-            ),
-        )
         bspline = getbspline(order, 0)
-        tabfct_rat = map(x -> bspline[order - x](Polynomial([order - x, 1])), 0:order)
-        ls = LuSpline(n, convert.(T, bspline.(1:order)); iscirc = true, isLU = true)
+        offset = iseven(order) ? 1 // 2 : 0 // 1
+        tabfct_rat = map(
+            x -> bspline[order - x](Polynomial([order - x + offset, 1])),
+            0:order,
+        )
+        values = iseven(order) ? bspline.((0:order) .+ offset) : bspline.(1:order)
+        ls = LuSpline(n, convert.(T, values); iscirc = true, isLU = true)
         return new{T, PeriodicBC, order}(ls, convert.(Polynomial{T}, tabfct_rat))
     end
     function BSplineLU(o::Int, n::Int, elt::T; kwargs...) where {T <: Number}
         return BSplineLU(o, n, T; kwargs...)
     end
+end
+
+@inline function split_shift(::BSplineLU{T, bc, order}, shift) where {T, bc, order}
+    integer = floor(Int, iseven(order) ? shift + one(shift) * (1 // 2) : shift)
+    return integer, shift - integer
 end
 
 function preprocess!(

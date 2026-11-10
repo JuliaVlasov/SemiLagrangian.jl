@@ -14,7 +14,7 @@ subtypes are [`PeriodicBC`](@ref) and [`ExtrapolationBC`](@ref). It is used as t
 abstract type AbstractBoundaryCondition end
 
 """
-    PeriodicBC()
+$(TYPEDEF)
 
 Periodic boundary condition: the data line is considered as one period of a
 periodic function, so interpolation stencils wrap around the ends of the line
@@ -30,7 +30,7 @@ interp = Lagrange(5; bc = PeriodicBC())
 struct PeriodicBC <: AbstractBoundaryCondition end
 
 """
-    ExtrapolationBC()
+$(TYPEDEF)
 
 Non-periodic boundary condition: interpolation stencils never leave the data
 line. Near the ends the stencil is shifted inside the line and the
@@ -77,12 +77,12 @@ a whole line (`LagrangeFFT`, `Spectral`, `LocalLagrange`, `CubicSpline`).
 
 They are [`AbstractInterpolation`](@ref)s with `Float64` numbers and
 [`PeriodicBC`](@ref), but have no stencil table: they implement
-`interpolate!(output, interpolant, input, shift)` directly, and the generic
-`interpolate!(output, input, shift, interpolant)` forwards to it.
+`interpolate!(output, input, shift, interpolant)` directly.
 """
 abstract type AbstractShiftInterpolation{order} <: AbstractInterpolation{Float64, PeriodicBC, order} end
 
 """
+$(SIGNATURES)
    
 Return the order of the interpolation `interp`, i.e. the stencil used contains
 `order + 1` grid points.
@@ -169,6 +169,11 @@ end
     return [T(fct(decf)) for fct in interp.tabfct]
 end
 
+@inline function split_shift(::AbstractInterpolation, shift)
+    integer = floor(Int, shift)
+    return integer, shift - integer
+end
+
 @inline function stencil_weights!(
         v::Vector{T},
         bsp::AbstractInterpolation{T},
@@ -235,10 +240,6 @@ function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
     return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
 end
 
-function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tuple{Int, Int})
-    return CartesianIndex(modone.(indref.I .- indorigin.I, sz))
-end
-
 """
 Shift the data `fi` by an offset and store the result in `fp`, for an
 interpolation with [`PeriodicBC`](@ref). The offset is given as an integer
@@ -247,6 +248,9 @@ part, computed beforehand with `stencil_weights(interp, frac)`. Precomputing the
 avoids recomputing the weights when the same shift is applied many times.
 
 After the call `fp[i]` approximates `fi` evaluated at `x_i + (decint + frac) dx`.
+For an even-order `BSplineLU`, use `SemiLagrangian.split_shift(interp, shift)`
+to obtain `decint` and `frac`; its centered stencil requires a fractional shift
+between -0.5 and 0.5.
 
 # Arguments
 - `fp::AbstractVector` : output vector
@@ -365,21 +369,18 @@ function interpolate!(
         indbeg = 1
         indend = order + 1
         ind = i
-        #        @show 1, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
     for i in (borne1 + 1):borne2
         indbeg = i - borne1
         indend = indbeg + order
         ind = borne1 + 1
-        #        @show 2, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
     for i in (borne2 + 1):lg
         indbeg = lg - order
         indend = lg
         ind = lgp - (lg - i)
-        #        @show 3, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
     return missing
@@ -418,8 +419,7 @@ function interpolate!(
         dec,
         interp::AbstractInterpolation{T, BC, order},
     ) where {T, BC, order}
-    decint = convert(Int, floor(dec))
-    decfloat = dec - decint
+    decint, decfloat = split_shift(interp, dec)
     if BC === PeriodicBC
         return interpolate!(fp, fi, decint, stencil_weights(interp, decfloat), interp)
     else
@@ -431,6 +431,10 @@ function interpolate!(
             interp,
         )
     end
+end
+
+function interpolate!(fp, fi, dec, interp::AbstractShiftInterpolation)
+    throw(ArgumentError("the shift for $(typeof(interp)) must be a real number"))
 end
 
 """
@@ -487,8 +491,9 @@ dimension), updating the cache only if `alpha` changed.
     ) where {T, N}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
-        self.cache_int = Int.(floor.(alpha))
-        decfloat = alpha .- self.cache_int
+        parts = ntuple(i -> split_shift(self.interps[i], alpha[i]), N)
+        self.cache_int = first.(parts)
+        decfloat = last.(parts)
         stencil_weights!(self.precal, self.interps, decfloat)
     end
     return self.cache_int, self.precal
@@ -522,8 +527,7 @@ cache only if `alpha` changed.
 @inline function cached_shift_weights(self::CachePrecal{T, 1}, alpha::T) where {T}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
-        self.cache_int = Int(floor(alpha))
-        decfloat = alpha - self.cache_int
+        self.cache_int, decfloat = split_shift(self.interps[1], alpha)
         stencil_weights!(self.precal, self.interps[1], decfloat)
     end
     return self.cache_int, self.precal
@@ -581,136 +585,6 @@ function interpolate!(
     #    @show "std2d", diffmax, decminmin, decmaxmax
     return
 end
-
-"""
-Internal helper: periodic interpolation of `fi` with the displacement field
-`bufc` (one array per dimension), the displacements being taken modulo the
-mesh length `lgmesh`.
-"""
-function interpolatemod!(
-        fp::AbstractArray{T, N},
-        fi::AbstractArray{T, N},
-        bufc::Tuple{Array{T, N}, Array{T, N}},
-        interp_t::AbstractVector{I},
-        lgmesh::Union{T, UniformMesh{T}},
-    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
-    (N == 2 && N == length(interp_t)) || thrown(
-        ArgumentError(
-            "The number of Interpolation $(length(interp_t)) is different of N=$N",
-        ),
-    )
-
-    sz = size(fp)
-
-    res = preprocess(interp_t, fi)
-
-    extr = extrema.(bufc)
-    decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
-    decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-
-    order = totuple(get_order.(interp_t))
-    origin = 0 .- div.(order, (2,))
-
-    dec_b = decbegin .- origin
-    dec_e = decend .+ order .+ origin
-    fiext = getextarray(res, dec_b, dec_e)
-
-    decall = decbegin
-
-    traitmodbegin!(lgmesh, fiext)
-
-    cache::CachePrecal{T, N} = CachePrecal(interp_t, one(eltype(fp)))
-    diffmax = 0
-    decminmin = ntuple(x -> Inf, N)
-    decmaxmax = ntuple(x -> -Inf, N)
-    decabs = ntuple(x -> 0, N)
-
-    for ind in CartesianIndices(sz)
-        dint, tab = cached_shift_weights(cache, (bufc[1][ind], bufc[2][ind]))
-        decabs = max.(decabs, abs.((bufc[1][ind], bufc[2][ind])))
-        decmin, decmax = extrema(tab)
-        decminmin = min.(decminmin, dint .+ decmin)
-        decmaxmax = max.(decmaxmax, dint .+ decmax)
-
-        deb_i = dint .+ decall .+ ind.I
-        end_i = deb_i .+ order
-        vmin, vmax = extrema(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...])
-        diff = vmax - vmin
-        diffmax = max(diff, diffmax)
-        fp[ind] = sum(fiext[ntuple(x -> deb_i[x]:end_i[x], N)...] .* tab)
-    end
-
-    traitmodend!(lgmesh, fp)
-
-    return missing
-
-end
-
-"""
-Internal helper: compute by fixed-point iterations the inverse displacement
-field of `dec` (one array per dimension), using the periodic interpolation `interp`.
-"""
-function getinverse(
-        dec::NTuple{N, Array{T, N}},
-        interp::Vector{I},
-    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
-    sz = size(dec[1])
-    res = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
-    decinv = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
-    buf = zeros(T, sz)
-    res2 = ntuple(x -> zeros(T, sz), N)
-    res3 = ntuple(x -> zeros(T, sz), N)
-    res4 = ntuple(x -> zeros(T, sz), N)
-    decfmr = ntuple(x -> zeros(T, sz), N)
-
-    sz_2 = div.(sz, 2)
-
-    for i in 1:N
-        interpolatemod!(res2[i], res[i], dec, interp, T(sz[i]))
-        interpolatemod!(decfmr[i], -dec[i], dec, interp, T(sz[i]))
-        decfmr[i] .= mod.(decfmr[i] .+ sz_2[i], sz[i]) .- sz_2[i]
-
-        res4[i] .= res2[i]
-
-        res3[i] .= mod.(res2[i] .- res[i] .- dec[i] .+ sz_2[i], sz[i]) .- sz_2[i]
-    end
-
-    borne = log(eps(T) * prod(sz))
-
-    for z in 1:2
-        ind = 1
-        note = Inf
-        while note > borne
-            for i in 1:N
-                interpolatemod!(res3[i], res2[i], decfmr, interp, T(sz[i]))
-                interpolatemod!(buf, decinv[i], decfmr, interp, T(sz[i]))
-                decinv[i] .= buf
-            end
-            for i in 1:N
-                decfmr[i] .= mod.(res[i] .- res3[i] .+ sz_2[i], sz[i]) .- sz_2[i]
-                res2[i] .= res3[i]
-            end
-            note = log(2, norm(decfmr))
-            if note > 1
-                for i in 1:N
-                    decfmr[i] .= decfmr[i] / note
-                end
-            end
-            @show ind, note, borne
-            ind += 1
-        end
-        for i in 1:N
-            decinv[i] .= mod.(decinv[i] .- res[i] .+ sz_2[i], sz[i]) .- sz_2[i]
-            if z == 1
-                decfmr[i] .= decinv[i]
-                decinv[i] .= res[i]
-                res2[i] .= res4[i]
-            end
-        end
-    end
-    return decinv
-end
-
 
 """
 Multidimensional periodic interpolation with the shift of each grid point
@@ -789,72 +663,3 @@ function interpolate!(
 
     return true
 end
-
-"""
-Apply `nb` successive interpolations of `from` with the displacement
-field `from` itself (`to` receives the result). If `nb < 1`, `to` is a copy of
-`from`.
-"""
-function autointerp!(
-        to::Array{OpTuple{N, T}, N},
-        from::Array{OpTuple{N, T}, N},
-        nb::Int,
-        interp_t::AbstractVector{I};
-        mpid = missing,
-        t_split::Union{Tuple, Missing} = missing,
-        cachethreads::Union{Vector{CachePrecal{T}}, Missing} = missing,
-    ) where {N, T, I <: AbstractInterpolation}
-    if nb < 1
-        to .= from
-    end
-    fmr = copy(from)
-    for i in 1:nb
-        interpolate!(
-            to,
-            from,
-            fmr,
-            interp_t;
-            mpid = mpid,
-            t_split = t_split,
-            cachethreads = cachethreads,
-        )
-        if i != nb
-            fmr .= to
-        end
-    end
-    return
-end
-
-
-"""
-Interpolate in place the `nb` last arrays of `t_buf` with the displacement
-field `bufdec`.
-"""
-function interpbufc!(
-        t_buf::Vector{Array{OpTuple{N, T}, N}},
-        bufdec::Array{OpTuple{N, T}, N},
-        interp_t::AbstractVector{I},
-        nb::Int = length(t_buf);
-        mpid = missing,
-        t_split::Union{Tuple, Missing} = missing,
-        cachethreads::Union{Vector{CachePrecal{T}}, Missing} = missing,
-    ) where {N, T, I <: AbstractInterpolation{T}}
-
-    for i in 0:(nb - 1)
-        buf = t_buf[end - i]
-        interpolate!(
-            buf,
-            copy(buf),
-            bufdec,
-            interp_t;
-            mpid = mpid,
-            t_split = t_split,
-            cachethreads = cachethreads,
-        )
-    end
-
-    return
-end
-
-interpolate!(fp, fi, dec::Real, interp::AbstractShiftInterpolation) =
-    interpolate!(fp, interp, fi, dec)

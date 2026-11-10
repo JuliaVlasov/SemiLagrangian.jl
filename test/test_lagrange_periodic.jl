@@ -10,10 +10,10 @@ using Test
     for order in [3, 5, 7, 9]
 
         interpolant = LagrangeFFT(nx, order)
-        interpolate!(u_out, interpolant, u, 0.0)
+        interpolate!(u_out, u, 0.0, interpolant)
         @test maximum(abs.(u_out - u)) < 1.0e-14
 
-        interpolate!(u_out, interpolant, u, alpha)
+        interpolate!(u_out, u, alpha, interpolant)
         # FFT-based Lagrange has excellent accuracy for smooth functions
         # Tolerance decreases with order
         tol = 10.0^(-(2 + order / 2))

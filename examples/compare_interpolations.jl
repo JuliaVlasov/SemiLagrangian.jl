@@ -10,9 +10,9 @@ expected = sin.(2π .* ((0:(n - 1)) .+ alpha) ./ n) .+
 result = zeros(n)
 
 methods = [
-    "Spectral" => (out -> interpolate!(out, Spectral(n), u, alpha)),
-    "Lagrange FFT" => (out -> interpolate!(out, LagrangeFFT(n, 7), u, alpha)),
-    "Local Lagrange" => (out -> interpolate!(out, LocalLagrange(7), u, alpha)),
+    "Spectral" => (out -> interpolate!(out, u, alpha, Spectral(n))),
+    "Lagrange FFT" => (out -> interpolate!(out, u, alpha, LagrangeFFT(n, 7))),
+    "Local Lagrange" => (out -> interpolate!(out, u, alpha, LocalLagrange(7))),
     "FastInterpolations cubic" => (
         out -> (
             out .= cubic_interp(

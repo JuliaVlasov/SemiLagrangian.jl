@@ -41,6 +41,9 @@ op_v = AdvectionOperator(mesh_v, electric_field, interp_v; dim = 2)
 split_advection!(f, op_x, op_v, strangsplit(0.01))
 ```
 
+The operators' velocities remain fixed during this call. For a self-consistent
+field that must be updated between stages, see the [Landau damping example](@ref "Landau Damping").
+
 ```@autodocs
 Modules = [SemiLagrangian]
 Private = false

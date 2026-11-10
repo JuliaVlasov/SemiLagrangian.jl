@@ -10,6 +10,8 @@ using SemiLagrangian:
     preprocess,
     decal,
     get_order,
+    split_shift,
+    stencil_weights,
     interpolate!
 import SemiLagrangian: solve
 
@@ -189,6 +191,83 @@ end
 
 @testset "test BSplineLU preprocessing" begin
     @test test_solve(Float64, 128, 9) < 1.0e-10
+end
+
+@testset "even-order BSplineLU" begin
+    T = Rational{BigInt}
+    for order in (2, 4, 6), n in (16, 17)
+        spline = getbspline(order, 0)
+        interpolant = BSplineLU(order, n, T)
+        coefficients = T[mod(7i + 3, 11) - 5 for i in 1:n]
+        half = T(1 // 2)
+        radius = order ÷ 2
+        evaluate(i, shift) = sum(
+            coefficients[mod1(i + j, n)] * spline(radius + half + shift - j)
+                for j in (-radius - 2):(radius + 2)
+        )
+        input = [evaluate(i, zero(T)) for i in 1:n]
+        @test preprocess(interpolant, input) == coefficients
+
+        for shift in T.((-5 // 4, -1 // 2, -1 // 4, 0, 1 // 4, 1 // 2, 3 // 4, 5 // 4))
+            expected = [evaluate(i, shift) for i in 1:n]
+            output = similar(input)
+            interpolate!(output, input, shift, interpolant)
+            @test output == expected
+
+            integer, fractional = split_shift(interpolant, shift)
+            weights = stencil_weights(interpolant, fractional)
+            interpolate!(output, input, integer, weights, interpolant)
+            @test output == expected
+        end
+
+        shifts = [T(mod(i, 7) - 3) / 4 for i in 1:n]
+        expected = [evaluate(i, shifts[i]) for i in 1:n]
+        output = similar(input)
+        interpolate!(output, copy(input), ind -> (shifts[ind[1]],), [interpolant])
+        @test output == expected
+    end
+
+    for order in (2, 4, 6), n in (64, 65)
+        input = cos.(2pi .* (0:n-1) ./ n)
+        interpolant = BSplineLU(order, n)
+        output = similar(input)
+        for shift in (-1.25, -0.5, 0.0, 0.5, 0.75, 1.25)
+            interpolate!(output, input, shift, interpolant)
+            expected = cos.(2pi .* ((0:n-1) .+ shift) ./ n)
+            @test maximum(abs.(output .- expected)) < 1.0e-4
+        end
+        alternating = [isodd(i) ? 1.0 : -1.0 for i in 1:n]
+        interpolate!(output, alternating, 0.0, interpolant)
+        @test output ≈ alternating
+    end
+
+    setprecision(128) do
+        n = 64
+        input = [cos(2 * big(pi) * i / n) for i in 0:(n - 1)]
+        interpolant = BSplineLU(4, n, BigFloat)
+        output = similar(input)
+        shift = big"0.75"
+        interpolate!(output, input, shift, interpolant)
+        expected = [cos(2 * big(pi) * (i + shift) / n) for i in 0:(n - 1)]
+        @test maximum(abs.(output .- expected)) < big"1e-7"
+    end
+
+    n, m = 8, 9
+    splines = (getbspline(2, 0), getbspline(4, 0))
+    interpolants = [BSplineLU(2, n, T), BSplineLU(4, m, T)]
+    coefficients = T[mod(3i + 5j, 13) - 6 for i in 1:n, j in 1:m]
+    half = T(1 // 2)
+    evaluate2d(i, j, sx, sy) = sum(
+        coefficients[mod1(i + k, n), mod1(j + l, m)] *
+            splines[1](1 + half + sx - k) * splines[2](2 + half + sy - l)
+            for k in -3:3, l in -4:4
+    )
+    input = [evaluate2d(i, j, zero(T), zero(T)) for i in 1:n, j in 1:m]
+    shifts(i, j) = (T(mod(i, 5) - 2) / 4, T(mod(j, 5) - 2) / 4)
+    expected = [evaluate2d(i, j, shifts(i, j)...) for i in 1:n, j in 1:m]
+    output = similar(input)
+    interpolate!(output, copy(input), ind -> shifts(ind[1], ind[2]), interpolants)
+    @test output == expected
 end
 
 @testset "test LuSpline" begin

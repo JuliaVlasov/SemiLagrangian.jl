@@ -71,7 +71,7 @@ using SemiLagrangian
 
         println("Test fixed_periodic with order ", pmessage, " .")
         interpolant = LocalLagrange(order)
-        interpolate!(fp, interpolant, fi, alpha)
+        interpolate!(fp, fi, alpha, interpolant)
 
         for i in 1:num_points
             diff = max(diff, abs(f(xp[i], num_points) - fp[i]))

@@ -8,10 +8,10 @@ using Test
     expected = Float64[cos(2π * ((i - 1) + alpha) / nx) for i in 1:nx]
 
     interpolant = CubicSpline(nx)
-    interpolate!(u_out, interpolant, u, 0.0)
+    interpolate!(u_out, u, 0.0, interpolant)
     @test maximum(abs.(u_out - u)) < 1.0e-14
 
-    interpolate!(u_out, interpolant, u, alpha)
+    interpolate!(u_out, u, alpha, interpolant)
     @test maximum(abs.(u_out - expected)) < 1.0e-7
 
 end

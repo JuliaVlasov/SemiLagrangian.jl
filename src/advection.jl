@@ -1,5 +1,5 @@
 """
-    advection!(data, mesh, velocity, dt, interpolant; dim=1)
+$(SIGNATURES)
 
 Advect `data` in place along dimension `dim` for one time step `dt`.
 `mesh` describes the advected dimension. `velocity` may be a scalar, an array
@@ -82,7 +82,7 @@ function advection!(
 end
 
 """
-    AdvectionOperator(mesh, velocity, interpolant; dim=1)
+$(TYPEDEF)
 
 Describe one directional advection operator for use with [`split_advection!`](@ref).
 """
@@ -98,7 +98,7 @@ function AdvectionOperator(mesh::UniformMesh, velocity, interpolant; dim::Intege
 end
 
 """
-    split_advection!(data, first, second, coefficients)
+$(SIGNATURES)
 
 Apply a two-operator splitting in place. Stages alternate between `first` and
 `second`, beginning with `first`; `coefficients` are the time steps for the
@@ -127,11 +127,8 @@ function split_advection!(
     return data
 end
 
-_interpolate_advection_line!(output, input, shift, interpolant::AbstractInterpolation) =
-    interpolate!(output, input, shift, interpolant)
-
 _interpolate_advection_line!(output, input, shift, interpolant) =
-    interpolate!(output, interpolant, input, shift)
+    interpolate!(output, input, shift, interpolant)
 
 function _interpolate_variable_advection_line!(
         output,

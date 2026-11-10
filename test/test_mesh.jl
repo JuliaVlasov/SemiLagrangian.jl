@@ -2,7 +2,6 @@ using SemiLagrangian:
     UniformMesh,
     totuple,
     dotprod,
-    dotprodother,
     length,
     step,
     prod,
@@ -39,11 +38,9 @@ using SemiLagrangian:
     t_mesh = totuple(tt_mesh)
     #     println("typeof(t_mesh)=$(typeof(t_mesh))")
     @time @test result == dotprod(points.(t_mesh))
-    @time @test result == dotprodother(points.(t_mesh))
 
     t_v = points.(t_mesh)
     @time @test result == dotprod(t_v)
-    @time @test result == dotprodother(t_v)
 
     @test prod(t_step) == prod(step, t_mesh)
 

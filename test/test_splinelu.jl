@@ -1,15 +1,24 @@
 using LinearAlgebra
 using Random
 using SemiLagrangian:
-    PeriodicBC, get_kl_ku, getbspline, LuSpline, BSplineLU, sol, decal, get_order, interpolate!
-import SemiLagrangian: sol, sol!
+    PeriodicBC,
+    get_kl_ku,
+    getbspline,
+    LuSpline,
+    BSplineLU,
+    solve,
+    preprocess,
+    decal,
+    get_order,
+    interpolate!
+import SemiLagrangian: solve
 
 Random.seed!(5431221)
 # create a band or circular matrix from a vector of non-zero data
 function topl(n, t, iscirc = true)
     res = zeros(Rational{BigInt}, n, n)
     kl, ku = get_kl_ku(size(t, 1))
-    for i = 1:n
+    for i in 1:n
         for (j, v) in enumerate(t)
             ind = i + j - kl - 1
             if 1 <= ind <= n
@@ -29,12 +38,12 @@ end
 # inplace lu decomposition
 function decLU(A::Matrix{T}) where {T}
     n = size(A, 1)
-    for k = 1:n
+    for k in 1:n
         pivot = A[k, k]
-        for i = (k+1):n
+        for i in (k + 1):n
             A[i, k] /= pivot
         end
-        for i = (k+1):n, j = (k+1):n
+        for i in (k + 1):n, j in (k + 1):n
             # if A[i,k] != 0 && A[k,j] != 0
             #     println("trace avant k=$k i=$i j=$j A[i,j]=$(A[i,j]) A[i,k]=$(A[i,k]) A[k,j]=$(A[k,j])")
             # end
@@ -50,12 +59,12 @@ function getLU(A::Matrix{T}) where {T}
     n = size(A, 1)
     L = zeros(T, n, n)
     U = zeros(T, n, n)
-    for i = 1:n
+    for i in 1:n
         L[i, i] = 1
-        for j = 1:(i-1)
+        for j in 1:(i - 1)
             L[i, j] = A[i, j]
         end
-        for j = i:n
+        for j in i:n
             U[i, j] = A[i, j]
         end
     end
@@ -64,21 +73,21 @@ end
 
 # function testTools()
 
-function sol(A::Matrix{T}, Y::Vector{T}) where {T}
+function solve(A::Matrix{T}, Y::Vector{T}) where {T}
     L, U = getLU(A)
     n = size(A, 1)
     Y1 = zeros(T, n)
-    for i = 1:n
-        Y1[i] = Y[i] - sum(Y1[1:(i-1)] .* A[i, 1:(i-1)])
+    for i in 1:n
+        Y1[i] = Y[i] - sum(Y1[1:(i - 1)] .* A[i, 1:(i - 1)])
     end
-    #   @assert Y1 == (L^(-1))*Y "Erreur 1" 
-    #   @assert isapprox(Y1, (L^(-1))*Y, atol=1e-60) "Erreur 1" 
+    #   @assert Y1 == (L^(-1))*Y "Erreur 1"
+    #   @assert isapprox(Y1, (L^(-1))*Y, atol=1e-60) "Erreur 1"
     X = zeros(T, n)
-    for i = n:-1:1
-        X[i] = (Y1[i] - sum(X[(i+1):n] .* A[i, (i+1):n])) / A[i, i]
+    for i in n:-1:1
+        X[i] = (Y1[i] - sum(X[(i + 1):n] .* A[i, (i + 1):n])) / A[i, i]
     end
-    #    @assert X == (U^(-1))*Y1 "Erreur 2" 
-    #    @assert isapprox(X,(U^(-1))*Y1,atol=1e-60) "Erreur 2" 
+    #    @assert X == (U^(-1))*Y1 "Erreur 2"
+    #    @assert isapprox(X,(U^(-1))*Y1,atol=1e-60) "Erreur 2"
     #    @assert X == ((L*U)^(-1))*Y "Erreur3"
     #    @assert isapprox(X, ((L*U)^(-1))*Y, atol=1e-60) "Erreur3"
     return X, Y1
@@ -92,16 +101,16 @@ function test_decLU(n)
     L, U = getLU(A)
     @test L * U == B
     b = big.((rand(Int, n) .% dividende) .// dividende)
-    x, _ = sol(A, b)
-    @test B * x == b
+    x, _ = solve(A, b)
+    return @test B * x == b
 end
 
-function test_sol(T, n, order)
+function test_solve(T, n, order)
     A = topl(n, getbspline(order, 0).(1:order))
     bsp = BSplineLU(order, n, Float64)
     b = rand(n)
     #    y = zeros(n)
-    y = sol(bsp, b)
+    y = preprocess(bsp, b)
     diff = norm(A * y - b)
     @show diff
     return diff
@@ -127,17 +136,17 @@ function test_splu(n, order, iscirc, isLU; type = Rational{BigInt}, tol = NaN, p
     dividende = 10000
     b = big.((rand(Int, n) .% dividende) .// dividende)
     b = convert.(type, b)
-    if isLU
-        x, y = sol(A, b)
-        x2, y2 = sol(spB, b)
+    return if isLU
+        x, y = solve(A, b)
+        x2, y2 = solve(spB, b)
 
         if isnan(tol)
             #            @show norm(x-x2,Inf)
             @test x == x2
         else
-            println("norm=$(norm(x-x2))")
+            println("norm=$(norm(x - x2))")
             res = Acp * x
-            println("normres=$(norm(res-b))")
+            println("normres=$(norm(res - b))")
             @test isapprox(res, b, atol = tol)
             @test isapprox(x, x2, atol = tol)
         end
@@ -156,29 +165,30 @@ function test_perf(n, order, iscirc)
 
     dividende = 10000
     b = big.((rand(Int, n) .% dividende) .// dividende)
-    x, y = sol(A, b)
-    x2, y2 = sol(spB, b)
+    x, y = solve(A, b)
+    x2, y2 = solve(spB, b)
     @test y == y2
-    @test x == x2
+    return @test x == x2
 end
 
 function test_interface()
-    getpar(bsp::BSplineLU{T,tedge,order}) where {T,tedge,order} = (T, tedge, order)
-    for i = 3:2:29
+    getpar(bsp::BSplineLU{T, tedge, order}) where {T, tedge, order} = (T, tedge, order)
+    for i in 3:2:29
         bsp = BSplineLU(i, 104, big"0.")
         (_1, _2, order) = getpar(bsp)
         @test i == get_order(bsp)
         @test i == order
         @test getpar(bsp) == (BigFloat, PeriodicBC, order)
     end
+    return
 end
 
 @testset "test decLU that is a tool for test" begin
     test_decLU(30)
 end
 
-@testset "test BSplineLU sol" begin
-    @test test_sol(Float64, 128, 9) < 1e-10
+@testset "test BSplineLU preprocessing" begin
+    @test test_solve(Float64, 128, 9) < 1.0e-10
 end
 
 @testset "test LuSpline" begin
@@ -191,10 +201,10 @@ end
     test_splu(30, 10, false, true)
     test_splu(30, 9, true, true)
     test_splu(31, 10, true, true)
-    test_splu(30, 9, true, true; type = BigFloat, tol = 1e-70)
-    test_splu(31, 10, true, true; type = BigFloat, tol = 1e-70)
-    test_splu(30, 11, false, true; type = BigFloat, tol = 1e-70)
-    test_splu(31, 10, false, true; type = BigFloat, tol = 1e-70)
+    test_splu(30, 9, true, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(31, 10, true, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(30, 11, false, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(31, 10, false, true; type = BigFloat, tol = 1.0e-70)
     test_splu(30, 3, true, false)
     test_splu(30, 4, true, false)
     test_splu(30, 3, false, false)
@@ -203,13 +213,13 @@ end
     test_splu(30, 4, false, true)
     test_splu(30, 3, true, true)
     test_splu(31, 4, true, true)
-    test_splu(30, 3, true, true; type = BigFloat, tol = 1e-70)
-    test_splu(31, 4, true, true; type = BigFloat, tol = 1e-70)
-    test_splu(30, 5, false, true; type = BigFloat, tol = 1e-70)
-    test_splu(31, 4, false, true; type = BigFloat, tol = 1e-70)
+    test_splu(30, 3, true, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(31, 4, true, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(30, 5, false, true; type = BigFloat, tol = 1.0e-70)
+    test_splu(31, 4, false, true; type = BigFloat, tol = 1.0e-70)
     test_interface()
 end
 
 @testset "test perf" begin
-    test_splu(1000, 9, true, true; type = Float64, tol = 1e-12, perf = true)
+    test_splu(1000, 9, true, true; type = Float64, tol = 1.0e-12, perf = true)
 end

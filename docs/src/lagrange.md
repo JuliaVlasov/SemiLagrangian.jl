@@ -1,5 +1,4 @@
-# Lagrange interpolation
-
+# Lagrange
 
 To compute a Lagrange interpolation you have to instantiate
 a `Lagrange` type variable:
@@ -20,5 +19,5 @@ extrapolating_interp = Lagrange(5; bc = ExtrapolationBC())
 Modules = [SemiLagrangian]
 Private = false
 Order   = [:type, :function]
-Pages   = ["lagrange.jl", "lagrange_interp.jl"]
+Pages   = ["lagrange.jl"]
 ```

@@ -28,7 +28,7 @@ interpolate!(u_out, cs, u, 0.5)  # shift by 0.5 grid points
 ```
 """
 struct CubicSpline <: AbstractShiftInterpolation{3}
-    nx :: Int
+    nx::Int
     CubicSpline(nx) = new(nx)
 end
 
@@ -54,7 +54,7 @@ function interpolate!(u_out, interp::CubicSpline, u, alpha::Real)
         xi,
         u,
         xp;
-        bc=FastInterpolations.PeriodicBC(endpoint=:exclusive),
+        bc = FastInterpolations.PeriodicBC(endpoint = :exclusive),
     )
     return u_out
 end

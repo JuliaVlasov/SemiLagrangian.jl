@@ -33,7 +33,7 @@ struct Spectral{order} <: AbstractShiftInterpolation{order}
         ufft = zeros(ComplexF64, nx)
         eigvals = zeros(ComplexF64, nx)
 
-        new{nx - 1}(nx, eigvals, ufft)
+        return new{nx - 1}(nx, eigvals, ufft)
 
     end
 
@@ -75,14 +75,14 @@ function interpolate!(u_out, interpolant::Spectral, u, alpha::Float64)
     fft!(interpolant.ufft)
 
     interpolant.eigvals[1] = 1.0
-    interpolant.eigvals[nx÷2+1] = exp(1im * π * alpha)
-    for k = 1:(nx÷2-1)
-        interpolant.eigvals[k+1] = exp(1im * 2pi * k * alpha / nx)
-        interpolant.eigvals[nx-k+1] = exp(-1im * 2pi * k * alpha / nx)
+    interpolant.eigvals[nx ÷ 2 + 1] = exp(1im * π * alpha)
+    for k in 1:(nx ÷ 2 - 1)
+        interpolant.eigvals[k + 1] = exp(1im * 2pi * k * alpha / nx)
+        interpolant.eigvals[nx - k + 1] = exp(-1im * 2pi * k * alpha / nx)
     end
 
     interpolant.ufft .*= interpolant.eigvals
 
-    u_out .= real(ifft(interpolant.ufft))
+    return u_out .= real(ifft(interpolant.ufft))
 
 end

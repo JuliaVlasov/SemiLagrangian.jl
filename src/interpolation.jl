@@ -66,21 +66,21 @@ polynomial functions.
   table of `order + 1` functions of the fractional shift that give the weights
   of the stencil.
 - Methods needing a preprocessing of the line (such as B-splines, which solve
-  a linear system to get the spline coefficients) must specialize `sol`,
-  `sol!` and `issolidentity`.
+  a linear system to get the spline coefficients) must specialize
+  `preprocess`, `preprocess!` and `is_preprocess_identity`.
 """
-abstract type AbstractInterpolation{T,bc,order} end
+abstract type AbstractInterpolation{T, bc, order} end
 
 """
 Abstract supertype of the periodic interpolants that apply one constant shift to
-a whole line (`LagrangeFFT`, `Spectral`, `FastLagrange`, `CubicSpline`).
+a whole line (`LagrangeFFT`, `Spectral`, `LocalLagrange`, `CubicSpline`).
 
 They are [`AbstractInterpolation`](@ref)s with `Float64` numbers and
 [`PeriodicBC`](@ref), but have no stencil table: they implement
 `interpolate!(output, interpolant, input, shift)` directly, and the generic
 `interpolate!(output, input, shift, interpolant)` forwards to it.
 """
-abstract type AbstractShiftInterpolation{order} <: AbstractInterpolation{Float64,PeriodicBC,order} end
+abstract type AbstractShiftInterpolation{order} <: AbstractInterpolation{Float64, PeriodicBC, order} end
 
 """
    
@@ -92,12 +92,12 @@ Return the order of the interpolation `interp`, i.e. the stencil used contains
 get_order(Lagrange(5))  # returns 5
 ```
 """
-get_order(_::AbstractInterpolation{T,bc,order}) where {T,bc,order} = order
+get_order(_::AbstractInterpolation{T, bc, order}) where {T, bc, order} = order
 
 """
 Interface method that transforms the data line before the stencil weights are
 applied. By default it does nothing and returns the line unchanged. B-spline
-interpolations override it to compute the spline coefficients from the values.
+interpolations override it to compute spline coefficients from the values.
 
 # Arguments
 - `_::AbstractInterpolation` : interpolation implementation
@@ -106,26 +106,26 @@ interpolations override it to compute the spline coefficients from the values.
 # Returns
 The transformed line.
 """
-sol(_::AbstractInterpolation, b::AbstractArray) = b
+preprocess(_::AbstractInterpolation, b::AbstractArray) = b
 
-issolidentity(_::AbstractInterpolation) = true
+is_preprocess_identity(_::AbstractInterpolation) = true
 
 isbspline(_::AbstractInterpolation) = false
 
 Base.show(io::IO, interp::AbstractInterpolation) = print(io, typeof(interp))
 
-function sol!(
-    Y::AbstractArray{T2,N},
-    interp_t::AbstractVector{I},
-    b::AbstractArray{T2,N},
-) where {T,N,I<:AbstractInterpolation{T},T2<:Union{T,OpTuple{N,T}}}
+function preprocess!(
+        Y::AbstractArray{T2, N},
+        interp_t::AbstractVector{I},
+        b::AbstractArray{T2, N},
+    ) where {T, N, I <: AbstractInterpolation{T}, T2 <: Union{T, OpTuple{N, T}}}
     sz = size(Y)
     p = circshift(1:N, -1)
     perm = p
     bufout = b
-    for i = 1:N
+    for i in 1:N
         interp = interp_t[i]
-        if issolidentity(interp)
+        if is_preprocess_identity(interp)
             if i == 1
                 bufout = b
             else
@@ -137,7 +137,7 @@ function sol!(
             for c in CartesianIndices(sz[2:end])
                 bo = view(bufout, :, c)
                 bi = view(bufin, :, c)
-                sol!(bo, interp, bi)
+                preprocess!(bo, interp, bi)
             end
             perm = p
         end
@@ -149,44 +149,48 @@ end
 
 
 """
-Apply the preprocessing `sol` of each interpolation of `interp_t` to the
+Apply the preprocessing of each interpolation in `interp_t` to the
 array `b`, one dimension after the other (`interp_t[i]` acts along dimension
 `i`). If all the interpolations are the identity transformation, `b` is
 returned without copy, otherwise a new array is returned.
 """
-function sol(
-    interp_t::AbstractVector{I},
-    b::Union{AbstractArray{T,N},AbstractArray{Complex{T},N},AbstractArray{OpTuple{N,T},N}},
-) where {T<:Real,N,I<:AbstractInterpolation{T}}
-    if all(issolidentity.(interp_t))
+function preprocess(
+        interp_t::AbstractVector{I},
+        b::Union{AbstractArray{T, N}, AbstractArray{Complex{T}, N}, AbstractArray{OpTuple{N, T}, N}},
+    ) where {T <: Real, N, I <: AbstractInterpolation{T}}
+    if all(is_preprocess_identity.(interp_t))
         return b
     else
-        return sol!(zeros(eltype(b), size(b)), interp_t, b)
+        return preprocess!(zeros(eltype(b), size(b)), interp_t, b)
     end
 end
 
-@inline function getprecal(interp::AbstractInterpolation{T}, decf::T) where {T}
+@inline function stencil_weights(interp::AbstractInterpolation{T}, decf::T) where {T}
     return [T(fct(decf)) for fct in interp.tabfct]
 end
 
-@inline function getprecal!(v::Vector{T}, bsp::AbstractInterpolation{T}, decf::T) where {T}
-    return v .= getprecal(bsp, decf)
+@inline function stencil_weights!(
+        v::Vector{T},
+        bsp::AbstractInterpolation{T},
+        decf::T,
+    ) where {T}
+    return v .= stencil_weights(bsp, decf)
 end
 
-@inline function getprecal!(
-    v::Vector{T},
-    bsp::Vector{I},
-    decf::T,
-) where {T,I<:AbstractInterpolation{T}}
-    return getprecal!(v, bsp[1], decf)
+@inline function stencil_weights!(
+        v::Vector{T},
+        bsp::Vector{I},
+        decf::T,
+    ) where {T, I <: AbstractInterpolation{T}}
+    return stencil_weights!(v, bsp[1], decf)
 end
 
-@inline function getprecal!(
-    v::Array{T,N},
-    bsp::Vector{I},
-    decf::NTuple{N,T},
-) where {T,N,I<:AbstractInterpolation{T}}
-    return v .= dotprod(ntuple(x -> getprecal(bsp[x], decf[x]), N))
+@inline function stencil_weights!(
+        v::Array{T, N},
+        bsp::Vector{I},
+        decf::NTuple{N, T},
+    ) where {T, N, I <: AbstractInterpolation{T}}
+    return v .= dotprod(ntuple(x -> stencil_weights(bsp[x], decf[x]), N))
 end
 
 """
@@ -198,15 +202,15 @@ shifted inside the data, so several different sets of weights are needed; this
 function returns the vector of all of them (`order + 1` vectors of
 `order + 1` weights).
 """
-function get_allprecal(
-    interp::AbstractInterpolation{T,ExtrapolationBC,order},
-    decint::Int,
-    decfloat::T,
-) where {T,order}
+function all_stencil_weights(
+        interp::AbstractInterpolation{T, ExtrapolationBC, order},
+        decint::Int,
+        decfloat::T,
+    ) where {T, order}
     origin = -div(order, 2)
     indbeg = origin + decint
     indend = indbeg + order
-    return [getprecal(interp, decfloat + i) for i = indbeg:indend]
+    return [stencil_weights(interp, decfloat + i) for i in indbeg:indend]
 end
 
 """
@@ -231,7 +235,7 @@ function Base.isless(a::ValInv{T}, b::ValInv{T}) where {T}
     return a.a == b.a ? Base.isless(a.b, b.b) : Base.isless(a.a, b.a)
 end
 
-function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tuple{Int,Int})
+function corind(indref::CartesianIndex{2}, indorigin::CartesianIndex{2}, sz::Tuple{Int, Int})
     return CartesianIndex(modone.(indref.I .- indorigin.I, sz))
 end
 
@@ -239,7 +243,7 @@ end
 Shift the data `fi` by an offset and store the result in `fp`, for an
 interpolation with [`PeriodicBC`](@ref). The offset is given as an integer
 number of cells `decint` and the stencil weights `precal` for the fractional
-part, computed beforehand with `getprecal(interp, frac)`. Precomputing them
+part, computed beforehand with `stencil_weights(interp, frac)`. Precomputing them
 avoids recomputing the weights when the same shift is applied many times.
 
 After the call `fp[i]` approximates `fi` evaluated at `x_i + (decint + frac) dx`.
@@ -248,7 +252,7 @@ After the call `fp[i]` approximates `fi` evaluated at `x_i + (decint + frac) dx`
 - `fp::AbstractVector` : output vector
 - `fi::AbstractVector` : input vector
 - `decint` : offset in units of dx
-- `precal::Vector` : vector of length order+1 precompute with getprecal(interp, dec) (dec is the offset)
+- `precal::Vector` : vector of `order + 1` weights from `stencil_weights(interp, frac)`
 - `interp::AbstractInterpolation{T, PeriodicBC, order}` : interpolation implementation
 - `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
 
@@ -256,18 +260,18 @@ After the call `fp[i]` approximates `fi` evaluated at `x_i + (decint + frac) dx`
 - No return
 """
 function interpolate!(
-    fp::AbstractVector{T},
-    fi::AbstractVector{T},
-    decint::Int,
-    precal::Vector{T},
-    interp::AbstractInterpolation{T,PeriodicBC,order},
-    tabmod = gettabmod(length(fi)),
-) where {T,order}
-    res = sol(interp, fi)
+        fp::AbstractVector{T},
+        fi::AbstractVector{T},
+        decint::Int,
+        precal::Vector{T},
+        interp::AbstractInterpolation{T, PeriodicBC, order},
+        tabmod = gettabmod(length(fi)),
+    ) where {T, order}
+    res = preprocess(interp, fi)
     origin = -div(order, 2)
     lg = length(fi)
     decal = (origin + decint + 5lg) % lg
-    @inbounds for i = 1:lg
+    @inbounds for i in 1:lg
         indbeg = i + decal
         indend = indbeg + order
         fp[i] = sum(res[tabmod[indbeg:indend]] .* precal)
@@ -280,13 +284,13 @@ Same as the periodic method with precomputed weights, taking a vector of
 interpolations and using its first element.
 """
 @inline function interpolate!(
-    fp::AbstractVector{T},
-    fi::AbstractVector{T},
-    decint::Int,
-    precal::Vector{T},
-    tinterp::Vector{I},
-    tabmod = gettabmod(length(fi)),
-) where {T,I<:AbstractInterpolation{T,PeriodicBC}}
+        fp::AbstractVector{T},
+        fi::AbstractVector{T},
+        decint::Int,
+        precal::Vector{T},
+        tinterp::Vector{I},
+        tabmod = gettabmod(length(fi)),
+    ) where {T, I <: AbstractInterpolation{T, PeriodicBC}}
     return interpolate!(fp, fi, decint, precal, tinterp[1], tabmod[1])
 end
 
@@ -304,14 +308,14 @@ product stencil.
 - `tabmod` : precomputed index tables used to wrap indices (see `gettabmod`)
 """
 function interpolate!(
-    fp::AbstractArray{T,N},
-    fi::AbstractArray{T,N},
-    decint::NTuple{N,Int},
-    precal::Array{T,N},
-    interp::Vector{I},
-    tabmod = gettabmod.(size(fi)),
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
-    res = sol(interp, fi)
+        fp::AbstractArray{T, N},
+        fi::AbstractArray{T, N},
+        decint::NTuple{N, Int},
+        precal::Array{T, N},
+        interp::Vector{I},
+        tabmod = gettabmod.(size(fi)),
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
+    res = preprocess(interp, fi)
     sz = size(fi)
     order = get_order.(interp)
     origin = -div.(order, (2,))
@@ -328,7 +332,7 @@ end
 Shift the data `fi` by an offset and store the result in `fp`, for an
 interpolation with [`ExtrapolationBC`](@ref). The offset is given as an integer
 number of cells `decint` and the sets of stencil weights `allprecal` computed
-beforehand with `get_allprecal(interp, decint, frac)`. Several sets are needed
+beforehand with `all_stencil_weights(interp, decint, frac)`. Several sets are needed
 because the stencil is moved inside the line near its ends, where the result
 is extrapolated.
 
@@ -336,7 +340,7 @@ is extrapolated.
 - `fp::AbstractVector` : output vector
 - `fi::AbstractVector` : input vector
 - `decint` : offset in units of dx
-- `allprecal::Vector{Vector{T}}` : vector of vector of length order+1 precompute with getprecal(interp, dec) (dec is the offset)
+- `allprecal::Vector{Vector{T}}` : stencil weights for each possible end stencil
 - `interp::AbstractInterpolation{T, ExtrapolationBC, order}` : interpolation implementation
 - `tabmod=gettabmod(length(fi))` : precompute for "begin at one" modulo
 
@@ -344,34 +348,34 @@ is extrapolated.
 - No return
 """
 function interpolate!(
-    fp::AbstractVector{T},
-    fi::AbstractVector{T},
-    decint::Int,
-    allprecal::Vector{Vector{T}},
-    interp::AbstractInterpolation{T,ExtrapolationBC,order},
-    tabmod = gettabmod(length(fi));
-) where {T,order}
-    res = sol(interp, fi)
+        fp::AbstractVector{T},
+        fi::AbstractVector{T},
+        decint::Int,
+        allprecal::Vector{Vector{T}},
+        interp::AbstractInterpolation{T, ExtrapolationBC, order},
+        tabmod = gettabmod(length(fi))
+    ) where {T, order}
+    res = preprocess(interp, fi)
     origin = -div(order, 2)
     lg = length(fi)
     lgp = length(allprecal)
     borne1 = -decint - origin
     borne2 = lg - decint + origin - 1
-    for i = 1:borne1
+    for i in 1:borne1
         indbeg = 1
         indend = order + 1
         ind = i
         #        @show 1, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i = (borne1+1):borne2
+    for i in (borne1 + 1):borne2
         indbeg = i - borne1
         indend = indbeg + order
         ind = borne1 + 1
         #        @show 2, i, ind, indbeg, indend, decint, lgp
         fp[i] = sum(res[indbeg:indend] .* allprecal[ind])
     end
-    for i = (borne2+1):lg
+    for i in (borne2 + 1):lg
         indbeg = lg - order
         indend = lg
         ind = lgp - (lg - i)
@@ -409,24 +413,31 @@ interpolate!(fp, fi, 0.3, Lagrange(5))  # fp ≈ sin.(2π .* (x .+ 0.3 / n))
 ```
 """
 function interpolate!(
-    fp,
-    fi,
-    dec,
-    interp::AbstractInterpolation{T,BC,order},
-) where {T,BC,order}
+        fp,
+        fi,
+        dec,
+        interp::AbstractInterpolation{T, BC, order},
+    ) where {T, BC, order}
     decint = convert(Int, floor(dec))
     decfloat = dec - decint
     if BC === PeriodicBC
-        return interpolate!(fp, fi, decint, getprecal(interp, decfloat), interp)
+        return interpolate!(fp, fi, decint, stencil_weights(interp, decfloat), interp)
     else
-        return interpolate!(fp, fi, decint, get_allprecal(interp, decint, decfloat), interp)
+        return interpolate!(
+            fp,
+            fi,
+            decint,
+            all_stencil_weights(interp, decint, decfloat),
+            interp,
+        )
     end
 end
 
 """
 Cache of the stencil weights of `N` interpolations (one per dimension). The
 weights depend only on the fractional part of the shift, so they are
-recomputed only when the shift changes between two calls to `getprecal`.
+recomputed only when the shift changes between two calls to
+`cached_shift_weights`.
 In multithreaded loops, use one cache per thread.
 
 # Fields
@@ -435,33 +446,33 @@ In multithreaded loops, use one cache per thread.
 - `cache_int` : integer part of `cache_alpha`
 - `precal` : tensor product of the stencil weights of each dimension
 """
-mutable struct CachePrecal{T,N,I}
+mutable struct CachePrecal{T, N, I}
     interps::Vector{I}
-    cache_alpha::Union{NTuple{N,T},T}
-    cache_int::Union{NTuple{N,Int},Int}
-    precal::Array{T,N}
+    cache_alpha::Union{NTuple{N, T}, T}
+    cache_int::Union{NTuple{N, Int}, Int}
+    precal::Array{T, N}
     function CachePrecal(
-        interps::Vector{I},
-        ::T,
-    ) where {T<:Real,I<:AbstractInterpolation{T}}
+            interps::Vector{I},
+            ::T,
+        ) where {T <: Real, I <: AbstractInterpolation{T}}
         N = length(interps)
         cache_alpha = (N == 1) ? zero(T) : ntuple(x -> zero(T), N)
         cache_int = (N == 1) ? 0 : ntuple(x -> 0, N)
         sz = totuple(get_order.(interps) .+ 1)
         precal = zeros(T, sz)
-        getprecal!(precal, interps, cache_alpha)
-        return new{T,N,I}(interps, cache_alpha, cache_int, precal)
+        stencil_weights!(precal, interps, cache_alpha)
+        return new{T, N, I}(interps, cache_alpha, cache_int, precal)
     end
     function CachePrecal(
-        interps::Vector{I},
-        x::Complex{T},
-    ) where {T<:Real,I<:AbstractInterpolation{T}}
+            interps::Vector{I},
+            x::Complex{T},
+        ) where {T <: Real, I <: AbstractInterpolation{T}}
         return CachePrecal(interps, real(x))
     end
     function CachePrecal(
-        interps::Vector{I},
-        x::OpTuple{N,T},
-    ) where {N,T<:Real,I<:AbstractInterpolation{T}}
+            interps::Vector{I},
+            x::OpTuple{N, T},
+        ) where {N, T <: Real, I <: AbstractInterpolation{T}}
         return CachePrecal(interps, x.v[1])
     end
 end
@@ -470,12 +481,15 @@ end
 Return `(integer_part, weights)` for the shift `alpha` (one value per
 dimension), updating the cache only if `alpha` changed.
 """
-@inline function getprecal(self::CachePrecal{T,N}, alpha::NTuple{N,T}) where {T,N}
+@inline function cached_shift_weights(
+        self::CachePrecal{T, N},
+        alpha::NTuple{N, T},
+    ) where {T, N}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
         self.cache_int = Int.(floor.(alpha))
         decfloat = alpha .- self.cache_int
-        getprecal!(self.precal, self.interps, decfloat)
+        stencil_weights!(self.precal, self.interps, decfloat)
     end
     return self.cache_int, self.precal
 end
@@ -484,27 +498,33 @@ end
 Same as above for a two-dimensional shift given as a complex number
 `alpha_1 + i alpha_2`.
 """
-@inline function getprecal(self::CachePrecal{T,2}, alpha::Complex{T}) where {T<:Real}
-    return getprecal(self, reim(alpha))
+@inline function cached_shift_weights(
+        self::CachePrecal{T, 2},
+        alpha::Complex{T},
+    ) where {T <: Real}
+    return cached_shift_weights(self, reim(alpha))
 end
 
 """
 Same as above for a shift given as an `OpTuple`.
 """
-@inline function getprecal(self::CachePrecal{T,N}, alpha::OpTuple{N,T}) where {N,T<:Real}
-    return getprecal(self, alpha.v)
+@inline function cached_shift_weights(
+        self::CachePrecal{T, N},
+        alpha::OpTuple{N, T},
+    ) where {N, T <: Real}
+    return cached_shift_weights(self, alpha.v)
 end
 
 """
 Return `(integer_part, weights)` for the scalar shift `alpha`, updating the
 cache only if `alpha` changed.
 """
-@inline function getprecal(self::CachePrecal{T,1}, alpha::T) where {T}
+@inline function cached_shift_weights(self::CachePrecal{T, 1}, alpha::T) where {T}
     if alpha != self.cache_alpha
         self.cache_alpha = alpha
         self.cache_int = Int(floor(alpha))
         decfloat = alpha - self.cache_int
-        getprecal!(self.precal, self.interps[1], decfloat)
+        stencil_weights!(self.precal, self.interps[1], decfloat)
     end
     return self.cache_int, self.precal
 end
@@ -512,8 +532,8 @@ end
 """
 Same as above for a one-dimensional shift given as a 1-tuple.
 """
-@inline function getprecal(self::CachePrecal{T,1}, alpha::Tuple{T}) where {T}
-    return getprecal(self, alpha[1])
+@inline function cached_shift_weights(self::CachePrecal{T, 1}, alpha::Tuple{T}) where {T}
+    return cached_shift_weights(self, alpha[1])
 end
 
 """
@@ -532,13 +552,13 @@ point: `dec(ind)` returns the shift (a tuple, a complex number or an
 - `cache::CachePrecal` : cache of the stencil weights
 """
 function interpolate!(
-    fp::Union{AbstractArray{T,N},AbstractArray{Complex{T},N}},
-    fi::Union{AbstractArray{T,N},AbstractArray{Complex{T},N}},
-    dec::Function,
-    interp_t::AbstractVector{I};
-    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
-    cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp))),
-) where {T,N,I<:AbstractInterpolation{T}}
+        fp::Union{AbstractArray{T, N}, AbstractArray{Complex{T}, N}},
+        fi::Union{AbstractArray{T, N}, AbstractArray{Complex{T}, N}},
+        dec::Function,
+        interp_t::AbstractVector{I};
+        tabmod::NTuple{N, Vector{Int}} = gettabmod.(size(fi)),
+        cache::CachePrecal{T, N} = CachePrecal(interp_t, one(eltype(fp))),
+    ) where {T, N, I <: AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -546,19 +566,20 @@ function interpolate!(
     )
     sz = size(fp)
     #    @show "interpolate!", sz
-    res = sol(interp_t, fi)
+    res = preprocess(interp_t, fi)
 
     order = get_order.(interp_t)
     origin = -div.(order, (2,))
     decall = (5 .* sz .+ origin) .% sz .+ sz
 
     for ind in CartesianIndices(sz)
-        dint, tab = getprecal(cache, dec(ind))
+        dint, tab = cached_shift_weights(cache, dec(ind))
         deb_i = dint .+ decall .+ ind.I
         end_i = deb_i + order
         fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N)...] .* tab)
     end
     #    @show "std2d", diffmax, decminmin, decmaxmax
+    return
 end
 
 """
@@ -567,12 +588,12 @@ Internal helper: periodic interpolation of `fi` with the displacement field
 mesh length `lgmesh`.
 """
 function interpolatemod!(
-    fp::AbstractArray{T,N},
-    fi::AbstractArray{T,N},
-    bufc::Tuple{Array{T,N},Array{T,N}},
-    interp_t::AbstractVector{I},
-    lgmesh::Union{T,UniformMesh{T}},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        fp::AbstractArray{T, N},
+        fi::AbstractArray{T, N},
+        bufc::Tuple{Array{T, N}, Array{T, N}},
+        interp_t::AbstractVector{I},
+        lgmesh::Union{T, UniformMesh{T}},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     (N == 2 && N == length(interp_t)) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -581,7 +602,7 @@ function interpolatemod!(
 
     sz = size(fp)
 
-    res = sol(interp_t, fi)
+    res = preprocess(interp_t, fi)
 
     extr = extrema.(bufc)
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
@@ -598,14 +619,14 @@ function interpolatemod!(
 
     traitmodbegin!(lgmesh, fiext)
 
-    cache::CachePrecal{T,N} = CachePrecal(interp_t, one(eltype(fp)))
+    cache::CachePrecal{T, N} = CachePrecal(interp_t, one(eltype(fp)))
     diffmax = 0
     decminmin = ntuple(x -> Inf, N)
     decmaxmax = ntuple(x -> -Inf, N)
     decabs = ntuple(x -> 0, N)
 
     for ind in CartesianIndices(sz)
-        dint, tab = getprecal(cache, (bufc[1][ind], bufc[2][ind]))
+        dint, tab = cached_shift_weights(cache, (bufc[1][ind], bufc[2][ind]))
         decabs = max.(decabs, abs.((bufc[1][ind], bufc[2][ind])))
         decmin, decmax = extrema(tab)
         decminmin = min.(decminmin, dint .+ decmin)
@@ -630,9 +651,9 @@ Internal helper: compute by fixed-point iterations the inverse displacement
 field of `dec` (one array per dimension), using the periodic interpolation `interp`.
 """
 function getinverse(
-    dec::NTuple{N,Array{T,N}},
-    interp::Vector{I},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        dec::NTuple{N, Array{T, N}},
+        interp::Vector{I},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     sz = size(dec[1])
     res = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
     decinv = ntuple(x -> [T(ind.I[x] - 1) for ind in CartesianIndices(sz)], N)
@@ -644,7 +665,7 @@ function getinverse(
 
     sz_2 = div.(sz, 2)
 
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(res2[i], res[i], dec, interp, T(sz[i]))
         interpolatemod!(decfmr[i], -dec[i], dec, interp, T(sz[i]))
         decfmr[i] .= mod.(decfmr[i] .+ sz_2[i], sz[i]) .- sz_2[i]
@@ -656,29 +677,29 @@ function getinverse(
 
     borne = log(eps(T) * prod(sz))
 
-    for z = 1:2
+    for z in 1:2
         ind = 1
         note = Inf
         while note > borne
-            for i = 1:N
+            for i in 1:N
                 interpolatemod!(res3[i], res2[i], decfmr, interp, T(sz[i]))
                 interpolatemod!(buf, decinv[i], decfmr, interp, T(sz[i]))
                 decinv[i] .= buf
             end
-            for i = 1:N
+            for i in 1:N
                 decfmr[i] .= mod.(res[i] .- res3[i] .+ sz_2[i], sz[i]) .- sz_2[i]
                 res2[i] .= res3[i]
             end
             note = log(2, norm(decfmr))
             if note > 1
-                for i = 1:N
+                for i in 1:N
                     decfmr[i] .= decfmr[i] / note
                 end
             end
             @show ind, note, borne
             ind += 1
         end
-        for i = 1:N
+        for i in 1:N
             decinv[i] .= mod.(decinv[i] .- res[i] .+ sz_2[i], sz[i]) .- sz_2[i]
             if z == 1
                 decfmr[i] .= decinv[i]
@@ -708,16 +729,16 @@ stored in the array `bufdec`: `fp[i] = fi(x_i + bufdec[i])`. Returns `true`.
 - `cachethreads::Vector{CachePrecal}` : one weight cache per thread; when given the loop is multithreaded
 """
 function interpolate!(
-    fp::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
-    fi::Union{AbstractArray{T,N},AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
-    bufdec::Union{AbstractArray{OpTuple{N,T},N},AbstractArray{Complex{T},N}},
-    interp_t::AbstractVector{I};
-    tabmod::NTuple{N,Vector{Int}} = gettabmod.(size(fi)),
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
-    #    itr::AbstractArray=CartesianIndices(fi)
-) where {T,N,I<:AbstractInterpolation{T}}
+        fp::Union{AbstractArray{T, N}, AbstractArray{OpTuple{N, T}, N}, AbstractArray{Complex{T}, N}},
+        fi::Union{AbstractArray{T, N}, AbstractArray{OpTuple{N, T}, N}, AbstractArray{Complex{T}, N}},
+        bufdec::Union{AbstractArray{OpTuple{N, T}, N}, AbstractArray{Complex{T}, N}},
+        interp_t::AbstractVector{I};
+        tabmod::NTuple{N, Vector{Int}} = gettabmod.(size(fi)),
+        mpid = missing,
+        t_split::Union{Tuple, Missing} = missing,
+        cachethreads::Union{Vector{CachePrecal{T}}, Missing} = missing,
+        #    itr::AbstractArray=CartesianIndices(fi)
+    ) where {T, N, I <: AbstractInterpolation{T}}
     N == length(interp_t) || thrown(
         ArgumentError(
             "The number of Interpolation $(length(interp_t)) is different of N=$N",
@@ -727,17 +748,17 @@ function interpolate!(
     isthreads = !ismissing(cachethreads)
     sz = size(fp)
     #    @show "interpolate!", sz
-    res = sol(interp_t, fi)
+    res = preprocess(interp_t, fi)
 
     order = get_order.(interp_t)
     origin = -div.(order, (2,))
     decall = (5 .* sz .+ origin) .% sz .+ sz
 
     function fct(
-        ind::CartesianIndex{N2},
-        cache::CachePrecal{T2,N2,I2},
-    ) where {N2,T2,I2<:AbstractInterpolation{T2}}
-        dint, tab = getprecal(cache, bufdec[ind])
+            ind::CartesianIndex{N2},
+            cache::CachePrecal{T2, N2, I2},
+        ) where {N2, T2, I2 <: AbstractInterpolation{T2}}
+        dint, tab = cached_shift_weights(cache, bufdec[ind])
         deb_i = dint .+ decall .+ ind.I
         end_i = deb_i + order
         return fp[ind] = sum(res[ntuple(x -> tabmod[x][deb_i[x]:end_i[x]], N2)...] .* tab)
@@ -775,19 +796,19 @@ field `from` itself (`to` receives the result). If `nb < 1`, `to` is a copy of
 `from`.
 """
 function autointerp!(
-    to::Array{OpTuple{N,T},N},
-    from::Array{OpTuple{N,T},N},
-    nb::Int,
-    interp_t::AbstractVector{I};
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
-) where {N,T,I<:AbstractInterpolation}
+        to::Array{OpTuple{N, T}, N},
+        from::Array{OpTuple{N, T}, N},
+        nb::Int,
+        interp_t::AbstractVector{I};
+        mpid = missing,
+        t_split::Union{Tuple, Missing} = missing,
+        cachethreads::Union{Vector{CachePrecal{T}}, Missing} = missing,
+    ) where {N, T, I <: AbstractInterpolation}
     if nb < 1
         to .= from
     end
     fmr = copy(from)
-    for i = 1:nb
+    for i in 1:nb
         interpolate!(
             to,
             from,
@@ -801,6 +822,7 @@ function autointerp!(
             fmr .= to
         end
     end
+    return
 end
 
 
@@ -809,17 +831,17 @@ Interpolate in place the `nb` last arrays of `t_buf` with the displacement
 field `bufdec`.
 """
 function interpbufc!(
-    t_buf::Vector{Array{OpTuple{N,T},N}},
-    bufdec::Array{OpTuple{N,T},N},
-    interp_t::AbstractVector{I},
-    nb::Int = length(t_buf);
-    mpid = missing,
-    t_split::Union{Tuple,Missing} = missing,
-    cachethreads::Union{Vector{CachePrecal{T}},Missing} = missing,
-) where {N,T,I<:AbstractInterpolation{T}}
+        t_buf::Vector{Array{OpTuple{N, T}, N}},
+        bufdec::Array{OpTuple{N, T}, N},
+        interp_t::AbstractVector{I},
+        nb::Int = length(t_buf);
+        mpid = missing,
+        t_split::Union{Tuple, Missing} = missing,
+        cachethreads::Union{Vector{CachePrecal{T}}, Missing} = missing,
+    ) where {N, T, I <: AbstractInterpolation{T}}
 
-    for i = 0:(nb-1)
-        buf = t_buf[end-i]
+    for i in 0:(nb - 1)
+        buf = t_buf[end - i]
         interpolate!(
             buf,
             copy(buf),
@@ -831,6 +853,7 @@ function interpbufc!(
         )
     end
 
+    return
 end
 
 interpolate!(fp, fi, dec::Real, interp::AbstractShiftInterpolation) =

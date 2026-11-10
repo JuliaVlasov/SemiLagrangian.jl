@@ -1,4 +1,3 @@
-
 using SemiLagrangian:
     splititr,
     splitvec,
@@ -25,7 +24,7 @@ using SemiLagrangian:
         (23, 7, 13, [23:24, 25:26, 27:28, 29:30, 31:32, 33:34, 35:35])
     ]
     for d in data2
-        @test d[4] == splitvec(d[2], collect(d[1]:(d[1]+d[3]-1)))
+        @test d[4] == splitvec(d[2], collect(d[1]:(d[1] + d[3] - 1)))
     end
 end
 @testset "test tools" begin
@@ -65,7 +64,7 @@ function test_extarray(T, sz, decbeg, decend)
     for ind in CartesianIndices(tabext)
         @test tabext[ind] == tabor[CartesianIndex(mod.(ind.I .- decbeg .- 1, sz) .+ 1)]
     end
-    @test size(tabext) == sz .+ decbeg .+ decend
+    return @test size(tabext) == sz .+ decbeg .+ decend
 end
 @testset "ExtArray test" begin
     test_extarray(Float64, (20, 10), (3, 5), (2, 7))

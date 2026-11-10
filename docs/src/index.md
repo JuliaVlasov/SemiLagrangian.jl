@@ -1,4 +1,4 @@
-# SemiLagrangian.jl Documentation
+# SemiLagrangian.jl 
 
 Let us consider an abstract scalar advection equation of the form
 

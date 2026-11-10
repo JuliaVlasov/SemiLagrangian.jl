@@ -1,8 +1,7 @@
-
 function _getlagrangecoefficients(k::Int, order::Int, origin::Int)
     0 <= k <= order || throw(DomainError("the constant 0 <= k <= order is false"))
     coefficients = [big(1 // 1)]
-    for l = 0:order
+    for l in 0:order
         if l != k
             denominator = big(k - l)
             constant = big(-(l + origin)) // denominator
@@ -43,22 +42,22 @@ Type containing the Lagrange basis polynomials for interpolation.
 - `bc::AbstractBoundaryCondition=PeriodicBC()` : boundary condition
 
 """
-struct Lagrange{T,bc,order} <: AbstractInterpolation{T,bc,order}
+struct Lagrange{T, bc, order} <: AbstractInterpolation{T, bc, order}
 
     tabfct::Vector{LagrangePolynomial{T}}
 
     function Lagrange(
-        order::Int,
-        T::DataType = Float64;
-        bc::Union{PeriodicBC,ExtrapolationBC} = PeriodicBC(),
-    )
+            order::Int,
+            T::DataType = Float64;
+            bc::Union{PeriodicBC, ExtrapolationBC} = PeriodicBC(),
+        )
 
         origin = -div(order, 2)
 
-        tabfct_rat = [_getlagrangecoefficients(i, order, origin) for i = 0:order]
+        tabfct_rat = [_getlagrangecoefficients(i, order, origin) for i in 0:order]
 
         tabfct = [LagrangePolynomial(convert.(T, coefficients)) for coefficients in tabfct_rat]
-        return new{T,typeof(bc),order}(tabfct)
+        return new{T, typeof(bc), order}(tabfct)
 
     end
 
@@ -76,7 +75,7 @@ struct ABcoef
     tab::Array{Rational{Int}}
     function ABcoef(ordermax::Int)
         tab = zeros(Rational{Int}, ordermax, ordermax)
-        for j = 1:ordermax, i = 1:j
+        for j in 1:ordermax, i in 1:j
             tab[i, j] = _c(i - 1, j - 1)
         end
         return new(tab)

@@ -73,13 +73,13 @@ advection directions:
 - **Spectral** — Fourier-based interpolation.
 - **LagrangeFFT** — periodic FFT-based Lagrange interpolation with a 7-point
   stencil.
-- **FastLagrange** — local 7-point Lagrange interpolation.
-- **FastInterpolations cubic** — periodic cubic interpolation from
-  FastInterpolations.jl.
+- **LocalLagrange** — local 7-point Lagrange interpolation.
+- **CubicSpline** — periodic cubic interpolation through the package wrapper
+  around FastInterpolations.jl.
 
 The run uses 64 position points, 128 velocity points, a time step of 0.05,
 and 2,000 steps. The smaller step keeps the largest spatial characteristic
-shift below one grid cell for the local FastLagrange interpolator:
+shift below one grid cell for the local Lagrange interpolator:
 ``\Delta t\,v_{\max}/(2\Delta x) < 1``. Its interpolation weights are
 intended for fractional shifts of about one cell or less; using a larger
 shift directly can make the high-order polynomial weights unstable. The

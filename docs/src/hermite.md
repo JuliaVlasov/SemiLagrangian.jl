@@ -8,5 +8,5 @@ the data line and extrapolates at its ends.
 Modules = [SemiLagrangian]
 Private = false
 Order   = [:type, :function]
-Pages   = ["hermite.jl", "hermite_interp.jl"]
+Pages   = ["hermite.jl"]
 ```

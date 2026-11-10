@@ -20,11 +20,8 @@ include("fftbig.jl")
 include("mesh.jl")
 include("interpolation.jl")
 include("lagrange.jl")
-include("lagrange_interp.jl")
 include("hermite.jl")
-include("hermite_interp.jl")
 include("spline.jl")
-include("spline_interp.jl")
 include("bspline.jl")
 include("bsplinelu.jl")
 include("bsplinefft.jl")
@@ -37,17 +34,15 @@ include("cubic_interp.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export AbstractBoundaryCondition, PeriodicBC, ExtrapolationBC
-export nosplit, standardsplit, strangsplit, magicsplit, triplejumpsplit, order6split, hamsplit_3_11, table2split
+export nosplit, standardsplit, strangsplit, sheartransport
+export triplejumpsplit, order6split, hamsplit_3_11, table2split
 export Lagrange, Hermite, BSplineLU, BSplineFFT, interpolate!
-export LagrangeCache, lagrange_interp, lagrange_interp!
-export HermiteCache, hermite_interp, hermite_interp!
-export SplineCache, spline_interp, spline_interp!
 export Polynomial, derivative, degree
 export advection!
 export AdvectionOperator, split_advection!
 export dotprod
 
 export OpTuple
-export Spectral, FastLagrange, CubicSpline, LagrangeFFT
+export Spectral, LocalLagrange, CubicSpline, LagrangeFFT
 
 end

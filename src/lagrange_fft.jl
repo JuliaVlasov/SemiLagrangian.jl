@@ -34,11 +34,11 @@ lagr = LagrangeFFT(100, 5)  # 100 grid points, order-4 polynomial
 """
 struct LagrangeFFT{order} <: AbstractShiftInterpolation{order}
 
-    nx :: Int
-    order :: Int
-    w :: Vector{Float64}
-    bfft :: Vector{ComplexF64}
-    ufft :: Vector{ComplexF64}
+    nx::Int
+    order::Int
+    w::Vector{Float64}
+    bfft::Vector{ComplexF64}
+    ufft::Vector{ComplexF64}
 
     LagrangeFFT(nx, order) =
         new{order}(nx, order, zeros(nx), zeros(ComplexF64, nx), zeros(ComplexF64, nx))
@@ -77,17 +77,19 @@ interpolate!(f_interp, lagr, f, 0.5)  # shift by 0.5 grid points
 function interpolate!(u_out, self::LagrangeFFT, u, alpha::Real)
 
     nx = length(u)
-    d  = self.order ÷ 2 - 1
+    d = self.order ÷ 2 - 1
 
     # fractional shift in grid-point units, in [0, nx)
-    x  = - alpha
+    x = - alpha
     ix = floor(Int, x)
-    if ix == nx; ix = 0 end
-    x  = x - ix   # fractional part in [0, 1)
+    if ix == nx
+        ix = 0
+    end
+    x = x - ix   # fractional part in [0, 1)
 
     # Build Lagrange weights over stencil i = -d, ..., 0, 1, ..., d+1
     # w[i] = prod_{j != i, j in stencil} (x - j) / (i - j)
-    stencil = -d : d+1          # 2(d+1) points
+    stencil = -d:(d + 1)          # 2(d+1) points
 
     fill!(self.w, 0.0)
     for i in stencil
@@ -106,6 +108,6 @@ function interpolate!(u_out, self::LagrangeFFT, u, alpha::Real)
     self.bfft .= fft(self.w)
     self.ufft .= fft(u)
 
-    u_out .= real(ifft(self.ufft .* self.bfft))
+    return u_out .= real(ifft(self.ufft .* self.bfft))
 
 end

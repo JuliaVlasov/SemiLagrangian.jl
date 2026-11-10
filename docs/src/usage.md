@@ -7,11 +7,11 @@ CurrentModule = SemiLagrangian
 `SemiLagrangian` provides general-purpose line interpolants as well as
 specialized methods for repeatedly shifting data on a one-dimensional,
 uniform periodic grid. This page compares the specialized periodic methods
-(`LagrangeFFT`, `Spectral`, `FastLagrange`, `CubicSpline`) with the
+(`LagrangeFFT`, `Spectral`, `LocalLagrange`, `CubicSpline`) with the
 general-purpose interpolants (`Lagrange`, `Hermite`, `BSplineLU`,
 `BSplineFFT`).
 
-The specialized methods use the in-place interface:
+The `LagrangeFFT`, `Spectral`, and `CubicSpline` methods use the in-place interface:
 
 ```julia
 interpolate!(output, interpolant, input, shift)
@@ -45,11 +45,10 @@ shift = 0.3
 expected = sin.(2pi .* (x .+ shift / n)) .+
     0.2 .* cos.(6pi .* (x .+ shift / n))
 output = similar(u)
-
 methods = (
     "Lagrange FFT" => LagrangeFFT(n, 7),
     "Spectral" => Spectral(n),
-    "Fast Lagrange" => FastLagrange(7),
+    "Local Lagrange" => LocalLagrange(7),
     "Cubic spline" => CubicSpline(n),
 )
 
@@ -77,7 +76,7 @@ end
 | --- | --- | --- |
 | `Spectral(n)` | Fourier phase shift | The data is smooth and high accuracy is important. Discontinuities can cause Gibbs oscillations. |
 | `LagrangeFFT(n, stencil)` | Lagrange interpolation with FFT-based periodic convolution | You want a high-order periodic interpolant and can afford FFT workspaces. |
-| `FastLagrange(stencil)` | Local, fixed-width polynomial stencil | Shifts are small and avoiding FFT setup is useful. |
+| `LocalLagrange(stencil)` | Local, fixed-width polynomial stencil | Shifts are small and avoiding FFT setup is useful. |
 | `CubicSpline(n)` | Cubic interpolation through the `FastInterpolations.jl` backend | A convenient periodic cubic spline is sufficient. |
 | `Lagrange(order)` | Local Lagrange stencil, periodic or extrapolated boundaries | You need non-periodic boundaries or a different element type (`BigFloat`, `Rational`...). |
 | `Hermite(order)` | Local Hermite interpolation using derivative estimates | You want a compact stencil with the Hermite construction (order 5, 9, ... or `flbis=true` with 3, 7, ...). |
@@ -91,12 +90,14 @@ call.
 ### Stencil and order choices
 
 `LagrangeFFT` takes a grid length and a supported odd stencil width (for
-example, `LagrangeFFT(n, 7)`). `FastLagrange` takes only the odd stencil
+example, `LagrangeFFT(n, 7)`). `LocalLagrange` takes only the odd stencil
 width; the implementation supports widths 3, 5, 7, 9, and 11. Its weights are
 intended for small offsets, preferably within about one grid cell. For larger
 shifts, split the time step or choose an FFT-based method.
 
 ## Reference
+
+See [`LocalLagrange`](@ref) for the local interpolation reference.
 
 ```@docs
 LagrangeFFT

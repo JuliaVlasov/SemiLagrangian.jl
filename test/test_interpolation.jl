@@ -1,4 +1,3 @@
-
 using LinearAlgebra
 using DoubleFloats
 using SemiLagrangian:
@@ -9,8 +8,8 @@ using SemiLagrangian:
     interpolate!,
     isbspline,
     getbspline,
-    getprecal,
-    get_allprecal,
+    stencil_weights,
+    all_stencil_weights,
     get_order,
     ExtrapolationBC,
     PeriodicBC,
@@ -19,11 +18,11 @@ using SemiLagrangian:
     OpTuple
 
 function test_interp(
-    interp::AbstractInterpolation{Rational{BigInt},bc},
-    dec,
-    sz,
-) where {bc}
-    @time @testset "test interpolation  $interp dec=$dec" begin
+        interp::AbstractInterpolation{Rational{BigInt}, bc},
+        dec,
+        sz,
+    ) where {bc}
+    return @time @testset "test interpolation  $interp dec=$dec" begin
         fct = if bc === PeriodicBC
             order = 3
             getbspline(big(order), 0)
@@ -31,7 +30,7 @@ function test_interp(
             order = 0
             x -> x^3 - x^2 - x // 6 + 1 // 4
         end
-        mesh = collect((order + 1) * big.(0:(sz-1))) // sz
+        mesh = collect((order + 1) * big.(0:(sz - 1))) // sz
         deb = fct.(mesh)
         #       println("deb=$deb")
         ref = if bc === PeriodicBC
@@ -47,18 +46,18 @@ function test_interp(
             res2 = zeros(Rational{BigInt}, sz)
             decint = convert(Int, floor(dec))
             decfloat = dec - decint
-            precal = getprecal(interp, decfloat)
+            precal = stencil_weights(interp, decfloat)
             # println("outside : precal=$precal decint=$decint decfloat=$decfloat")
-            # println("order=$(get_order(interp)) order from precal=$(size(precal,1)-1)")   
+            # println("order=$(get_order(interp)) order from precal=$(size(precal,1)-1)")
             interpolate!(res2, deb, decint, precal, interp)
-            println("norm=$(float(norm(res2-ref,Inf)))")
+            println("norm=$(float(norm(res2 - ref, Inf)))")
             if isbspline(interp)
                 @test res2 == ref
             else
                 @test size(filter(x -> x == 0, res2 - ref), 1) == 120
             end
         end
-        println("norm=$(float(norm(res-ref,Inf)))")
+        println("norm=$(float(norm(res - ref, Inf)))")
         diff = res - ref
         # for i=1:sz
         #     println("i=$i diff=$(convert(Float64,diff[i])), $(diff[i])")
@@ -73,27 +72,28 @@ function test_interp(
     end
 end
 function test_interp(interp, sz)
-    for i = 0:5
+    for i in 0:5
         println("test_interp i=$i")
         test_interp(interp, big"1235" // 10240 + i, sz)
     end
+    return
 end
 
 function test_inv0(
-    t_interp::Vector{I},
-    dec::NTuple{N,T},
-    sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        t_interp::Vector{I},
+        dec::NTuple{N, T},
+        sz::NTuple{N, Int},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     for ind in CartesianIndices(sz)
-        for i = 1:N
+        for i in 1:N
             res[i][ind] = T(ind.I[i] - 1)
         end
     end
     decbegin = ntuple(x -> dec[x] < 0 ? -Int(floor(dec[x])) : 0, N)
     decend = ntuple(x -> dec[x] > 0 ? Int(ceil(dec[x])) : 0, N)
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(res2[i], res[i], ind -> dec, t_interp, T(sz[i]), decbegin, decend)
     end
 
@@ -110,30 +110,31 @@ function test_inv0(
 
     @show norm.(note)
 
-    for i = 1:N
-        @test norm(note[i]) < 1e-12
-        @test norm(res2[i] - resinv2[i]) < 1e-12
+    for i in 1:N
+        @test norm(note[i]) < 1.0e-12
+        @test norm(res2[i] - resinv2[i]) < 1.0e-12
     end
+    return
 end
 
 function test_interp2d(
-    t_interp::Vector{I},
-    coeff::T,
-    sz::Tuple{Int,Int},
-) where {T,I<:AbstractInterpolation{T,PeriodicBC}}
+        t_interp::Vector{I},
+        coeff::T,
+        sz::Tuple{Int, Int},
+    ) where {T, I <: AbstractInterpolation{T, PeriodicBC}}
     prec = 1000 * eps(T)
     @show prec
     ref = zeros(T, sz)
     ref2 = zeros(T, sz)
     cmplxref = zeros(Complex{T}, sz)
-    opref = zeros(OpTuple{2,T}, sz)
+    opref = zeros(OpTuple{2, T}, sz)
     bufdec = zeros(Complex{T}, sz)
-    opbufdec = zeros(OpTuple{2,T}, sz)
+    opbufdec = zeros(OpTuple{2, T}, sz)
     res1 = zeros(T, sz)
     res2 = zeros(T, sz)
     res3 = zeros(T, sz)
     res4 = zeros(T, sz)
-    opres1 = zeros(OpTuple{2,T}, sz)
+    opres1 = zeros(OpTuple{2, T}, sz)
     cmplxres2 = zeros(Complex{T}, sz)
     cmplxres3 = zeros(Complex{T}, sz)
     cmplxres4 = zeros(Complex{T}, sz)
@@ -165,7 +166,7 @@ function test_interp2d(
     @time interpolate!(cmplxres3, cmplxref, ind -> reim(bufdec[ind]), t_interp)
     @time interpolate!(cmplxres4, ref + im * ref2, bufdec, t_interp)
 
-    optocmplx(v::OpTuple{2,T}) where {T} = v.v[1] + im * v.v[2]
+    optocmplx(v::OpTuple{2, T}) where {T} = v.v[1] + im * v.v[2]
 
     norm1 = norm(optocmplx.(opres1) - cmplxres3)
     norm2 = norm(cmplxres2 - cmplxres3)
@@ -175,21 +176,21 @@ function test_interp2d(
     @test norm1 < prec
     @test norm2 < prec
     @test norm4 < prec
-    @show norm1, norm2, norm4
+    return @show norm1, norm2, norm4
 end
 
 function test_inv(
-    t_interp::Vector{I},
-    coeff::T,
-    sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        t_interp::Vector{I},
+        coeff::T,
+        sz::NTuple{N, Int},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
     dec = ntuple(x -> zeros(T, sz), N)
     resnew = ntuple(x -> zeros(T, sz), N)
     for ind in CartesianIndices(sz)
-        for i = 1:N
+        for i in 1:N
             dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
             res[i][ind] = T(ind.I[i] - 1)
         end
@@ -197,7 +198,7 @@ function test_inv(
     extr = extrema.(dec)
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             res2[i],
             res[i],
@@ -208,7 +209,7 @@ function test_inv(
             decend,
         )
     end
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             res3[i],
             res2[i],
@@ -233,7 +234,7 @@ function test_inv(
     @show Float32.(dec[1]) + im * Float32.(dec[2])
     @show Float32.(resinv[1]) + im * Float32.(resinv[2])
     @show Float32.(resinv[1][CartesianIndex(10, 10):CartesianIndex(12, 12)]) +
-          im * Float32.(resinv[2][CartesianIndex(10, 10):CartesianIndex(12, 12)])
+        im * Float32.(resinv[2][CartesianIndex(10, 10):CartesianIndex(12, 12)])
 
     resfmr =
         ntuple(x -> mod.(res2[x] - res[x] - dec[x] .+ sz[x] / 2, sz[x]) .- sz[x] / 2, 2)
@@ -246,7 +247,7 @@ function test_inv(
     extr = extrema.(decnew)
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             resnew[i],
             res2[i],
@@ -259,15 +260,16 @@ function test_inv(
     end
     @show resnew
 
-    for i = 1:N
-        @test norm(res2[i] - resinv2[i]) < 1e-12
+    for i in 1:N
+        @test norm(res2[i] - resinv2[i]) < 1.0e-12
     end
+    return
 end
 function test_invfmr(
-    t_interp::Vector{I},
-    coeff::T,
-    sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        t_interp::Vector{I},
+        coeff::T,
+        sz::NTuple{N, Int},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -275,7 +277,7 @@ function test_invfmr(
     dec2 = ntuple(x -> zeros(T, sz), N)
     resnew = ntuple(x -> zeros(T, sz), N)
     for ind in CartesianIndices(sz)
-        for i = 1:N
+        for i in 1:N
             dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
             res[i][ind] = T(ind.I[i] - 1)
         end
@@ -283,7 +285,7 @@ function test_invfmr(
     extr = extrema.(dec)
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             res2[i],
             res[i],
@@ -299,7 +301,7 @@ function test_invfmr(
     extr = extrema.(ntuple(x -> -dec[x], N))
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             dec2[i],
             -dec[i],
@@ -310,7 +312,7 @@ function test_invfmr(
             decend,
         )
     end
-    for i = 1:N
+    for i in 1:N
         dec2[i] .= mod.(dec2[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
     end
     @show dec
@@ -319,7 +321,7 @@ function test_invfmr(
     decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
     decend = ntuple(x -> Int(ceil(extr[x][2])), N)
 
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(
             res3[i],
             res2[i],
@@ -335,7 +337,7 @@ function test_invfmr(
     @show res3
 
     res4 = ntuple(x -> res[x] - res3[x], N)
-    for i = 1:N
+    for i in 1:N
         res4[i] .= mod.(res4[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
     end
 
@@ -351,7 +353,7 @@ function test_invfmr(
         extr = extrema.(res4)
         decbegin = ntuple(x -> -Int(floor(extr[x][1])), N)
         decend = ntuple(x -> Int(ceil(extr[x][2])), N)
-        for i = 1:N
+        for i in 1:N
             interpolatemod!(
                 res5[i],
                 res3[i],
@@ -363,7 +365,7 @@ function test_invfmr(
             )
         end
         res4 = ntuple(x -> res[x] - res5[x], N)
-        for i = 1:N
+        for i in 1:N
             res4[i] .= mod.(res4[i] .+ sz[i] / 2, sz[i]) .- sz[i] / 2
             res3[i] .= res5[i]
         end
@@ -374,12 +376,13 @@ function test_invfmr(
 
         ind += 1
     end
+    return
 end
 function test_getinv(
-    t_interp::Vector{I},
-    coeff::T,
-    sz::NTuple{N,Int},
-) where {T,N,I<:AbstractInterpolation{T,PeriodicBC}}
+        t_interp::Vector{I},
+        coeff::T,
+        sz::NTuple{N, Int},
+    ) where {T, N, I <: AbstractInterpolation{T, PeriodicBC}}
     res = ntuple(x -> zeros(T, sz), N)
     res2 = ntuple(x -> zeros(T, sz), N)
     res3 = ntuple(x -> zeros(T, sz), N)
@@ -387,7 +390,7 @@ function test_getinv(
     dec2 = ntuple(x -> zeros(T, sz), N)
     resnew = ntuple(x -> zeros(T, sz), N)
     for ind in CartesianIndices(sz)
-        for i = 1:N
+        for i in 1:N
             dec[i][ind] = coeff * cos(i + 2T(pi) * sum(ind.I ./ sz))
             res[i][ind] = T(ind.I[i] - 1)
         end
@@ -395,13 +398,13 @@ function test_getinv(
 
     sz_2 = div.(sz, 2)
 
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(res2[i], res[i], dec, t_interp, T(sz[i]))
     end
 
     dec2 = getinverse(dec, t_interp)
 
-    for i = 1:N
+    for i in 1:N
         interpolatemod!(res3[i], res2[i], dec2, t_interp, T(sz[i]))
 
         res2[i] .= mod.(res[i] .- res3[i] .+ sz_2[i], sz[i]) .- sz_2[i]
@@ -409,7 +412,7 @@ function test_getinv(
 
     note = norm(res2)
     @show note, sqrt(eps(T))
-    @test note < sqrt(eps(T))
+    return @test note < sqrt(eps(T))
 end
 
 @testset "test inverse" begin
@@ -421,13 +424,14 @@ end
 end
 
 function test_interpfloat(
-    interp::AbstractInterpolation{T,bc},
-    sz,
-    tol,
-    nb = 100,
-) where {T,bc}
+        interp::AbstractInterpolation{T, bc},
+        sz,
+        tol,
+        nb = 100,
+    ) where {T, bc}
     tabdec =
-        T.([
+        T.(
+        [
             big"0.345141526199181716726626262655544",
             -big"0.3859416191876155241320011187619",
             -big"1.28561390114441619187615524132001118762519",
@@ -437,13 +441,14 @@ function test_interpfloat(
             big"0.186666659416191876155241320011187619",
             big"0.590999232323232323232365566787878898898",
             big"1.231098015934444444444444788888888878878",
-        ])
-    mesh = T.(collect(big.(0:(sz-1))) / sz)
+        ]
+    )
+    mesh = T.(collect(big.(0:(sz - 1))) / sz)
 
     fct1(x) = T(cos(2big(pi) * x + big"0.25"))
     fct2(x) = T(exp(-(cos(2big(pi) * x + big"0.25") - 1)^2))
     tabfct = [fct1, fct2]
-    @time @testset "test interpolation  $interp" begin
+    return @time @testset "test interpolation  $interp" begin
         nmax = 0
 
         for (i_fct, fct) in enumerate(tabfct), dec in tabdec
@@ -462,11 +467,11 @@ function test_interpfloat(
                 continue
             end
             precal = if bc === PeriodicBC
-                getprecal(interp, value)
+                stencil_weights(interp, value)
             else
-                get_allprecal(interp, decint, value)
+                all_stencil_weights(interp, decint, value)
             end
-            for i = 1:nb
+            for i in 1:nb
                 fi .= fp
                 ref = fct.(mesh .+ i * dec / sz)
                 interpolate!(fp, fi, decint, precal, interp)
@@ -494,29 +499,29 @@ test_interp(Lagrange(3, Rational{BigInt}; bc = PeriodicBC()), 128)
 
 test_interp(BSplineLU(3, 128, Rational{BigInt}), 128)
 
-test_interpfloat(Lagrange(3, BigFloat; bc = PeriodicBC()), 128, 1e-3, 100)
-test_interpfloat(Lagrange(3, Float64; bc = PeriodicBC()), 128, 1e-3, 100)
+test_interpfloat(Lagrange(3, BigFloat; bc = PeriodicBC()), 128, 1.0e-3, 100)
+test_interpfloat(Lagrange(3, Float64; bc = PeriodicBC()), 128, 1.0e-3, 100)
 
-test_interpfloat(Lagrange(7, BigFloat; bc = ExtrapolationBC()), 128, 1e-3, 3)
-test_interpfloat(Lagrange(7, Float64; bc = ExtrapolationBC()), 128, 1e-3, 3)
+test_interpfloat(Lagrange(7, BigFloat; bc = ExtrapolationBC()), 128, 1.0e-3, 3)
+test_interpfloat(Lagrange(7, Float64; bc = ExtrapolationBC()), 128, 1.0e-3, 3)
 
-test_interpfloat(Lagrange(21, BigFloat; bc = PeriodicBC()), 256, 1e-20)
-test_interpfloat(Lagrange(9, Float64; bc = PeriodicBC()), 256, 1e-10)
+test_interpfloat(Lagrange(21, BigFloat; bc = PeriodicBC()), 256, 1.0e-20)
+test_interpfloat(Lagrange(9, Float64; bc = PeriodicBC()), 256, 1.0e-10)
 
-test_interpfloat(Lagrange(4, BigFloat; bc = PeriodicBC()), 256, 1e-5)
-test_interpfloat(Lagrange(4, Float64; bc = PeriodicBC()), 256, 1e-5)
+test_interpfloat(Lagrange(4, BigFloat; bc = PeriodicBC()), 256, 1.0e-5)
+test_interpfloat(Lagrange(4, Float64; bc = PeriodicBC()), 256, 1.0e-5)
 
-test_interpfloat(Lagrange(22, BigFloat; bc = PeriodicBC()), 256, 1e-20)
-test_interpfloat(Lagrange(12, Float64; bc = PeriodicBC()), 256, 1e-10)
+test_interpfloat(Lagrange(22, BigFloat; bc = PeriodicBC()), 256, 1.0e-20)
+test_interpfloat(Lagrange(12, Float64; bc = PeriodicBC()), 256, 1.0e-10)
 
-test_interpfloat(BSplineLU(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(BSplineLU(3, 256, Float64), 256, 1e-5)
+test_interpfloat(BSplineLU(3, 256, BigFloat), 256, 1.0e-5)
+test_interpfloat(BSplineLU(3, 256, Float64), 256, 1.0e-5)
 
-test_interpfloat(BSplineLU(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(BSplineLU(11, 256, Float64), 256, 1e-12)
+test_interpfloat(BSplineLU(21, 256, BigFloat), 256, 1.0e-30)
+test_interpfloat(BSplineLU(11, 256, Float64), 256, 1.0e-12)
 
-test_interpfloat(BSplineFFT(3, 256, BigFloat), 256, 1e-5)
-test_interpfloat(BSplineFFT(3, 256, Float64), 256, 1e-5)
+test_interpfloat(BSplineFFT(3, 256, BigFloat), 256, 1.0e-5)
+test_interpfloat(BSplineFFT(3, 256, Float64), 256, 1.0e-5)
 
-test_interpfloat(BSplineFFT(21, 256, BigFloat), 256, 1e-30)
-test_interpfloat(BSplineFFT(11, 256, Float64), 256, 1e-12)
+test_interpfloat(BSplineFFT(21, 256, BigFloat), 256, 1.0e-30)
+test_interpfloat(BSplineFFT(11, 256, Float64), 256, 1.0e-12)

@@ -4,6 +4,7 @@ using SemiLagrangian:
     AdvectionOperator,
     strangsplit,
     interpolate!,
+    LocalLagrange,
     Lagrange,
     UniformMesh
 
@@ -20,6 +21,14 @@ using SemiLagrangian:
     result = copy(initial)
     @test advection!(result, mesh, T(0.35), T(1) / n, interp) === result
     @test result ≈ expected
+
+    local_interp = LocalLagrange(7)
+    local_expected = similar(initial)
+    interpolate!(local_expected, local_interp, initial, shift)
+    local_result = copy(initial)
+    @test advection!(local_result, mesh, T(0.35), T(1) / n, local_interp) ===
+        local_result
+    @test local_result ≈ local_expected
 
     mesh_y = UniformMesh(T(-1), T(1), 32)
     data = [sin(2T(pi) * x) * cos(T(pi) * y) for x in mesh.points, y in mesh_y.points]
@@ -76,7 +85,7 @@ using SemiLagrangian:
     end
     split_result = copy(original)
     @test split_advection!(split_result, operator_x, operator_y, coefficients) ===
-          split_result
+        split_result
     @test split_result ≈ expected_split
     @test_throws ArgumentError split_advection!(
         copy(original),

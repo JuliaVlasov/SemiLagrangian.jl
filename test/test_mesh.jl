@@ -1,4 +1,3 @@
-
 using SemiLagrangian:
     UniformMesh,
     totuple,
@@ -23,11 +22,11 @@ using SemiLagrangian:
     t_width = t_end - t_deb
     t_step = t_width ./ t_sz
 
-    result = Array{Rational{Int},4}(undef, totuple(t_sz))
+    result = Array{Rational{Int}, 4}(undef, totuple(t_sz))
     ind = zeros(Int, 4)
-    for ind[1] = 1:t_sz[1], ind[2] = 1:t_sz[2], ind[3] = 1:t_sz[3], ind[4] = 1:t_sz[4]
+    for ind[1] in 1:t_sz[1], ind[2] in 1:t_sz[2], ind[3] in 1:t_sz[3], ind[4] in 1:t_sz[4]
         res = 1 // 1
-        for j = 1:4
+        for j in 1:4
             res *= t_deb[j] + (ind[j] - 1) * t_step[j]
         end
         result[ind[1], ind[2], ind[3], ind[4]] = res
@@ -56,9 +55,9 @@ end
 
 function test_vec_k_fft(vbeg::T, vend::T, len) where {T}
     mid = div(len, 2)
-    ref = circshift((-mid):(mid-1), mid)
+    ref = circshift((-mid):(mid - 1), mid)
     ref *= 2T(pi) / (vend - vbeg)
-    @test ref == vec_k_fft(UniformMesh(vbeg, vend, len))
+    return @test ref == vec_k_fft(UniformMesh(vbeg, vend, len))
 end
 
 @testset "test vec_k_fft" begin
@@ -85,11 +84,11 @@ function test_newval()
     @test newval(0.0, -1.2, 0.5, 1.0) ≈ -0.2
     @test newval(0.0, -0.8, 0.5, 1.0) ≈ 0.2
     @test newval(0.0, -0.2, 0.5, 1.0) ≈ -0.2
-    @test newval(0.0, 0.2, 0.5, 1.0) ≈ 0.2
+    return @test newval(0.0, 0.2, 0.5, 1.0) ≈ 0.2
 end
 
 function test_traitmod(c1, c2, c3)
-    tab = [mod(i * c1 + j * c2, 1.0) + c3 for i = 1:10, j = 1:10]
+    tab = [mod(i * c1 + j * c2, 1.0) + c3 for i in 1:10, j in 1:10]
 
     mesh = UniformMesh(0.0, 1.0, 64)
 
@@ -123,7 +122,7 @@ function test_traitmod(c1, c2, c3)
 
     resres = stdtomesh(mesh, stdres)
 
-    @test resres == res
+    return @test resres == res
 end
 @testset "test newval" begin
     test_newval()

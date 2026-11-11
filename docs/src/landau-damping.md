@@ -73,13 +73,13 @@ advection directions:
 - **Spectral** — Fourier-based interpolation.
 - **LagrangeFFT** — periodic FFT-based Lagrange interpolation with a 7-point
   stencil.
-- **FastLagrange** — local 7-point Lagrange interpolation.
-- **FastInterpolations cubic** — periodic cubic interpolation from
-  FastInterpolations.jl.
+- **LocalLagrange** — local 7-point Lagrange interpolation.
+- **CubicSpline** — periodic cubic interpolation through the package wrapper
+  around FastInterpolations.jl.
 
 The run uses 64 position points, 128 velocity points, a time step of 0.05,
 and 2,000 steps. The smaller step keeps the largest spatial characteristic
-shift below one grid cell for the local FastLagrange interpolator:
+shift below one grid cell for the local Lagrange interpolator:
 ``\Delta t\,v_{\max}/(2\Delta x) < 1``. Its interpolation weights are
 intended for fractional shifts of about one cell or less; using a larger
 shift directly can make the high-order polynomial weights unstable. The
@@ -112,6 +112,39 @@ julia --project examples/landau-damping.jl
 ```@example landau
 include(joinpath(@__DIR__, "..", "..", "examples", "landau-damping.jl"))
 ```
+
+## Using advection operators
+
+The separate [`landau-damping-split.jl`](https://github.com/JuliaVlasov/SemiLagrangian.jl/blob/master/examples/landau-damping-split.jl)
+example uses `AdvectionOperator` and `split_advection!` with spectral
+interpolation. It performs the first position half-step with `advection!`,
+then recomputes the electric field before applying the velocity step and final
+position half-step with `split_advection!`. The velocity operator is recreated
+each step with the updated field; a single call for all three stages would
+instead keep the field fixed.
+
+Run it from the repository root with:
+
+```sh
+julia --project=docs examples/landau-damping-split.jl
+```
+
+## Reusing the Poisson solver
+
+The additional `examples/landau-damping-poisson.jl` example constructs a
+`PoissonAdvectionOperator` once and passes it to `split_advection!` alongside
+the position operator. Each velocity stage automatically recomputes the field
+from the current distribution, so the complete Strang step uses one call.
+The operator reuses density and field arrays, FFT plans, and velocity-line
+buffers. Its default spectral velocity stage avoids repeated workspace
+allocation, while the ordinary position stage may still allocate.
+
+```sh
+julia --project=docs examples/landau-damping-poisson.jl
+```
+
+The energy is sampled from the field used at the midpoint velocity stage,
+matching the other Landau examples. Both earlier examples are kept unchanged.
 
 ## References
 

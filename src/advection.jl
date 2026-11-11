@@ -1,5 +1,5 @@
 """
-    advection!(data, mesh, velocity, dt, interpolant; dim=1)
+$(SIGNATURES)
 
 Advect `data` in place along dimension `dim` for one time step `dt`.
 `mesh` describes the advected dimension. `velocity` may be a scalar, an array
@@ -12,13 +12,13 @@ scheme. Pointwise velocity fields require an `AbstractInterpolation`; other
 interpolants support scalar and per-line velocities.
 """
 function advection!(
-    data::AbstractArray,
-    mesh::UniformMesh,
-    velocity,
-    dt::Real,
-    interpolant;
-    dim::Integer = 1,
-)
+        data::AbstractArray,
+        mesh::UniformMesh,
+        velocity,
+        dt::Real,
+        interpolant;
+        dim::Integer = 1,
+    )
     ndims(data) > 0 || throw(ArgumentError("data must have at least one dimension"))
     1 <= dim <= ndims(data) ||
         throw(ArgumentError("dim=$dim must be between 1 and $(ndims(data))"))
@@ -40,10 +40,12 @@ function advection!(
         elseif size(velocity) == transverse_shape
             :per_line
         else
-            throw(DimensionMismatch(
-                "velocity must be a scalar, have transverse shape $transverse_shape, " *
-                "or match data shape $(size(data)); got $(size(velocity))",
-            ))
+            throw(
+                DimensionMismatch(
+                    "velocity must be a scalar, have transverse shape $transverse_shape, " *
+                        "or match data shape $(size(data)); got $(size(velocity))",
+                )
+            )
         end
     else
         throw(ArgumentError("velocity must be a real scalar or real array"))
@@ -80,11 +82,11 @@ function advection!(
 end
 
 """
-    AdvectionOperator(mesh, velocity, interpolant; dim=1)
+$(TYPEDEF)
 
 Describe one directional advection operator for use with [`split_advection!`](@ref).
 """
-struct AdvectionOperator{M<:UniformMesh,V,I}
+struct AdvectionOperator{M <: UniformMesh, V, I}
     mesh::M
     velocity::V
     interpolant::I
@@ -96,65 +98,62 @@ function AdvectionOperator(mesh::UniformMesh, velocity, interpolant; dim::Intege
 end
 
 """
-    split_advection!(data, first, second, coefficients)
+$(SIGNATURES)
 
 Apply a two-operator splitting in place. Stages alternate between `first` and
 `second`, beginning with `first`; `coefficients` are the time steps for the
 individual stages, such as the result of `strangsplit(dt)`.
 """
 function split_advection!(
-    data::AbstractArray,
-    first::AdvectionOperator,
-    second::AdvectionOperator,
-    coefficients::AbstractVector{<:Real},
-)
+        data::AbstractArray,
+        first::AdvectionOperator,
+        second::AdvectionOperator,
+        coefficients::AbstractVector{<:Real},
+    )
     isempty(coefficients) && throw(ArgumentError("coefficients must not be empty"))
 
     for (stage, coefficient) in enumerate(coefficients)
         operator = isodd(stage) ? first : second
-        advection!(
-            data,
-            operator.mesh,
-            operator.velocity,
-            coefficient,
-            operator.interpolant;
-            dim = operator.dim,
-        )
+        advection!(data, operator, coefficient)
     end
 
     return data
 end
 
-_interpolate_advection_line!(output, input, shift, interpolant::AbstractInterpolation) =
-    interpolate!(output, input, shift, interpolant)
+advection!(data::AbstractArray, operator::AdvectionOperator, dt::Real) =
+    advection!(data, operator.mesh, operator.velocity, dt, operator.interpolant; dim = operator.dim)
 
 _interpolate_advection_line!(output, input, shift, interpolant) =
-    interpolate!(output, interpolant, input, shift)
+    interpolate!(output, input, shift, interpolant)
 
 function _interpolate_variable_advection_line!(
-    output,
-    input,
-    shifts,
-    interpolant::AbstractInterpolation,
-)
+        output,
+        input,
+        shifts,
+        interpolant::AbstractInterpolation,
+    )
     return interpolate!(output, input, i -> (shifts[i],), [interpolant])
 end
 
 function _interpolate_variable_advection_line!(
-    output,
-    input,
-    shifts,
-    interpolant::AbstractShiftInterpolation,
-)
-    throw(ArgumentError(
-        "pointwise velocity fields are not supported by this interpolant; " *
-        "use a scalar or per-line velocity",
-    ))
+        output,
+        input,
+        shifts,
+        interpolant::AbstractShiftInterpolation,
+    )
+    throw(
+        ArgumentError(
+            "pointwise velocity fields are not supported by this interpolant; " *
+                "use a scalar or per-line velocity",
+        )
+    )
 end
 
 function _interpolate_variable_advection_line!(output, input, shifts, interpolant)
-    throw(ArgumentError(
-        "pointwise velocity fields require an AbstractInterpolation; " *
-        "use a scalar or per-line velocity with this interpolant",
-    ))
+    throw(
+        ArgumentError(
+            "pointwise velocity fields require an AbstractInterpolation; " *
+                "use a scalar or per-line velocity with this interpolant",
+        )
+    )
 end

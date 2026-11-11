@@ -16,8 +16,10 @@ function exact_translation!(f, velocities, t)
     for ind in CartesianIndices(f)
         f[ind] = exp(
             -sum(
-                sin(2T(pi) * (ind.I[i] - velocities[i] * t) / size(f, i) +
-                    T(big"0.56") * i^2) for i in eachindex(velocities)
+                sin(
+                    2T(pi) * (ind.I[i] - velocities[i] * t) / size(f, i) +
+                        T(big"0.56") * i^2
+                ) for i in eachindex(velocities)
             ),
         )
     end
@@ -56,40 +58,40 @@ end
     dt = T(1) / 11
     for split in (strangsplit(dt), triplejumpsplit(dt), standardsplit(dt))
         @test test_translation((200, 300), Lagrange(5, T), Lagrange(5, T), dt; tc = split) <
-              1e-3
+            1.0e-3
         @test test_translation((200, 300), Hermite(5, T), Hermite(5, T), dt; tc = split) <
-              1e-3
+            1.0e-3
     end
     @test test_translation(
         (128, 64),
         BSplineLU(5, 128, T),
         BSplineLU(5, 64, T),
         dt,
-    ) < 1e-6
+    ) < 1.0e-6
     @test test_translation(
         (128, 64),
         BSplineFFT(5, 128, T),
         BSplineFFT(5, 64, T),
         dt,
-    ) < 1e-6
+    ) < 1.0e-6
 
     T = Double64
     dt = T(1) / 11
-    @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1e-14
+    @test test_translation((100, 120), Lagrange(15, T), Lagrange(15, T), dt) < 1.0e-14
     @test test_translation(
         (128, 64),
         BSplineLU(15, 128, T),
         BSplineLU(15, 64, T),
         dt,
-    ) < 1e-18
+    ) < 1.0e-18
 
     T = BigFloat
     dt = T(1) / 11
-    @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1e-20
+    @test test_translation((100, 90), Lagrange(25, T), Lagrange(25, T), dt) < 1.0e-20
     @test test_translation(
         (128, 64),
         BSplineFFT(25, 128, T),
         BSplineFFT(25, 64, T),
         dt,
-    ) < 1e-22
+    ) < 1.0e-22
 end

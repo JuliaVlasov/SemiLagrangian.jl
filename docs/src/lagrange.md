@@ -1,8 +1,13 @@
-# Lagrange interpolation
+```@meta
+CurrentModule = SemiLagrangian
+```
 
+# Lagrange
 
-To compute a Lagrange interpolation you have to instantiate
-a `Lagrange` type variable:
+## Lagrange
+
+`Lagrange(order)` constructs a general-purpose interpolant using `order + 1`
+points per stencil.
 
 `Lagrange` and `Hermite` accept a `bc` keyword. The default,
 `PeriodicBC()`, wraps interpolation stencils around the ends of the data line.
@@ -16,9 +21,35 @@ periodic_interp = Lagrange(5; bc = PeriodicBC())
 extrapolating_interp = Lagrange(5; bc = ExtrapolationBC())
 ```
 
-```@autodocs
-Modules = [SemiLagrangian]
-Private = false
-Order   = [:type, :function]
-Pages   = ["lagrange.jl", "lagrange_interp.jl"]
+```@docs
+Lagrange
+```
+
+## LagrangeFFT
+
+`LagrangeFFT(n, stencil)` applies a constant shift to a periodic line using
+FFT-based convolution. It takes the grid length and the stencil width:
+
+```julia
+interpolant = LagrangeFFT(100, 7)
+```
+
+```@docs
+LagrangeFFT
+interpolate!(::Any, ::Any, ::Real, ::LagrangeFFT)
+```
+
+## LocalLagrange
+
+`LocalLagrange(stencil)` applies a local fixed-width stencil to a periodic line.
+The supported widths are 3, 5, 7, 9, and 11. It is intended for small shifts,
+preferably within one grid cell.
+
+```julia
+interpolant = LocalLagrange(7)
+```
+
+```@docs
+LocalLagrange
+interpolate!(::Any, ::Any, ::Real, ::LocalLagrange)
 ```

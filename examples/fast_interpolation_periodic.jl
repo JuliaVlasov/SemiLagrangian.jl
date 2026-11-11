@@ -14,7 +14,7 @@ struct UniformMesh
     x::Vector{Float64}
     function UniformMesh(xmin, xmax, nx)
         dx = (xmax - xmin) / nx
-        x = LinRange(xmin, xmax, nx + 1)[1:end-1]
+        x = LinRange(xmin, xmax, nx + 1)[1:(end - 1)]
         return new(xmin, xmax, nx, dx, x)
     end
 end
@@ -27,13 +27,13 @@ function compute_rho!(
 
     dv = meshv.dx
     rho .= dv .* vec(sum(f, dims = 1))
-    rho .-= mean(rho)
+    return rho .-= mean(rho)
 end
 
 struct PoissonSolver
 
-    modes :: Vector{Float64}
-    rhok :: Vector{ComplexF64}
+    modes::Vector{Float64}
+    rhok::Vector{ComplexF64}
 
     function PoissonSolver(meshx)
 
@@ -41,15 +41,15 @@ struct PoissonSolver
         modes = 2π / (meshx.xmax - meshx.xmin) * collect(fftfreq(nx, nx))
         modes[1] = 1.0
         rhok = zeros(ComplexF64, nx)
-        new( modes, rhok )
+        return new(modes, rhok)
 
     end
 
 end
 
 function compute_e!(e::Vector{Float64}, solver::PoissonSolver, rho::Vector{Float64})
-    solver.rhok .= -1im .* fft(rho) ./ solver.modes 
-    e .= real(ifft(solver.rhok))
+    solver.rhok .= -1im .* fft(rho) ./ solver.modes
+    return e .= real(ifft(solver.rhok))
 end
 
 function advection!(
@@ -61,11 +61,11 @@ function advection!(
     nx, dx = mesh.nx, mesh.dx
     xi = 1.0:nx
 
-    @threads for j in eachindex(v)
+    return @threads for j in eachindex(v)
         alpha = - dt * v[j] / dx
         fi = view(f, :, j)
         xp = xi .+ alpha
-        f[:, j] .= cubic_interp(xi, fi, xp; bc=PeriodicBC(endpoint=:exclusive))
+        f[:, j] .= cubic_interp(xi, fi, xp; bc = PeriodicBC(endpoint = :exclusive))
     end
 
 end
@@ -86,7 +86,7 @@ function landau_fast(nx, nv, dt, nt::Int64)
     f = zeros(Float64, (nx, nv))
     f .= (1.0 .+ eps * cos.(kx * x)) / sqrt(2π) .* transpose(exp.(-0.5 * v .^ 2))
     fᵗ = zeros(Float64, (nv, nx))
-    permutedims!(fᵗ, f, [2,1])
+    permutedims!(fᵗ, f, [2, 1])
 
     poisson = PoissonSolver(meshx)
 
@@ -100,13 +100,13 @@ function landau_fast(nx, nv, dt, nt::Int64)
 
     for it in 1:nt
         advection!(f, meshx, v, 0.5dt)
-        permutedims!(fᵗ, f, [2,1])
+        permutedims!(fᵗ, f, [2, 1])
         compute_rho!(rho, meshv, fᵗ)
         compute_e!(e, poisson, rho)
-        push!(ℰ, sum(e .* e) * dx )
+        push!(ℰ, sum(e .* e) * dx)
         push!(t, (it - 0.5) * dt)
         advection!(fᵗ, meshv, e, dt)
-        permutedims!(f, fᵗ, [2,1])
+        permutedims!(f, fᵗ, [2, 1])
         advection!(f, meshx, v, 0.5dt)
     end
 
@@ -121,7 +121,7 @@ landau_fast(nx, nv, dt, 1) # warmup
 @time t, nrj = landau_fast(nx, nv, dt, nt)
 plot(t, nrj; label = "|E|²", yaxis = :log)
 line, ω, = fit_complex_frequency(t, nrj)
-plot!(t, line, yaxis = :log, label = "$(imag(ω/2))")
+plot!(t, line, yaxis = :log, label = "$(imag(ω / 2))")
 title!("α = 0.001, k = 0.4")
 
 # about fit_complex_frequency

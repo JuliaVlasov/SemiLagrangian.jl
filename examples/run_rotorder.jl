@@ -37,14 +37,14 @@ function fctmain(sz, dt::T, ordmax) where {T}
     y = ones(indmax, 3)
     x = zeros(Int64, indmax)
 
-    labels = Array{String,2}(undef, 1, 3)
+    labels = Array{String, 2}(undef, 1, 3)
     labels[1, 1] = "Lagrange"
     labels[1, 2] = "B-Spline LU"
     labels[1, 3] = "B-Spline FFT"
 
     ind = 1
 
-    for order = 3:2:ordmax
+    for order in 3:2:ordmax
         println("order=$order")
         lag = Lagrange(order, T)
         splu = BSplineLU(order, length(mesh1), zero(T))
@@ -54,7 +54,7 @@ function fctmain(sz, dt::T, ordmax) where {T}
         y[ind, 2] = fctadv(splu, mesh1, mesh2, v1, v2, refdeb, refend, dt)
         y[ind, 3] = fctadv(spfft, mesh1, mesh2, v1, v2, refdeb, refend, dt)
 
-        println("ind=$ind order=$order y[ind,:]=$(y[ind,:])")
+        println("ind=$ind order=$order y[ind,:]=$(y[ind, :])")
 
         x[ind] = order
 
@@ -91,14 +91,14 @@ function fctmain2(sz, ordmax)
     y = ones(indmax, 2)
     x = zeros(Int64, indmax)
 
-    labels = Array{String,2}(undef, 1, 2)
+    labels = Array{String, 2}(undef, 1, 2)
     labels[1, 1] = "Lagrange"
     labels[1, 2] = "B-Spline LU"
     #    labels[1,3] = "B-Spline FFT"
 
     ind = 1
 
-    for order = 3:ordmax
+    for order in 3:ordmax
         println("order=$order")
         lag = Lagrange(order, BigFloat)
         splu = BSplineLU(order, sz, big"0.")
@@ -108,7 +108,7 @@ function fctmain2(sz, ordmax)
         y[ind, 2] = fctinter(splu, sz)
         #        y[ind,3] = fctinter(spfft, sz)
 
-        println("ind=$ind order=$order y[ind,:]=$(y[ind,:])")
+        println("ind=$ind order=$order y[ind,:]=$(y[ind, :])")
 
         x[ind] = order
 
@@ -140,7 +140,7 @@ function fctmain_gnuplot(sz, ordmax)
     println("# begin gnuplot size=$sz julia precision=$prec")
     println("# order\tLagrange\tformule\t(formule-lag)\tBSplineLU")
     dec = big"0.351726155665655665187291927162514231451"
-    for order = 3:ordmax
+    for order in 3:ordmax
         lag = Lagrange(order, BigFloat)
         splu = BSplineLU(order, sz, big"0.")
         reslag = fctinter(lag, sz, dec)
@@ -149,6 +149,7 @@ function fctmain_gnuplot(sz, ordmax)
         resdiff = resformule - reslag
         println("$order\t$reslag\t$resformule\t$resdiff\t$ressplu")
     end
+    return
 end
 function fctmainsize_gnuplot(szlist, orderlist)
     prec = precision(BigFloat)
@@ -170,6 +171,7 @@ function fctmainsize_gnuplot(szlist, orderlist)
         end
         println("")
     end
+    return
 end
 
 setprecision(1024) do

@@ -1,4 +1,3 @@
-
 """
     UniformMesh{T}
     UniformMesh(start::T, stop::T, length::Int) where {T}
@@ -25,7 +24,7 @@ struct UniformMesh{T}
 
     function UniformMesh(start::T, stop::T, length::Int) where {T}
         pdeb = range(start; stop = stop, length = length + 1)
-        points = pdeb[1:(end-1)]
+        points = pdeb[1:(end - 1)]
         step_loc = step(pdeb)
         width = stop - start
         return new{T}(step_loc, points, width)
@@ -133,9 +132,9 @@ end
 Wrap every value in `values` modulo `period`, in place, and return `values`.
 """
 function traitmodend!(
-    lg::T2,
-    f::Array{T2,N},
-) where {N,T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
+        lg::T2,
+        f::Array{T2, N},
+    ) where {N, T2 <: Union{OpTuple{N, <:Number}, Number}} # T2 must OpTuple or Number
     return f .= mod.(f, lg)
 end
 
@@ -147,9 +146,9 @@ nearest representative within half a period of their predecessor. Mutates
 `values` and returns `true` if any value was changed, otherwise `false`.
 """
 function traitmodbegin!(
-    lg::T2,
-    f::Array{T2,N},
-) where {N,T2<:Union{OpTuple{N,<:Number},Number}} # T2 must OpTuple or Number
+        lg::T2,
+        f::Array{T2, N},
+    ) where {N, T2 <: Union{OpTuple{N, <:Number}, Number}} # T2 must OpTuple or Number
     sz = size(f)
     borne = lg / 2
     flagmod = false
@@ -160,7 +159,7 @@ function traitmodbegin!(
         indice = popfirst!(list)
         #        @show indice
         valref = f[indice]
-        for i = 1:N
+        for i in 1:N
             newindice = indice + incr[i]
             if newindice[i] <= sz[i]
                 if !flagfait[newindice]
@@ -185,7 +184,7 @@ end
 Unwrap periodic values in `values` using `width(mesh)` as the period. Mutates
 `values` and returns whether any value changed.
 """
-function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T,N}) where {T,N}
+function traitmodbegin!(mesh::UniformMesh{T}, f::Array{T, N}) where {T, N}
     return traitmodbegin!(width(mesh), f)
 end
 
@@ -195,7 +194,7 @@ end
 Wrap `values` into the interval `[start(mesh), stop(mesh))` in place and
 return the array.
 """
-function traitmodend!(mesh::UniformMesh{T}, res::Array{T,N}) where {T,N}
+function traitmodend!(mesh::UniformMesh{T}, res::Array{T, N}) where {T, N}
     strt = start(mesh)
     res .-= strt
     traitmodend!(width(mesh), res)

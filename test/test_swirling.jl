@@ -8,10 +8,10 @@ using SemiLagrangian:
     CachePrecal
 
 function test_swirling(
-    sz::NTuple{2,Int},
-    interp::AbstractVector{I},
-    nsteps::Int,
-) where {T,I<:AbstractInterpolation{T}}
+        sz::NTuple{2, Int},
+        interp::AbstractVector{I},
+        nsteps::Int,
+    ) where {T, I <: AbstractInterpolation{T}}
     mesh_x = UniformMesh(T(0), T(1), sz[1])
     mesh_y = UniformMesh(T(0), T(1), sz[2])
     dt = T(1.5) / nsteps

@@ -24,17 +24,17 @@ u = sin.(2π .* (0:n-1) ./ n)
 u_out = zeros(n)
 
 cs = CubicSpline(n)
-interpolate!(u_out, cs, u, 0.5)  # shift by 0.5 grid points
+interpolate!(u_out, u, 0.5, cs)  # shift by 0.5 grid points
 ```
 """
 struct CubicSpline <: AbstractShiftInterpolation{3}
-    nx :: Int
+    nx::Int
     CubicSpline(nx) = new(nx)
 end
 
 
 """
-    interpolate!(u_out, interp::CubicSpline, u, alpha)
+    interpolate!(u_out, u, alpha, interp::CubicSpline)
 
 Interpolate array `u` onto `u_out` shifted by `alpha` grid points using cubic
 splines. This calls `cubic_interp!` from `FastInterpolations.jl` with periodic
@@ -42,11 +42,11 @@ boundary conditions.
 
 # Arguments
 - `u_out`: preallocated output array (length `interp.nx`)
-- `interp`: `CubicSpline` interpolation object
 - `u`: input array (length `interp.nx`)
 - `alpha`: fractional shift in units of grid spacing (can be non-integer)
+- `interp`: `CubicSpline` interpolation object
 """
-function interpolate!(u_out, interp::CubicSpline, u, alpha::Real)
+function interpolate!(u_out, u, alpha::Real, interp::CubicSpline)
     xi = 1:interp.nx
     xp = xi .+ alpha
     FastInterpolations.cubic_interp!(
@@ -54,7 +54,7 @@ function interpolate!(u_out, interp::CubicSpline, u, alpha::Real)
         xi,
         u,
         xp;
-        bc=FastInterpolations.PeriodicBC(endpoint=:exclusive),
+        bc = FastInterpolations.PeriodicBC(endpoint = :exclusive),
     )
     return u_out
 end

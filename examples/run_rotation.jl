@@ -20,7 +20,7 @@ function run_rotation(; n = 256, nsteps = 50)
     exact = similar(data)
 
     for step in 1:nsteps
-        for (i, coefficient) in enumerate(magicsplit(dt))
+        for (i, coefficient) in enumerate(sheartransport(dt))
             if isodd(i)
                 advection!(data, mesh_x, y, coefficient, interp; dim = 1)
             else

@@ -54,14 +54,14 @@ using SemiLagrangian
     and checks if error is within tolerance.
     """
     function test_interpolation(
-        f::Function,
-        num_points::Int,
-        fi::Vector{Float64},
-        alpha::Float64,
-        xp::Vector{Float64},
-        order::Int,
-        tolerance::Float64,
-    )
+            f::Function,
+            num_points::Int,
+            fi::Vector{Float64},
+            alpha::Float64,
+            xp::Vector{Float64},
+            order::Int,
+            tolerance::Float64,
+        )
 
 
         fp = zeros(Float64, num_points)
@@ -70,10 +70,10 @@ using SemiLagrangian
         pmessage = string(order)
 
         println("Test fixed_periodic with order ", pmessage, " .")
-        interpolant = FastLagrange(order)
-        interpolate!(fp, interpolant, fi, alpha)
+        interpolant = LocalLagrange(order)
+        interpolate!(fp, fi, alpha, interpolant)
 
-        for i = 1:num_points
+        for i in 1:num_points
             diff = max(diff, abs(f(xp[i], num_points) - fp[i]))
         end
 
@@ -105,7 +105,7 @@ end
     xmax = Float64(num_points - 1)
     l = xmax - xmin
 
-    for i = 1:(num_points)
+    for i in 1:(num_points)
         xi[i] = Float64(i - 1)
         fi[i] = f(xi[i], num_points)
         gi[i] = g(xi[i], num_points)

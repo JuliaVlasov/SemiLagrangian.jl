@@ -21,14 +21,13 @@ first one again.
 """
 strangsplit(dt::T) where {T} = dt * [1 // 2, 1 // 1, 1 // 2]
 """
-    magicsplit(dt)
+    sheartransport(dt)
 
-"Magic" splitting for rotations: returns `[tan(dt/2), sin(dt), tan(dt/2)]`.
-These coefficients decompose a rotation of angle `dt` into three shears and
-are exact for a rotation advection (the splitting error vanishes), unlike
-[`strangsplit`](@ref).
+Shear transport for rotations: returns `[tan(dt/2), sin(dt), tan(dt/2)]`.
+These coefficients compose three directional advections into an exact
+rotation of angle `dt` at the continuous operator level.
 """
-magicsplit(dt::T) where {T} = [tan(dt / 2), sin(dt), tan(dt / 2)]
+sheartransport(dt::T) where {T} = [tan(dt / 2), sin(dt), tan(dt / 2)]
 """
     triplejumpsplit(dt)
 
@@ -92,7 +91,7 @@ Sixth-order splitting scheme with 11 stages (symmetric), whose coefficients
 depend on powers of `dt` and are computed in high precision. Returns the vector
 of 11 stage lengths.
 """
-function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
+function hamsplit_3_11(dt::T, fltrace = false) where {T <: Number}
     a = [
         big"0.168735950563437422448195173400884809990898960535052167820406",
         big"0.377851589220928303880768408101213978086828975884075336276904",
@@ -117,14 +116,14 @@ function hamsplit_3_11(dt::T, fltrace = false) where {T<:Number}
 
     result = zeros(T, 11)
 
-    for j = 1:6
+    for j in 1:6
         i = div(j + 1, 2)
         result[j] = if j % 2 == 1
             dt * (b[i] + 2c[i] * dt^2 + 4d[i] * dt^4 - 8e[i] * dt^6)
         else
             dt * a[i]
         end
-        result[12-j] = result[j]
+        result[12 - j] = result[j]
     end
 
     return result
@@ -146,15 +145,14 @@ function table2split(dt::T) where {T}
     c = [0, -big"0.0139652542242388403673", -big"0.039247029382345626020"]
     note(a, b, c, true)
     result = zeros(T, 9)
-    for j = 1:5
+    for j in 1:5
         i = div(j + 1, 2)
         result[j] = if j % 2 == 1
             dt * (b[i] + 2c[i] * dt^2)
         else
             dt * a[i]
         end
-        result[10-j] = result[j]
+        result[10 - j] = result[j]
     end
     return result
 end
-

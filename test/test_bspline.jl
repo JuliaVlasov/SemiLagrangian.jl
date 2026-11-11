@@ -1,26 +1,25 @@
-
 using LinearAlgebra
 
 using SemiLagrangian:
     Polynomial, degree, derivative, getbspline, BSplineLU, get_kl_ku, BSplineFFT, interpolate!, decal
 
 function test_spline(order, prec)
-    setprecision(prec) do
+    return setprecision(prec) do
         @time @testset "test spline object of order $order" begin
             p0 = getbspline(order, 0)
             p3 = getbspline(order, 3)
             @test p3 == decal(p0, 3)
-            @test isapprox(sum(p0.(range(big"1.0"; length = order + 1))), 1, atol = 1e-60)
+            @test isapprox(sum(p0.(range(big"1.0"; length = order + 1))), 1, atol = 1.0e-60)
             @test sum(p0.(range(one(Rational{BigInt}); length = order + 1))) == 1
-            for i = 0:order
+            for i in 0:order
                 x = rand(BigFloat)
                 res0 = p0(x + i)
                 res3 = p3(x + i + 3)
-                @test isapprox(res0, res3, atol = 1e-60)
+                @test isapprox(res0, res3, atol = 1.0e-60)
                 @test order == degree(p0[i])
                 pol1 = p0[i]
-                pol2 = p0[i+1]
-                for j = 1:order
+                pol2 = p0[i + 1]
+                for j in 1:order
                     @test pol1(i + 1) == pol2(i + 1)
                     pol1 = derivative(pol1)
                     pol2 = derivative(pol2)
@@ -29,12 +28,12 @@ function test_spline(order, prec)
         end
     end
 end
-for order = 1:15
+for order in 1:15
     test_spline(order, order < 20 ? 256 : 512)
 end
 function nb_diff_tol(f1, f2, tol)
     nb = 0
-    for i = 1:size(f1, 1)
+    for i in 1:size(f1, 1)
         if abs(f1[i] - f2[i]) > tol
             #          println("indice=$i diff=$(abs(f1[i]-f2[i]))")
             nb += 1
@@ -82,7 +81,7 @@ function bsplinerec(p, j, x::T) where {T}
 end
 
 function test_bspline()
-    @time @testset "test verify bspline" begin
+    return @time @testset "test verify bspline" begin
         tab_x = [
             1821 // 10000,
             1 // 1234,
@@ -90,7 +89,7 @@ function test_bspline()
             big"123456789" // big"234567890",
             0 // 1,
         ]
-        for ord = 1:10, x in tab_x
+        for ord in 1:10, x in tab_x
             if ord > 8
                 p1 = Polynomial([big(1 // 7), 2 // 7, 3 // 7])
                 p2 = Polynomial([-big(6 // 7), 2 // 7, 3 // 7])
@@ -98,7 +97,7 @@ function test_bspline()
                 p1 = Polynomial([1 // 7, 2 // 7, 3 // 7])
                 p2 = Polynomial([-6 // 7, 2 // 7, 3 // 7])
             end
-            for i = 0:(ord-1)
+            for i in 0:(ord - 1)
                 bsp = getbspline(ord, i)
                 b1 = bsp * p1
                 b2 = bsp * p2

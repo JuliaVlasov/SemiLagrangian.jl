@@ -12,7 +12,7 @@ function aff_graph(ind, fp)
         maxval = max(val, maxval)
     end
     println("minval=$minval maxval=$maxval")
-    println("ind=$ind end")
+    return println("ind=$ind end")
 end
 
 function test_dirac(bsp, order, len, nb, modval)
@@ -25,16 +25,17 @@ function test_dirac(bsp, order, len, nb, modval)
     value = big"0.30529810681113334445566767713091"
     normax = 0.0
     aff_graph(1, fp)
-    for i = 1:nb
+    for i in 1:nb
         fi .= fp
         interpolate!(missing, fp, fi, value, bsp)
         if i % modval == 0
             aff_graph(i, fp)
         end
     end
+    return
 end
 
-?Lagrange
+help(Lagrange)
 
 function test_dirac_lagrange(order, len, nb, modval)
     lag = Lagrange(order, BigFloat; bc = PeriodicBC())
@@ -55,4 +56,3 @@ end
 
 test_dirac_splu(31, 256, 500, 50)
 test_dirac_spfft(31, 256, 500, 50)
-

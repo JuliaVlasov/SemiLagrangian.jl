@@ -10,4 +10,3 @@ struct UniformMesh
         return new(xmin, xmax, nx, dx, x)
     end
 end
-

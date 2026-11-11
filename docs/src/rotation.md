@@ -17,12 +17,19 @@ initial = [exp(-2 * (x0^2 + (y0 + 1.2)^2)) for x0 in x, y0 in y]
 op_x = AdvectionOperator(mesh_x, y, interp_x; dim = 1)
 op_y = AdvectionOperator(mesh_y, -x, interp_y; dim = 2)
 
-function rotation_error(initial, op_x, op_y, nsteps; rotations = 10, splitting = magicsplit)
+function rotation_error(
+    initial,
+    op_x,
+    op_y,
+    nsteps;
+    rotations = 10,
+    coefficients = sheartransport,
+)
     dt = 2pi / nsteps
-    coefficients = splitting(dt)
+    stages = coefficients(dt)
     f = copy(initial)
     for _ in 1:(rotations * nsteps)
-        split_advection!(f, op_x, op_y, coefficients)
+        split_advection!(f, op_x, op_y, stages)
     end
     return maximum(abs, f .- initial)
 end
@@ -35,20 +42,22 @@ error is measured after ten full rotations, when the exact solution returns
 to its initial state:
 
 ```julia
-strang_error = rotation_error(initial, op_x, op_y, 100; splitting = strangsplit)
+strang_error = rotation_error(initial, op_x, op_y, 100; coefficients = strangsplit)
 ```
 
-### Magic splitting
+### Shear transport
 
-For this rotation, `magicsplit(dt)` gives the shear coefficients
+For this rotation, `sheartransport(dt)` gives the shear coefficients
 `[tan(dt / 2), sin(dt), tan(dt / 2)]`. Their composition is exactly the
-rotation by `dt` at the continuous operator level:
+rotation by `dt` at the continuous operator level. The first directional
+advection applies a half-angle shear, the second applies the full-angle shear,
+and the final stage applies the first shear again:
 
 ```julia
-magic_error = rotation_error(initial, op_x, op_y, 100; splitting = magicsplit)
+shear_error = rotation_error(initial, op_x, op_y, 100)
 ```
 
-The magic coefficients introduce no splitting error for this rotation; the
+Shear transport introduces no composition error for this rotation; the
 measured numerical error still includes interpolation and finite-domain errors.
 
 The directional API lets a simulation update coupled quantities between

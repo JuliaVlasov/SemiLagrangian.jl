@@ -87,7 +87,9 @@ end
 
 function derivative(polynomial::Polynomial)
     length(polynomial) <= 1 && return zero(typeof(polynomial))
-    return Polynomial([
-        i * polynomial.coefficients[i + 1] for i in 1:(length(polynomial) - 1)
-    ])
+    return Polynomial(
+        [
+            i * polynomial.coefficients[i + 1] for i in 1:(length(polynomial) - 1)
+        ]
+    )
 end

@@ -44,6 +44,26 @@ split_advection!(f, op_x, op_v, strangsplit(0.01))
 The operators' velocities remain fixed during this call. For a self-consistent
 field that must be updated between stages, see the [Landau damping example](@ref "Landau Damping").
 
+## Self-consistent Poisson advection
+
+`PoissonAdvectionOperator(mesh_x, mesh_v)` integrates the distribution over
+velocity and solves the periodic Poisson equation before each velocity stage.
+It accepts a `Float64` matrix with position along dimension 1 and velocity along
+dimension 2. Its default spectral interpolant, FFT plans, field, density, and
+line buffers are reused.
+
+```julia
+op_x = AdvectionOperator(mesh_x, mesh_v.points, Spectral(length(mesh_x)); dim = 1)
+op_v = PoissonAdvectionOperator(mesh_x, mesh_v)
+split_advection!(f, op_x, op_v, strangsplit(0.01))
+```
+
+`update_field!(op_v, f)` refreshes `op_v.rho` and `op_v.field` without advection.
+After a Strang step, these fields describe the midpoint velocity stage, not the
+final distribution. The Poisson operator's default spectral stage avoids
+per-step workspace allocation; the ordinary position operator and alternative
+interpolants may still allocate. Use one workspace per concurrent simulation.
+
 ```@autodocs
 Modules = [SemiLagrangian]
 Private = false

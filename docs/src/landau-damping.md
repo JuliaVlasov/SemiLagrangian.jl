@@ -129,6 +129,23 @@ Run it from the repository root with:
 julia --project=docs examples/landau-damping-split.jl
 ```
 
+## Reusing the Poisson solver
+
+The additional `examples/landau-damping-poisson.jl` example constructs a
+`PoissonAdvectionOperator` once and passes it to `split_advection!` alongside
+the position operator. Each velocity stage automatically recomputes the field
+from the current distribution, so the complete Strang step uses one call.
+The operator reuses density and field arrays, FFT plans, and velocity-line
+buffers. Its default spectral velocity stage avoids repeated workspace
+allocation, while the ordinary position stage may still allocate.
+
+```sh
+julia --project=docs examples/landau-damping-poisson.jl
+```
+
+The energy is sampled from the field used at the midpoint velocity stage,
+matching the other Landau examples. Both earlier examples are kept unchanged.
+
 ## References
 
 - Vlasov-Poisson system: Krall & Trivelpiece (1973)

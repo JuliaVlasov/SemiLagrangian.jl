@@ -30,6 +30,7 @@ include("spectral.jl")
 include("fast_lagrange.jl")
 include("lagrange_fft.jl")
 include("cubic_interp.jl")
+include("poisson_advection.jl")
 
 export UniformMesh, start, stop, AbstractInterpolation, get_order
 export AbstractBoundaryCondition, PeriodicBC, ExtrapolationBC
@@ -39,6 +40,7 @@ export Lagrange, Hermite, BSplineLU, BSplineFFT, interpolate!
 export Polynomial, derivative, degree
 export advection!
 export AdvectionOperator, split_advection!
+export PoissonAdvectionOperator, update_field!
 export dotprod
 
 export OpTuple

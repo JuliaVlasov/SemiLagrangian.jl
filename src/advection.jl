@@ -114,18 +114,14 @@ function split_advection!(
 
     for (stage, coefficient) in enumerate(coefficients)
         operator = isodd(stage) ? first : second
-        advection!(
-            data,
-            operator.mesh,
-            operator.velocity,
-            coefficient,
-            operator.interpolant;
-            dim = operator.dim,
-        )
+        advection!(data, operator, coefficient)
     end
 
     return data
 end
+
+advection!(data::AbstractArray, operator::AdvectionOperator, dt::Real) =
+    advection!(data, operator.mesh, operator.velocity, dt, operator.interpolant; dim = operator.dim)
 
 _interpolate_advection_line!(output, input, shift, interpolant) =
     interpolate!(output, input, shift, interpolant)

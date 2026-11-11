@@ -77,7 +77,7 @@ end
         meshx = UniformMesh(0.0, 4pi, nx)
         meshv = UniformMesh(-6.0, 6.0, nv)
         x, v = meshx.points, meshv.points
-        initial = [exp(-vi^2 / 2) * (1 + 0.01cos(0.5xi)) / sqrt(2pi) for xi in x, vi in v]
+        landau_initial = [exp(-vi^2 / 2) * (1 + 0.01cos(0.5xi)) / sqrt(2pi) for xi in x, vi in v]
         dt = 0.1
         coefficients = strangsplit(dt)
 
@@ -87,8 +87,8 @@ end
                 (LocalLagrange(7), LocalLagrange(7)),
                 (CubicSpline(nx), CubicSpline(nv)),
             )
-            reference = copy(initial)
-            actual = copy(initial)
+            reference = copy(landau_initial)
+            actual = copy(landau_initial)
             transposed = similar(actual, nv, nx)
             position = AdvectionOperator(meshx, v, interp_x; dim = 2)
             initial_field = compute_e(meshx, compute_rho(meshv, actual))
